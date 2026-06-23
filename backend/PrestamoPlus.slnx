@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PréstamoPlus.API/PréstamoPlus.API.csproj" />
+    <Project Path="src/PréstamoPlus.Application/PréstamoPlus.Application.csproj" />
+    <Project Path="src/PréstamoPlus.Domain/PréstamoPlus.Domain.csproj" />
+    <Project Path="src/PréstamoPlus.Infrastructure/PréstamoPlus.Infrastructure.csproj" />
+  </Folder>
+</Solution>

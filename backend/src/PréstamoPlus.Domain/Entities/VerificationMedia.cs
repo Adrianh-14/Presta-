@@ -1,0 +1,12 @@
+namespace PréstamoPlus.Domain.Entities
+{
+    public class VerificationMedia
+    {
+        public Guid Id { get; set; }
+        public Guid LoanApplicationId { get; set; }
+        public string? VideoPath { get; set; }
+        public string? FotoCedulaPath { get; set; }
+
+        public LoanApplication LoanApplication { get; set; } = null!;
+    }
+}

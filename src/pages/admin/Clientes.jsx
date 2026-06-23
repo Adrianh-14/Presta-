@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search } from 'lucide-react';
 import DataTable from '../../components/DataTable';
 import StatusBadge from '../../components/StatusBadge';
-import { clientes } from '../../data/mockData';
+import ClienteDetailModal from '../../components/modals/ClienteDetailModal';
+import { clientService } from '../../services/clientService';
 
 const columns = [
   { key: 'nombre', label: 'Nombre' },
@@ -10,20 +11,45 @@ const columns = [
   { key: 'email', label: 'Email' },
   { key: 'telefono', label: 'Teléfono' },
   { key: 'estado', label: 'Estado', render: (value) => <StatusBadge status={value} /> },
-  { key: 'fechaRegistro', label: 'Registro' },
+  { key: 'fechaRegistro', label: 'Registro', render: (value) => value ? new Date(value).toLocaleDateString() : '-' },
 ];
 
 export default function Clientes() {
+  const [clientes, setClientes] = useState([]);
   const [search, setSearch] = useState('');
   const [filtro, setFiltro] = useState('todos');
+  const [loading, setLoading] = useState(true);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  const clientesFiltrados = clientes.filter((c) => {
-    const matchSearch = c.nombre.toLowerCase().includes(search.toLowerCase()) ||
-                       c.email.toLowerCase().includes(search.toLowerCase()) ||
-                       c.cedula.includes(search);
-    const matchFiltro = filtro === 'todos' || c.estado === filtro;
-    return matchSearch && matchFiltro;
-  });
+  useEffect(() => {
+    loadClientes();
+  }, [search, filtro]);
+
+  const loadClientes = async () => {
+    setLoading(true);
+    try {
+      const estado = filtro === 'todos' ? '' : filtro;
+      const data = await clientService.getAll(search, estado);
+      setClientes(data);
+    } catch (err) {
+      console.error('Error loading clients:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRowClick = async (row) => {
+    setDetailLoading(true);
+    try {
+      const full = await clientService.getById(row.id);
+      setSelectedClient(full);
+    } catch {
+      setSelectedClient(row);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -32,13 +58,8 @@ export default function Clientes() {
           <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
           <p className="text-gray-500">{clientes.length} clientes registrados</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">
-          <Plus size={20} />
-          Nuevo Cliente
-        </button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -61,7 +82,15 @@ export default function Clientes() {
         </select>
       </div>
 
-      <DataTable columns={columns} data={clientesFiltrados} />
+      {loading ? (
+        <p className="text-gray-500 text-center py-8">Cargando clientes...</p>
+      ) : (
+        <DataTable columns={columns} data={clientes} onRowClick={handleRowClick} />
+      )}
+
+      {selectedClient && (
+        <ClienteDetailModal client={selectedClient} onClose={() => setSelectedClient(null)} />
+      )}
     </div>
   );
 }
