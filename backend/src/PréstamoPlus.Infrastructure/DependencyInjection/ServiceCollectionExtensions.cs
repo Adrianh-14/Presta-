@@ -14,22 +14,29 @@ namespace PréstamoPlus.Infrastructure.DependencyInjection
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            var useSqlite = configuration.GetValue<bool>("UseSqlite");
+            var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "PostgreSQL";
 
-            if (useSqlite)
+            services.AddDbContext<ApplicationDbContext>(options =>
             {
-                services.AddDbContext<ApplicationDbContext>(options =>
-                    options.UseSqlite(
-                        configuration.GetConnectionString("DefaultConnection"),
-                        b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
-            }
-            else
-            {
-                services.AddDbContext<ApplicationDbContext>(options =>
-                    options.UseSqlServer(
-                        configuration.GetConnectionString("DefaultConnection"),
-                        b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
-            }
+                switch (dbProvider.ToLower())
+                {
+                    case "sqlite":
+                        options.UseSqlite(
+                            configuration.GetConnectionString("DefaultConnection"),
+                            b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+                        break;
+                    case "sqlserver":
+                        options.UseSqlServer(
+                            configuration.GetConnectionString("DefaultConnection"),
+                            b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+                        break;
+                    default:
+                        options.UseNpgsql(
+                            configuration.GetConnectionString("DefaultConnection"),
+                            b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+                        break;
+                }
+            });
 
             services.AddScoped(typeof(IRepositoryBase<>), typeof(GenericRepository<>));
             services.AddScoped<IClientRepository, ClientRepository>();

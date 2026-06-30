@@ -1,12 +1,11 @@
 {
   "profiles": {
-    "PréstamoPlus.API": {
+    "Pr\u00e9stamoPlus.API": {
       "commandName": "Project",
-      "launchBrowser": true,
+      "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "https://localhost:53906;http://localhost:53907"
+      }
     }
   }
 }

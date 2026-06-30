@@ -5,6 +5,7 @@ using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Features.Auth.Commands.Login;
 using PréstamoPlus.Application.Features.Auth.Commands.RefreshToken;
 using PréstamoPlus.Application.Features.Auth.Commands.Register;
+using PréstamoPlus.Application.Features.Auth.Commands.ClientAccess;
 
 namespace PréstamoPlus.API.Controllers
 {
@@ -66,5 +67,17 @@ namespace PréstamoPlus.API.Controllers
                 return Unauthorized(new { message = ex.Message });
             }
         }
+
+        [HttpPost("client-access")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ClientAccess([FromBody] ClientAccessRequest request)
+        {
+            var result = await _mediator.Send(new ClientAccessCommand(request.Cedula));
+            if (result is null) return NotFound(new { message = "Cliente no encontrado" });
+            return Ok(result);
+        }
     }
+
+    public record ClientAccessRequest(string Cedula);
 }

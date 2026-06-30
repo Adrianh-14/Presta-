@@ -13,7 +13,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
   const [success, setSuccess] = useState(false);
 
   const cuota = summary?.proximoPago?.cuota || loan?.cuotaMensual || 0;
-  const saldo = summary?.saldoCapital || loan?.saldoPendiente || 0;
+  const saldo = summary?.saldoPendiente || loan?.saldoPendiente || 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,7 +27,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
     setError('');
 
     try {
-      const { default: paymentService } = await import('../../services/paymentService');
+      const { paymentService } = await import('../../services/paymentService');
       await paymentService.create({
         loanId: loan.id,
         monto: montoNum,

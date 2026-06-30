@@ -24,6 +24,20 @@ namespace PréstamoPlus.Application.DTOs
         public decimal Valor { get; init; }
     }
 
+    public record PeriodCollectionDto
+    {
+        public string Frecuencia { get; init; } = string.Empty;
+        public string Etiqueta { get; init; } = string.Empty;
+        public decimal MontoEstimado { get; init; }
+        public int CuotasPendientes { get; init; }
+    }
+
+    public record CollectionsDto
+    {
+        public List<PeriodCollectionDto> Periodos { get; init; } = new();
+        public decimal TotalCobranzaPeriodo { get; init; }
+    }
+
     public record ClientDto
     {
         public Guid Id { get; init; }
@@ -35,6 +49,12 @@ namespace PréstamoPlus.Application.DTOs
         public EstadoCivil EstadoCivil { get; init; }
         public EstadoCliente Estado { get; init; }
         public DateTime FechaRegistro { get; init; }
+        public WorkInformationDto? WorkInformation { get; init; }
+        public AddressDto? Address { get; init; }
+        public BankAccountDto? BankAccount { get; init; }
+        public List<ReferenceDto> References { get; init; } = new();
+        public Guid? TenantId { get; init; }
+        public VerificationMediaDto? VerificationMedia { get; init; }
     }
 
     public record WorkInformationDto
@@ -94,6 +114,10 @@ namespace PréstamoPlus.Application.DTOs
         public TipoPrestamo TipoPrestamo { get; init; }
         public DateTime FechaSolicitud { get; init; }
         public ClientDto Client { get; init; } = null!;
+        public WorkInformationDto? WorkInformation { get; init; }
+        public AddressDto? Address { get; init; }
+        public List<ReferenceDto> References { get; init; } = new();
+        public BankAccountDto? BankAccount { get; init; }
         public VerificationMediaDto? VerificationMedia { get; init; }
     }
 

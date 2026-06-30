@@ -18,7 +18,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
 
             builder.Property(l => l.TasaInteresAnual)
                 .IsRequired()
-                .HasColumnType("decimal(5,2)");
+                .HasColumnType("decimal(7,2)");
 
             builder.Property(l => l.PlazoMeses)
                 .IsRequired();

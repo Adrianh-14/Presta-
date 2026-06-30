@@ -1,7 +1,7 @@
 using MediatR;
 using PréstamoPlus.Application.DTOs;
+using PréstamoPlus.Application.Features.Payments.Specifications;
 using PréstamoPlus.Application.Features.Prestamos.Specifications;
-using PréstamoPlus.Domain.Enums;
 using PréstamoPlus.Domain.Interfaces;
 
 namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
@@ -23,86 +23,113 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
             var loan = await _unitOfWork.Loans.FirstOrDefaultAsync(spec, cancellationToken);
             if (loan is null) return null;
 
-            var monthlyRate = loan.TasaInteresAnual / 100 / 12;
-            var principal = loan.MontoOriginal;
-            var totalPeriods = loan.PlazoMeses;
+            var installments = await _unitOfWork.Installments.ListAsync(
+                new InstallmentsByLoanIdSpec(request.Id),
+                cancellationToken);
+
+            if (!installments.Any())
+            {
+                return GenerateAmortizationTable(loan);
+            }
 
             var table = new List<AmortizationRowDto>();
-            decimal saldo = principal;
-            int totalPayments = CalculateTotalPayments(totalPeriods, loan.FrecuenciaPago);
-            decimal paymentRate = monthlyRate / GetPeriodsPerMonth(loan.FrecuenciaPago);
+            decimal saldo = loan.MontoOriginal;
 
-            for (int i = 1; i <= totalPayments; i++)
+            foreach (var inst in installments)
             {
                 var saldoInicial = saldo;
-                var interes = saldo * paymentRate;
-                var factor = Math.Pow(1 + (double)paymentRate, totalPayments);
-                var cuotaFija = principal * ((decimal)paymentRate * (decimal)factor) / ((decimal)factor - 1);
-                var capital = cuotaFija - interes;
-                saldo = saldo - capital;
+                saldo = Math.Max(0, saldo - inst.Capital);
 
-                var fechaPago = CalculatePaymentDate(loan.FechaInicio, i, loan.FrecuenciaPago);
+                string estado = inst.Estado switch
+                {
+                    Domain.Enums.EstadoInstallment.Pagado => "Pagado",
+                    Domain.Enums.EstadoInstallment.Parcial => "Parcial",
+                    _ when inst.FechaPago.Date < DateTime.UtcNow.Date => "Vencido",
+                    _ => "Pendiente"
+                };
 
                 table.Add(new AmortizationRowDto
                 {
-                    Numero = i,
-                    FechaPago = fechaPago,
-                    Cuota = Math.Round(cuotaFija, 2),
-                    Capital = Math.Round(capital, 2),
-                    Interes = Math.Round(interes, 2),
+                    Numero = inst.Numero,
+                    FechaPago = inst.FechaPago,
+                    Cuota = inst.Cuota,
+                    Capital = inst.Capital,
+                    Interes = inst.Interes,
                     SaldoInicial = Math.Round(saldoInicial, 2),
-                    SaldoFinal = Math.Max(0, Math.Round(saldo, 2)),
-                    Estado = DetermineEstado(i, totalPayments, loan.Estado)
+                    SaldoFinal = Math.Round(saldo, 2),
+                    Estado = estado
                 });
             }
 
             return table;
         }
 
-        private static int CalculateTotalPayments(int plazoMeses, FrecuenciaPago frecuencia)
+        private static List<AmortizationRowDto> GenerateAmortizationTable(Domain.Entities.Loan loan)
         {
-            return frecuencia switch
+            var monthlyRate = loan.TasaInteresAnual / 100 / 12;
+            var periodsPerMonth = GetPeriodsPerMonth(loan.FrecuenciaPago);
+            var totalPayments = loan.PlazoMeses * (int)periodsPerMonth;
+            decimal ratePerPeriod = monthlyRate / periodsPerMonth;
+            decimal cuotaPorPeriodo = loan.CuotaMensual;
+
+            var table = new List<AmortizationRowDto>();
+            decimal saldo = loan.MontoOriginal;
+
+            for (int i = 1; i <= totalPayments; i++)
             {
-                FrecuenciaPago.Diaria => plazoMeses * 30,
-                FrecuenciaPago.Semanal => plazoMeses * 4,
-                FrecuenciaPago.Quincenal => plazoMeses * 2,
-                FrecuenciaPago.Mensual => plazoMeses,
-                _ => plazoMeses
-            };
+                var saldoInicial = saldo;
+                var interes = Math.Round(saldo * ratePerPeriod, 2);
+                var capital = Math.Round(cuotaPorPeriodo - interes, 2);
+                saldo -= capital;
+
+                var fechaPago = CalculatePaymentDate(loan.FechaInicio, i, loan.FrecuenciaPago);
+
+                string estado;
+                if (loan.Estado == Domain.Enums.EstadoPrestamo.Pagado)
+                    estado = "Pagado";
+                else if (fechaPago.Date < DateTime.UtcNow.Date)
+                    estado = "Vencido";
+                else
+                    estado = "Pendiente";
+
+                table.Add(new AmortizationRowDto
+                {
+                    Numero = i,
+                    FechaPago = fechaPago,
+                    Cuota = Math.Round(cuotaPorPeriodo, 2),
+                    Capital = capital,
+                    Interes = interes,
+                    SaldoInicial = Math.Round(saldoInicial, 2),
+                    SaldoFinal = Math.Max(0, Math.Round(saldo, 2)),
+                    Estado = estado
+                });
+            }
+
+            return table;
         }
 
-        private static decimal GetPeriodsPerMonth(FrecuenciaPago frecuencia)
+        private static decimal GetPeriodsPerMonth(Domain.Enums.FrecuenciaPago frecuencia)
         {
             return frecuencia switch
             {
-                FrecuenciaPago.Diaria => 30,
-                FrecuenciaPago.Semanal => 4,
-                FrecuenciaPago.Quincenal => 2,
-                FrecuenciaPago.Mensual => 1,
+                Domain.Enums.FrecuenciaPago.Diaria => 30,
+                Domain.Enums.FrecuenciaPago.Semanal => 4,
+                Domain.Enums.FrecuenciaPago.Quincenal => 2,
+                Domain.Enums.FrecuenciaPago.Mensual => 1,
                 _ => 1
             };
         }
 
-        private static DateTime CalculatePaymentDate(DateTime fechaInicio, int paymentNumber, FrecuenciaPago frecuencia)
+        private static DateTime CalculatePaymentDate(DateTime fechaInicio, int paymentNumber, Domain.Enums.FrecuenciaPago frecuencia)
         {
             return frecuencia switch
             {
-                FrecuenciaPago.Mensual => fechaInicio.AddMonths(paymentNumber),
-                FrecuenciaPago.Quincenal => paymentNumber % 2 == 0
-                    ? fechaInicio.AddDays(paymentNumber / 2 * 15)
-                    : fechaInicio.AddDays(paymentNumber / 2 * 15),
-                FrecuenciaPago.Semanal => fechaInicio.AddDays(paymentNumber * 7),
-                FrecuenciaPago.Diaria => fechaInicio.AddDays(paymentNumber),
+                Domain.Enums.FrecuenciaPago.Mensual => fechaInicio.AddMonths(paymentNumber),
+                Domain.Enums.FrecuenciaPago.Quincenal => fechaInicio.AddDays(paymentNumber * 15),
+                Domain.Enums.FrecuenciaPago.Semanal => fechaInicio.AddDays(paymentNumber * 7),
+                Domain.Enums.FrecuenciaPago.Diaria => fechaInicio.AddDays(paymentNumber),
                 _ => fechaInicio.AddMonths(paymentNumber)
             };
-        }
-
-        private static string DetermineEstado(int paymentNumber, int totalPayments, Domain.Enums.EstadoPrestamo loanEstado)
-        {
-            if (loanEstado == Domain.Enums.EstadoPrestamo.Pagado) return "Pagado";
-            if (paymentNumber < totalPayments / 2) return "Pagado";
-            if (paymentNumber == totalPayments / 2 + 1) return "Pendiente";
-            return "Futuro";
         }
     }
 }

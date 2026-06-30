@@ -43,6 +43,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.UpdateLoanStatus
                 SaldoPendiente = loan.SaldoPendiente,
                 Estado = loan.Estado,
                 Tipo = loan.Tipo,
+                FrecuenciaPago = loan.FrecuenciaPago,
                 FechaInicio = loan.FechaInicio,
                 FechaVencimiento = loan.FechaVencimiento
             };

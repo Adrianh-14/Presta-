@@ -13,6 +13,8 @@ namespace PréstamoPlus.Application.Features.Clients.Specifications
                 .Include(c => c.Address)
                 .Include(c => c.BankAccount)
                 .Include(c => c.References)
+                .Include(c => c.LoanApplications)
+                    .ThenInclude(la => la.VerificationMedia)
                 .Where(c => c.Id == id)
                 .AsNoTracking();
         }

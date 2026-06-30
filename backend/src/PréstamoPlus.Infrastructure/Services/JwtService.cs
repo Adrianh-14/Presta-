@@ -20,18 +20,33 @@ namespace PréstamoPlus.Infrastructure.Services
 
         public string GenerateAccessToken(User user)
         {
+            return GenerateToken(user.Id, user.Email, user.Nombre, user.Role, user.TenantId, null);
+        }
+
+        public string GenerateClientAccessToken(Client client)
+        {
+            return GenerateToken(Guid.NewGuid(), client.Email, client.Nombre, "Cliente", client.TenantId, client.Id);
+        }
+
+        private string GenerateToken(Guid userId, string email, string nombre, string role, Guid tenantId, Guid? clientId)
+        {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Name, user.Nombre),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim("tenantId", user.TenantId.ToString())
+                new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new(JwtRegisteredClaimNames.Email, email),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new(ClaimTypes.Name, nombre),
+                new(ClaimTypes.Role, role),
+                new("tenantId", tenantId.ToString())
             };
+
+            if (clientId.HasValue)
+            {
+                claims.Add(new Claim("clientId", clientId.Value.ToString()));
+            }
 
             var token = new JwtSecurityToken(
                 issuer: _settings.Issuer,

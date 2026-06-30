@@ -35,4 +35,15 @@ namespace PréstamoPlus.Application.Features.Payments.Specifications
                 .AsNoTracking();
         }
     }
+
+    public class InstallmentsByLoanIdSpec : Specification<Installment>
+    {
+        public InstallmentsByLoanIdSpec(Guid loanId)
+        {
+            Query
+                .Where(i => i.LoanId == loanId)
+                .OrderBy(i => i.Numero)
+                .AsTracking();
+        }
+    }
 }

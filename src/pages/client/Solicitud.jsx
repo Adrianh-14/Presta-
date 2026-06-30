@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ChevronRight, ChevronLeft, Check, User, Briefcase, MapPin, Users, Camera, Video, Square, CreditCard, Upload, RotateCcw, Calculator } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, User, Briefcase, MapPin, Users, Camera, Video, Square, CreditCard, Upload, RotateCcw, Calculator, AlertTriangle } from 'lucide-react';
 import { solicitudService } from '../../services/solicitudService';
 
 const steps = [
@@ -90,11 +90,21 @@ export default function Solicitud() {
   const [stream, setStream] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const videoPreviewRef = useRef(null);
+  const motionCanvasRef = useRef(null);
+  const motionIntervalRef = useRef(null);
+  const motionDataRef = useRef({ prevLeft: 0, prevRight: 0, movementCount: 0 });
+  const recordingTimeRef = useRef(0);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
 
+  const [videoValid, setVideoValid] = useState(false);
+  const [videoError, setVideoError] = useState('');
+  const [movementProgress, setMovementProgress] = useState(0);
+
   const [idPhoto, setIdPhoto] = useState(null);
   const [idPhotoUrl, setIdPhotoUrl] = useState(null);
+  const [idPhotoValid, setIdPhotoValid] = useState(false);
+  const [idPhotoError, setIdPhotoError] = useState('');
 
   const [calcAmount, setCalcAmount] = useState('');
   const [calcClosingCost, setCalcClosingCost] = useState('3');
@@ -177,14 +187,51 @@ export default function Solicitud() {
 
   const startRecording = async () => {
     try {
+      setVideoValid(false);
+      setVideoError('');
+      setMovementProgress(0);
+      motionDataRef.current = { prevLeft: 0, prevRight: 0, movementCount: 0 };
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: true });
       setStream(mediaStream);
       chunksRef.current = [];
       setRecordingTime(0);
+      recordingTimeRef.current = 0;
 
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = mediaStream;
       }
+
+      // Setup motion detection canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 120;
+      canvas.height = 160;
+      motionCanvasRef.current = canvas;
+      const ctx = canvas.getContext('2d');
+
+      motionIntervalRef.current = setInterval(() => {
+        if (!videoPreviewRef.current) return;
+        try {
+          ctx.drawImage(videoPreviewRef.current, 0, 0, 120, 160);
+          const imageData = ctx.getImageData(0, 40, 60, 80);   // left half of face
+          const imageDataR = ctx.getImageData(60, 40, 60, 80); // right half of face
+
+          let sumL = 0, sumR = 0;
+          for (let i = 0; i < imageData.data.length; i += 4) sumL += imageData.data[i];
+          for (let i = 0; i < imageDataR.data.length; i += 4) sumR += imageDataR.data[i];
+          const avgL = sumL / (imageData.data.length / 4);
+          const avgR = sumR / (imageDataR.data.length / 4);
+
+          const prev = motionDataRef.current;
+          const diff = Math.abs(avgL - prev.prevLeft) + Math.abs(avgR - prev.prevRight);
+          if (diff > 12) {
+            prev.movementCount++;
+            setMovementProgress(Math.min(100, prev.movementCount * 5));
+          }
+          prev.prevLeft = avgL;
+          prev.prevRight = avgR;
+        } catch { /* canvas may fail if video not ready */ }
+      }, 400);
 
       const recorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
       recorder.ondataavailable = (e) => {
@@ -196,7 +243,19 @@ export default function Solicitud() {
         setVideoUrl(URL.createObjectURL(blob));
         mediaStream.getTracks().forEach(t => t.stop());
         setStream(null);
-        if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
+        if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
+
+        // Validate recording
+        if (motionDataRef.current.movementCount >= 4 && recordingTimeRef.current >= 4) {
+          setVideoValid(true);
+          setVideoError('');
+        } else if (recordingTimeRef.current < 4) {
+          setVideoError('Video muy corto. Graba al menos 5 segundos girando la cabeza.');
+        } else {
+          setVideoError('No se detectó movimiento facial. Gira la cabeza de izquierda a derecha.');
+        }
       };
 
       recorder.start();
@@ -204,7 +263,8 @@ export default function Solicitud() {
       setIsRecording(true);
 
       timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+        recordingTimeRef.current++;
+        setRecordingTime(recordingTimeRef.current);
       }, 1000);
     } catch (err) {
       console.error('Error accediendo a la cámara:', err);
@@ -218,30 +278,152 @@ export default function Solicitud() {
     }
     setIsRecording(false);
     if (timerRef.current) clearInterval(timerRef.current);
+    if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
   };
 
   const deleteVideo = () => {
     setVideoBlob(null);
     setVideoUrl(null);
+    setVideoValid(false);
+    setVideoError('');
+    setMovementProgress(0);
     setIsRecording(false);
     setRecordingTime(0);
+    recordingTimeRef.current = 0;
     if (stream) stream.getTracks().forEach(t => t.stop());
     setStream(null);
     if (timerRef.current) clearInterval(timerRef.current);
+    if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
   };
 
   const handleIdPhoto = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setIdPhoto(file);
-      setIdPhotoUrl(URL.createObjectURL(file));
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setIdPhotoError('El archivo excede 5MB. Usa una imagen más pequeña.');
+      return;
     }
+    setIdPhoto(file);
+    setIdPhotoUrl(URL.createObjectURL(file));
+    setIdPhotoValid(false);
+    setIdPhotoError('');
+
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.height / img.width;
+      if (img.width < 300 || img.height < 400) {
+        setIdPhotoError('La imagen es muy pequeña. Debe ser al menos 300x400 píxeles.');
+        return;
+      }
+      if (ratio < 1.3) {
+        setIdPhotoError('La imagen no tiene formato de documento. Una cédula o pasaporte es más alto que ancho.');
+        return;
+      }
+      if (ratio > 2.2) {
+        setIdPhotoError('La imagen es demasiado alargada. No parece una cédula o pasaporte.');
+        return;
+      }
+
+      // Analyze image on canvas to detect document-like features
+      const canvas = document.createElement('canvas');
+      const maxDim = 400;
+      const scale = Math.min(maxDim / img.width, maxDim / img.height);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // 1. Check for text-like features: sample 16 regions and measure local variance
+      let textRegions = 0;
+      const regionSize = Math.floor(Math.min(w, h) / 8);
+      for (let ry = 0; ry < 4; ry++) {
+        for (let rx = 0; rx < 4; rx++) {
+          const sx = Math.floor(rx * w / 4);
+          const sy = Math.floor(ry * h / 4);
+          let sum = 0, sumSq = 0, count = 0;
+          for (let y = sy; y < Math.min(sy + regionSize, h); y += 2) {
+            for (let x = sx; x < Math.min(sx + regionSize, w); x += 2) {
+              const idx = (y * w + x) * 4;
+              const gray = pixels[idx] * 0.299 + pixels[idx + 1] * 0.587 + pixels[idx + 2] * 0.114;
+              sum += gray;
+              sumSq += gray * gray;
+              count++;
+            }
+          }
+          if (count > 0) {
+            const mean = sum / count;
+            const variance = sumSq / count - mean * mean;
+            if (variance > 800) textRegions++; // High variance = text/edges present
+          }
+        }
+      }
+
+      // 2. Edge density: count pixels with high gradient
+      let edgePixels = 0;
+      let totalSampled = 0;
+      for (let y = 2; y < h - 2; y += 3) {
+        for (let x = 2; x < w - 2; x += 3) {
+          const idx = (y * w + x) * 4;
+          const idxR = (y * w + (x + 1)) * 4;
+          const idxD = ((y + 1) * w + x) * 4;
+          const g = pixels[idx] * 0.299 + pixels[idx + 1] * 0.587 + pixels[idx + 2] * 0.114;
+          const gr = pixels[idxR] * 0.299 + pixels[idxR + 1] * 0.587 + pixels[idxR + 2] * 0.114;
+          const gd = pixels[idxD] * 0.299 + pixels[idxD + 1] * 0.587 + pixels[idxD + 2] * 0.114;
+          if (Math.abs(g - gr) > 25 || Math.abs(g - gd) > 25) edgePixels++;
+          totalSampled++;
+        }
+      }
+      const edgeRatio = totalSampled > 0 ? edgePixels / totalSampled : 0;
+
+      // 3. Skin tone check: count skin-colored pixels (face=selfie, not ID)
+      let skinPixels = 0;
+      let totalPixels = 0;
+      for (let i = 0; i < pixels.length; i += 12) {
+        const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+        // Simple skin detection: R > G > B and within ranges
+        if (r > 95 && g > 40 && b > 20 && r > g && g > b && (r - g) > 15 && (r - b) > 30) {
+          skinPixels++;
+        }
+        totalPixels++;
+      }
+      const skinRatio = totalPixels > 0 ? skinPixels / totalPixels : 0;
+
+      // Evaluate results
+      const failures = [];
+      if (textRegions < 3) {
+        failures.push('no se detecta texto o estructura de documento');
+      }
+      if (edgeRatio < 0.08) {
+        failures.push('la imagen es muy plana, sin bordes de texto o líneas');
+      }
+      if (skinRatio > 0.35) {
+        failures.push('la imagen parece una selfie, no una cédula o pasaporte');
+      }
+
+      if (failures.length === 0) {
+        setIdPhotoValid(true);
+        setIdPhotoError('');
+      } else {
+        setIdPhotoError(`No parece una identificación: ${failures.join('; ')}.`);
+        setIdPhotoValid(false);
+      }
+    };
+    img.onerror = () => {
+      setIdPhotoError('No se pudo leer la imagen. Intenta con otro archivo.');
+    };
+    img.src = URL.createObjectURL(file);
   };
 
   const removeIdPhoto = () => {
     setIdPhoto(null);
     if (idPhotoUrl) URL.revokeObjectURL(idPhotoUrl);
     setIdPhotoUrl(null);
+    setIdPhotoValid(false);
+    setIdPhotoError('');
   };
 
   const formatTime = (seconds) => {
@@ -267,7 +449,25 @@ export default function Solicitud() {
         break;
       case 5:
         fieldsToValidate = ['banco', 'tipoCuenta', 'numeroCuenta'];
-        break;
+        const valid5 = await trigger(fieldsToValidate);
+        if (!valid5) return false;
+        if (!videoBlob) {
+          alert('El video de verificación facial es requerido.');
+          return false;
+        }
+        if (!videoValid) {
+          alert(videoError || 'El video no pasó la verificación. Graba de nuevo girando la cabeza.');
+          return false;
+        }
+        if (!idPhoto) {
+          alert('La foto de identificación es requerida.');
+          return false;
+        }
+        if (!idPhotoValid) {
+          alert(idPhotoError || 'La foto no parece una identificación válida.');
+          return false;
+        }
+        return true;
       default:
         return true;
     }
@@ -293,6 +493,27 @@ export default function Solicitud() {
   const onSubmit = async (data) => {
     if (currentStep !== 6) return;
     try {
+      let verificationMedia = null;
+      if (videoBlob || idPhoto) {
+        verificationMedia = {};
+        if (videoBlob) {
+          const videoBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(videoBlob);
+          });
+          verificationMedia.videoPath = videoBase64;
+        }
+        if (idPhoto) {
+          const fotoBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(idPhoto);
+          });
+          verificationMedia.fotoCedulaPath = fotoBase64;
+        }
+      }
+
       const solicitud = {
         tenantId: tenantId || null,
         client: {
@@ -328,6 +549,7 @@ export default function Solicitud() {
           tipoCuenta: data.tipoCuenta === 'corriente' ? 0 : data.tipoCuenta === 'ahorro' ? 1 : 2,
           numeroCuenta: data.numeroCuenta,
         },
+        verificationMedia,
         montoSolicitado: parseFloat(calcAmount.replace(/,/g, '')) || 0,
         tasaInteresMensual: parseFloat(calcRate) || 2.5,
         plazo: parseInt(calcTerm) || 4,
@@ -604,7 +826,10 @@ export default function Solicitud() {
               {/* Video Facial Ovalado */}
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificación Facial</h2>
-                <p className="text-gray-500 mb-4">Graba un breve video de tu rostro para verificación de identidad.</p>
+                <p className="text-gray-500 mb-4">
+                  Graba un video de tu rostro girando la cabeza de izquierda a derecha.
+                  El sistema detectará el movimiento para confirmar que eres una persona real.
+                </p>
 
                 <div className="flex flex-col items-center">
                   {/* Marco ovalado para el video */}
@@ -627,9 +852,26 @@ export default function Solicitud() {
                           </div>
                         )}
                         {isRecording && (
-                          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-red-600 px-3 py-1 rounded-full">
-                            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                            <span className="text-white text-xs font-medium">{formatTime(recordingTime)}</span>
+                          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-3/4">
+                            <div className="flex items-center gap-2 bg-red-600/90 px-3 py-1.5 rounded-full mb-2">
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                              <span className="text-white text-xs font-medium">{formatTime(recordingTime)}</span>
+                            </div>
+                            <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${movementProgress}%`,
+                                  backgroundColor: movementProgress >= 80 ? '#22c55e' : '#3b82f6'
+                                }}
+                              />
+                            </div>
+                            <p className="text-white text-xs mt-1 text-center drop-shadow">
+                              {movementProgress < 20 ? 'Gira la cabeza...' :
+                               movementProgress < 50 ? 'Bien, sigue girando...' :
+                               movementProgress < 80 ? '¡Casi listo!' :
+                               '¡Movimiento detectado!'}
+                            </p>
                           </div>
                         )}
                       </>
@@ -642,13 +884,23 @@ export default function Solicitud() {
                       <div className="absolute inset-0 pointer-events-none">
                         <svg viewBox="0 0 288 384" className="w-full h-full">
                           <ellipse cx="144" cy="160" rx="90" ry="110" fill="none" stroke="rgba(59,130,246,0.5)" strokeWidth="2" strokeDasharray="8 4" />
-                          <text x="144" y="300" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="11">
-                            {isRecording ? 'Gira suavemente la cara' : 'Rostro dentro del óvalo'}
-                          </text>
                         </svg>
                       </div>
                     )}
                   </div>
+
+                  {/* Estado de validación */}
+                  {videoUrl && (
+                    <div className="mt-3">
+                      {videoValid ? (
+                        <p className="text-green-600 text-sm font-medium flex items-center gap-1">
+                          <Check size={16} /> Video válido — rostro verificado
+                        </p>
+                      ) : videoError ? (
+                        <p className="text-red-500 text-sm">{videoError}</p>
+                      ) : null}
+                    </div>
+                  )}
 
                   {/* Instrucciones */}
                   <div className="mt-4 text-center max-w-xs sm:max-w-sm">
@@ -657,7 +909,7 @@ export default function Solicitud() {
                       <li>• Mantén tu rostro dentro del óvalo</li>
                       {isRecording && <li className="text-primary-600 font-medium">• Gira suavemente la cabeza de izquierda a derecha</li>}
                       <li>• Asegúrate de tener buena iluminación</li>
-                      <li>• El video debe durar entre 5-10 segundos</li>
+                      <li>• El video debe durar al menos 5 segundos con movimiento</li>
                     </ul>
                   </div>
 
@@ -708,11 +960,21 @@ export default function Solicitud() {
                   </label>
                 ) : (
                   <div className="relative">
-                    <img src={idPhotoUrl} alt="Identificación" className="w-full h-32 sm:h-48 object-contain bg-gray-100 rounded-xl" />
+                    <img src={idPhotoUrl} alt="Identificación" className="w-full h-32 sm:h-48 object-contain bg-white rounded-xl border border-gray-200" />
                     <button type="button" onClick={removeIdPhoto} className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700">
                       <Square size={14} />
                     </button>
                   </div>
+                )}
+                {idPhotoUrl && idPhotoValid && (
+                  <p className="text-green-600 text-sm font-medium mt-2 flex items-center gap-1">
+                    <Check size={16} /> Identificación válida
+                  </p>
+                )}
+                {idPhotoError && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                    <AlertTriangle size={14} /> {idPhotoError}
+                  </p>
                 )}
                 {!idPhotoUrl && <p className="text-red-500 text-sm mt-2">* La foto de identificación es requerida</p>}
               </div>

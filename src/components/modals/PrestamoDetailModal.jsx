@@ -16,24 +16,24 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
   if (!loan) return null;
 
   const tipoLabels = { personal: 'Personal', garantia: 'Garantía', 0: 'Personal', 1: 'Garantía' };
-  const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
-  const freqPeriodsPerMonth = { mensual: 1, quincenal: 2, semanal: 4, diaria: 30, 0: 30, 1: 4, 2: 2, 3: 1 };
+  const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
+  const freqPeriodsPerMonth = { mensual: 1, quincenal: 2, semanal: 4, diaria: 30, Mensual: 1, Quincenal: 2, Semanal: 4, Diaria: 30, 0: 30, 1: 4, 2: 2, 3: 1 };
   const metodoLabels = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
 
   const monto = Number(loan.monto || 0);
   const tasa = Number(loan.tasa || 0);
   const plazo = Number(loan.plazo || 0);
-  const saldo = paymentSummary?.saldoCapital ?? Number(loan.saldoPendiente || 0);
+  const saldo = paymentSummary?.saldoPendiente ?? Number(loan.saldoPendiente || 0);
   const cuotaMensual = Number(loan.cuotaMensual || 0);
   const freq = loan.frecuenciaPago;
   const freqLabel = freqLabels[freq] || String(freq);
   const periodsPerMonth = freqPeriodsPerMonth[freq] || 1;
-  const cuotaPorPeriodo = Math.round((cuotaMensual / periodsPerMonth) * 100) / 100;
+  const cuotaPorPeriodo = cuotaMensual;
 
-  const capitalPagado = paymentSummary?.capitalPagado ?? (monto - saldo);
+  const capitalPagado = paymentSummary?.totalCapital ?? (monto - saldo);
   const porcentajeCapital = monto > 0 ? ((capitalPagado / monto) * 100).toFixed(1) : 0;
-  const interesPagado = paymentSummary?.interesPagado ?? 0;
-  const moraPagada = paymentSummary?.moraPagada ?? 0;
+  const interesPagado = paymentSummary?.totalIntereses ?? 0;
+  const moraPagada = paymentSummary?.totalMora ?? 0;
   const totalPagado = paymentSummary?.totalPagado ?? 0;
 
   const tabs = [
@@ -68,7 +68,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
   };
 
   useEffect(() => {
-    if (activeTab === 'pagos') loadPayments();
+    loadPayments();
     if (activeTab === 'amortizacion') loadAmortization();
   }, [activeTab, loan.id]);
 
@@ -132,7 +132,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                   <div>
                     <p className="text-primary-200 text-xs">Cuota {freqLabel}</p>
                     <p className="text-2xl font-bold">${cuotaPorPeriodo.toLocaleString()}</p>
-                    <p className="text-primary-300 text-xs">${cuotaMensual.toLocaleString()}/mes</p>
+                    <p className="text-primary-300 text-xs">${(cuotaPorPeriodo * periodsPerMonth).toLocaleString()}/mes</p>
                   </div>
                   <div>
                     <p className="text-primary-200 text-xs">Saldo Pendiente</p>
@@ -260,10 +260,11 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {(amortization.length > 0 ? amortization : []).map((row) => {
-                      const isPaid = row.estado === 'pagado' || row.fechaPago < today;
-                      const isOverdue = !isPaid && row.fechaPago < today;
+                      const isPaid = row.estado === 'Pagado';
+                      const isPartial = row.estado === 'Parcial';
+                      const isOverdue = !isPaid && !isPartial && (row.estado === 'Vencido' || row.fechaPago < today);
                       return (
-                        <tr key={row.numero} className={`${isOverdue ? 'bg-red-50' : isPaid ? 'bg-green-50/50' : 'hover:bg-gray-50'}`}>
+                        <tr key={row.numero} className={`${isOverdue ? 'bg-red-50' : isPaid ? 'bg-green-50/50' : isPartial ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
                           <td className="px-3 py-3 font-medium text-gray-900">{row.numero}</td>
                           <td className="px-3 py-3 text-gray-700">{row.fechaPago ? new Date(row.fechaPago).toLocaleDateString() : '-'}</td>
                           <td className="px-3 py-3 text-right font-medium text-gray-900">${Number(row.cuota || 0).toLocaleString()}</td>
@@ -272,9 +273,9 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                           <td className="px-3 py-3 text-right font-medium text-gray-900">${Number(row.saldoFinal || 0).toLocaleString()}</td>
                           <td className="px-3 py-3 text-center">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                              isPaid ? 'bg-green-100 text-green-700' : isOverdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                              isPaid ? 'bg-green-100 text-green-700' : isPartial ? 'bg-yellow-100 text-yellow-700' : isOverdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
                             }`}>
-                              {isPaid ? 'Pagado' : isOverdue ? 'Vencido' : 'Pendiente'}
+                              {isPaid ? 'Pagado' : isPartial ? 'Parcial' : isOverdue ? 'Vencido' : 'Pendiente'}
                             </span>
                           </td>
                         </tr>

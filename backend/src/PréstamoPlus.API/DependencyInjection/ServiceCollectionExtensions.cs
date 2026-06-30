@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentValidation;
 using MediatR;
@@ -12,7 +13,7 @@ namespace PréstamoPlus.API.DependencyInjection
         {
             services.AddControllers().AddJsonOptions(options =>
             {
-                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
             });
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen(c =>

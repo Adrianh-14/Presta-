@@ -61,11 +61,13 @@ namespace PréstamoPlus.Infrastructure.Services
 
         private async Task CalculateLateFees(ApplicationDbContext dbContext, CancellationToken cancellationToken)
         {
-            var overdueLoans = await dbContext.Loans
-                .Where(l => l.Estado == EstadoPrestamo.Vencido || l.Estado == EstadoPrestamo.Mora)
+            var activeLoans = await dbContext.Loans
+                .Where(l => l.Estado == EstadoPrestamo.Activo ||
+                            l.Estado == EstadoPrestamo.Vencido ||
+                            l.Estado == EstadoPrestamo.Mora)
                 .ToListAsync(cancellationToken);
 
-            foreach (var loan in overdueLoans)
+            foreach (var loan in activeLoans)
             {
                 var tenantConfig = await dbContext.TenantConfigs
                     .FirstOrDefaultAsync(tc => tc.TenantId == loan.TenantId, cancellationToken);
@@ -73,25 +75,49 @@ namespace PréstamoPlus.Infrastructure.Services
                 var tasaDiaria = tenantConfig?.TasaMoraDiaria ?? 0.05m;
                 var diasGracia = tenantConfig?.DiasGracia ?? 3;
 
-                var diasAtraso = (DateTime.UtcNow - loan.FechaVencimiento).Days;
+                var overdueInstallments = await dbContext.Installments
+                    .Where(i => i.LoanId == loan.Id &&
+                                i.Estado != EstadoInstallment.Pagado &&
+                                i.FechaPago.AddDays(diasGracia) < DateTime.UtcNow)
+                    .ToListAsync(cancellationToken);
 
-                if (diasAtraso > diasGracia)
+                if (!overdueInstallments.Any()) continue;
+
+                var totalMora = 0m;
+                foreach (var inst in overdueInstallments)
+                {
+                    var capitalPendiente = inst.Capital - inst.CapitalPagado;
+                    if (capitalPendiente <= 0) continue;
+
+                    var diasAtraso = (DateTime.UtcNow - inst.FechaPago.AddDays(diasGracia)).Days;
+                    if (diasAtraso <= 0) continue;
+
+                    var montoMora = capitalPendiente * tasaDiaria * diasAtraso;
+                    totalMora += montoMora;
+
+                    if (inst.Estado == EstadoInstallment.Pendiente)
+                        inst.Estado = EstadoInstallment.Vencido;
+                }
+
+                if (totalMora > 0)
                 {
                     var existeMoraHoy = await dbContext.LateFees
                         .AnyAsync(lf => lf.LoanId == loan.Id &&
                                        lf.FechaCalculo.Date == DateTime.UtcNow.Date,
-                                   cancellationToken);
+                                  cancellationToken);
 
                     if (!existeMoraHoy)
                     {
-                        var montoMora = loan.SaldoPendiente * tasaDiaria * (diasAtraso - diasGracia);
+                        var maxDiasAtraso = overdueInstallments
+                            .Select(i => (DateTime.UtcNow - i.FechaPago.AddDays(diasGracia)).Days)
+                            .Max();
 
                         var lateFee = new LateFee
                         {
                             Id = Guid.NewGuid(),
                             LoanId = loan.Id,
-                            Monto = Math.Round(montoMora, 2),
-                            DiasAtraso = diasAtraso,
+                            Monto = Math.Round(totalMora, 2),
+                            DiasAtraso = maxDiasAtraso,
                             TasaAplicada = tasaDiaria,
                             FechaCalculo = DateTime.UtcNow,
                             Pagado = false
@@ -99,11 +125,12 @@ namespace PréstamoPlus.Infrastructure.Services
 
                         dbContext.LateFees.Add(lateFee);
 
-                        loan.Estado = EstadoPrestamo.Mora;
+                        if (loan.Estado == EstadoPrestamo.Activo || loan.Estado == EstadoPrestamo.Vencido)
+                            loan.Estado = EstadoPrestamo.Mora;
 
                         _logger.LogInformation(
-                            "Mora calculada para préstamo {LoanId}: {Monto} ({DiasAtraso} días atraso, tasa {Tasa})",
-                            loan.Id, lateFee.Monto, diasAtraso, tasaDiaria);
+                            "Mora calculada para préstamo {LoanId}: {Monto} (máx {DiasAtraso} días atraso, tasa {Tasa}, {Count} cuotas vencidas)",
+                            loan.Id, lateFee.Monto, maxDiasAtraso, tasaDiaria, overdueInstallments.Count);
                     }
                 }
             }

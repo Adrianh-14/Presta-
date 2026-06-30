@@ -194,18 +194,23 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
             var now = DateTime.UtcNow;
 
             // Tenant Basic — 2 préstamos activos
+            var basic1 = ComputeLoanValues(50000, 2.5m, 6, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 3m);
+            var basic2 = ComputeLoanValues(25000, 3.0m, 4, UnidadPlazo.Meses, FrecuenciaPago.Mensual, 2m);
             var laBasic1 = CreateLoanApplication(tenantBasic.Id, clientsBasic[0].Id, 50000, 2.5m, 6, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 3m, TipoPrestamo.Personal, EstadoSolicitud.Aprobada);
             var laBasic2 = CreateLoanApplication(tenantBasic.Id, clientsBasic[1].Id, 25000, 3.0m, 4, UnidadPlazo.Meses, FrecuenciaPago.Mensual, 2m, TipoPrestamo.Personal, EstadoSolicitud.Aprobada);
             context.LoanApplications.AddRange(laBasic1, laBasic2);
             await context.SaveChangesAsync();
 
             context.Loans.AddRange(
-                CreateLoan(tenantBasic.Id, clientsBasic[0].Id, laBasic1.Id, 50000, 30m, 6, 4448m, 42000m, EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-3), now.AddMonths(3), FrecuenciaPago.Quincenal),
-                CreateLoan(tenantBasic.Id, clientsBasic[1].Id, laBasic2.Id, 25000, 36m, 4, 6500m, 12000m, EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-2), now.AddMonths(2), FrecuenciaPago.Mensual)
+                CreateLoan(tenantBasic.Id, clientsBasic[0].Id, laBasic1.Id, basic1.principal, 30m, 6, basic1.cuota, Math.Round(basic1.principal * 42000m / 50000m, 2), EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-3), now.AddMonths(3), FrecuenciaPago.Quincenal),
+                CreateLoan(tenantBasic.Id, clientsBasic[1].Id, laBasic2.Id, basic2.principal, 36m, 4, basic2.cuota, Math.Round(basic2.principal * 12000m / 25000m, 2), EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-2), now.AddMonths(2), FrecuenciaPago.Mensual)
             );
             await context.SaveChangesAsync();
 
             // Tenant Pro — 3 préstamos (2 activos, 1 vencido)
+            var pro1 = ComputeLoanValues(150000, 2.0m, 12, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 3m);
+            var pro2 = ComputeLoanValues(75000, 2.5m, 8, UnidadPlazo.Meses, FrecuenciaPago.Mensual, 2m);
+            var pro3 = ComputeLoanValues(30000, 3.0m, 6, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 2.5m);
             var laPro1 = CreateLoanApplication(tenantPro.Id, clientsPro[0].Id, 150000, 2.0m, 12, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 3m, TipoPrestamo.Garantia, EstadoSolicitud.Aprobada);
             var laPro2 = CreateLoanApplication(tenantPro.Id, clientsPro[1].Id, 75000, 2.5m, 8, UnidadPlazo.Meses, FrecuenciaPago.Mensual, 2m, TipoPrestamo.Personal, EstadoSolicitud.Aprobada);
             var laPro3 = CreateLoanApplication(tenantPro.Id, clientsPro[2].Id, 30000, 3.0m, 6, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 2.5m, TipoPrestamo.Personal, EstadoSolicitud.Aprobada);
@@ -213,13 +218,18 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
             await context.SaveChangesAsync();
 
             context.Loans.AddRange(
-                CreateLoan(tenantPro.Id, clientsPro[0].Id, laPro1.Id, 150000, 24m, 12, 13500m, 135000m, EstadoPrestamo.Activo, TipoPrestamo.Garantia, now.AddMonths(-5), now.AddMonths(7), FrecuenciaPago.Quincenal),
-                CreateLoan(tenantPro.Id, clientsPro[1].Id, laPro2.Id, 75000, 30m, 8, 9800m, 65000m, EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-3), now.AddMonths(5), FrecuenciaPago.Mensual),
-                CreateLoan(tenantPro.Id, clientsPro[2].Id, laPro3.Id, 30000, 36m, 6, 5200m, 18500m, EstadoPrestamo.Vencido, TipoPrestamo.Personal, now.AddMonths(-8), now.AddMonths(-2), FrecuenciaPago.Quincenal)
+                CreateLoan(tenantPro.Id, clientsPro[0].Id, laPro1.Id, pro1.principal, 24m, 12, pro1.cuota, Math.Round(pro1.principal * 135000m / 150000m, 2), EstadoPrestamo.Activo, TipoPrestamo.Garantia, now.AddMonths(-5), now.AddMonths(7), FrecuenciaPago.Quincenal),
+                CreateLoan(tenantPro.Id, clientsPro[1].Id, laPro2.Id, pro2.principal, 30m, 8, pro2.cuota, Math.Round(pro2.principal * 65000m / 75000m, 2), EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-3), now.AddMonths(5), FrecuenciaPago.Mensual),
+                CreateLoan(tenantPro.Id, clientsPro[2].Id, laPro3.Id, pro3.principal, 36m, 6, pro3.cuota, Math.Round(pro3.principal * 18500m / 30000m, 2), EstadoPrestamo.Vencido, TipoPrestamo.Personal, now.AddMonths(-8), now.AddMonths(-2), FrecuenciaPago.Quincenal)
             );
             await context.SaveChangesAsync();
 
             // Tenant Enterprise — 5 préstamos (3 activos, 1 mora, 1 pagado)
+            var ent1 = ComputeLoanValues(200000, 1.8m, 24, UnidadPlazo.Meses, FrecuenciaPago.Mensual, 2m);
+            var ent2 = ComputeLoanValues(100000, 2.2m, 12, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 3m);
+            var ent3 = ComputeLoanValues(45000, 2.8m, 8, UnidadPlazo.Meses, FrecuenciaPago.Semanal, 2m);
+            var ent4 = ComputeLoanValues(80000, 2.5m, 10, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 2.5m);
+            var ent5 = ComputeLoanValues(60000, 2.0m, 6, UnidadPlazo.Meses, FrecuenciaPago.Mensual, 2m);
             var laEnt1 = CreateLoanApplication(tenantEnterprise.Id, clientsEnterprise[0].Id, 200000, 1.8m, 24, UnidadPlazo.Meses, FrecuenciaPago.Mensual, 2m, TipoPrestamo.Garantia, EstadoSolicitud.Aprobada);
             var laEnt2 = CreateLoanApplication(tenantEnterprise.Id, clientsEnterprise[1].Id, 100000, 2.2m, 12, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 3m, TipoPrestamo.Personal, EstadoSolicitud.Aprobada);
             var laEnt3 = CreateLoanApplication(tenantEnterprise.Id, clientsEnterprise[2].Id, 45000, 2.8m, 8, UnidadPlazo.Meses, FrecuenciaPago.Semanal, 2m, TipoPrestamo.Personal, EstadoSolicitud.Aprobada);
@@ -229,11 +239,11 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
             await context.SaveChangesAsync();
 
             context.Loans.AddRange(
-                CreateLoan(tenantEnterprise.Id, clientsEnterprise[0].Id, laEnt1.Id, 200000, 21.6m, 24, 10500m, 180000m, EstadoPrestamo.Activo, TipoPrestamo.Garantia, now.AddMonths(-6), now.AddMonths(18), FrecuenciaPago.Mensual),
-                CreateLoan(tenantEnterprise.Id, clientsEnterprise[1].Id, laEnt2.Id, 100000, 26.4m, 12, 9200m, 78000m, EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-4), now.AddMonths(8), FrecuenciaPago.Quincenal),
-                CreateLoan(tenantEnterprise.Id, clientsEnterprise[2].Id, laEnt3.Id, 45000, 33.6m, 8, 6100m, 35000m, EstadoPrestamo.Mora, TipoPrestamo.Personal, now.AddMonths(-10), now.AddMonths(-2), FrecuenciaPago.Semanal),
-                CreateLoan(tenantEnterprise.Id, clientsEnterprise[3].Id, laEnt4.Id, 80000, 30m, 10, 8500m, 55000m, EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-3), now.AddMonths(7), FrecuenciaPago.Quincenal),
-                CreateLoan(tenantEnterprise.Id, clientsEnterprise[4].Id, laEnt5.Id, 60000, 24m, 6, 10400m, 0m, EstadoPrestamo.Pagado, TipoPrestamo.Personal, now.AddMonths(-8), now.AddMonths(-2), FrecuenciaPago.Mensual)
+                CreateLoan(tenantEnterprise.Id, clientsEnterprise[0].Id, laEnt1.Id, ent1.principal, 21.6m, 24, ent1.cuota, Math.Round(ent1.principal * 180000m / 200000m, 2), EstadoPrestamo.Activo, TipoPrestamo.Garantia, now.AddMonths(-6), now.AddMonths(18), FrecuenciaPago.Mensual),
+                CreateLoan(tenantEnterprise.Id, clientsEnterprise[1].Id, laEnt2.Id, ent2.principal, 26.4m, 12, ent2.cuota, Math.Round(ent2.principal * 78000m / 100000m, 2), EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-4), now.AddMonths(8), FrecuenciaPago.Quincenal),
+                CreateLoan(tenantEnterprise.Id, clientsEnterprise[2].Id, laEnt3.Id, ent3.principal, 33.6m, 8, ent3.cuota, Math.Round(ent3.principal * 35000m / 45000m, 2), EstadoPrestamo.Mora, TipoPrestamo.Personal, now.AddMonths(-10), now.AddMonths(-2), FrecuenciaPago.Semanal),
+                CreateLoan(tenantEnterprise.Id, clientsEnterprise[3].Id, laEnt4.Id, ent4.principal, 30m, 10, ent4.cuota, Math.Round(ent4.principal * 55000m / 80000m, 2), EstadoPrestamo.Activo, TipoPrestamo.Personal, now.AddMonths(-3), now.AddMonths(7), FrecuenciaPago.Quincenal),
+                CreateLoan(tenantEnterprise.Id, clientsEnterprise[4].Id, laEnt5.Id, ent5.principal, 24m, 6, ent5.cuota, 0m, EstadoPrestamo.Pagado, TipoPrestamo.Personal, now.AddMonths(-8), now.AddMonths(-2), FrecuenciaPago.Mensual)
             );
             await context.SaveChangesAsync();
 
@@ -256,11 +266,57 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 Cedula = cedula,
                 Email = email,
                 Telefono = telefono,
-                FechaNacimiento = fechaNac,
+                FechaNacimiento = DateTime.SpecifyKind(fechaNac, DateTimeKind.Utc),
                 EstadoCivil = ec,
                 Estado = EstadoCliente.Activo,
                 FechaRegistro = DateTime.UtcNow
             };
+        }
+
+        private static (decimal principal, decimal cuota, decimal totalPagar, decimal totalIntereses) ComputeLoanValues(
+            decimal monto, decimal tasa, int plazo, UnidadPlazo unidad, FrecuenciaPago freq, decimal gastoCierre)
+        {
+            var principal = monto + (monto * gastoCierre / 100);
+            var tasaDecimal = tasa / 100;
+
+            decimal tasaPorPeriodo;
+            int totalPeriodos;
+
+            switch (freq)
+            {
+                case FrecuenciaPago.Diaria:
+                    tasaPorPeriodo = tasaDecimal / 30;
+                    totalPeriodos = unidad == UnidadPlazo.Anios ? plazo * 360 : plazo * 30;
+                    break;
+                case FrecuenciaPago.Semanal:
+                    tasaPorPeriodo = tasaDecimal / 4;
+                    totalPeriodos = unidad == UnidadPlazo.Anios ? plazo * 48 : plazo * 4;
+                    break;
+                case FrecuenciaPago.Quincenal:
+                    tasaPorPeriodo = tasaDecimal / 2;
+                    totalPeriodos = unidad == UnidadPlazo.Anios ? plazo * 24 : plazo * 2;
+                    break;
+                default:
+                    tasaPorPeriodo = tasaDecimal;
+                    totalPeriodos = unidad == UnidadPlazo.Anios ? plazo * 12 : plazo;
+                    break;
+            }
+
+            if (totalPeriodos <= 0 || principal <= 0)
+                return (0, 0, 0, 0);
+
+            if (tasaPorPeriodo <= 0)
+            {
+                var cuotaSimple = principal / totalPeriodos;
+                return (principal, Math.Round(cuotaSimple, 2), principal, 0);
+            }
+
+            var factor = Math.Pow(1 + (double)tasaPorPeriodo, totalPeriodos);
+            var cuotaCalc = principal * (tasaPorPeriodo * (decimal)factor) / ((decimal)factor - 1);
+            var totalPagar = cuotaCalc * totalPeriodos;
+            var totalIntereses = totalPagar - principal;
+
+            return (principal, Math.Round(cuotaCalc, 2), Math.Round(totalPagar, 2), Math.Round(totalIntereses, 2));
         }
 
         private static LoanApplication CreateLoanApplication(
@@ -268,13 +324,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
             UnidadPlazo unidad, FrecuenciaPago freq, decimal gastoCierre,
             TipoPrestamo tipo, EstadoSolicitud estado)
         {
-            var gastoCierreMonto = monto * (gastoCierre / 100);
-            var principal = monto + gastoCierreMonto;
-            var tasaDecimal = tasa / 100;
-            int totalPeriodos = unidad == UnidadPlazo.Anios ? plazo * 12 : plazo;
-            var factor = Math.Pow(1 + (double)tasaDecimal, totalPeriodos);
-            var cuota = principal * (tasaDecimal * (decimal)factor) / ((decimal)factor - 1);
-            var totalPagar = cuota * totalPeriodos;
+            var (principal, cuota, totalPagar, totalIntereses) = ComputeLoanValues(monto, tasa, plazo, unidad, freq, gastoCierre);
 
             return new LoanApplication
             {
@@ -287,9 +337,9 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 UnidadPlazo = unidad,
                 FrecuenciaPago = freq,
                 GastoCierrePorcentaje = gastoCierre,
-                CuotaEstimada = Math.Round(cuota, 2),
-                TotalPagar = Math.Round(totalPagar, 2),
-                TotalIntereses = Math.Round(totalPagar - principal, 2),
+                CuotaEstimada = cuota,
+                TotalPagar = totalPagar,
+                TotalIntereses = totalIntereses,
                 TipoPrestamo = tipo,
                 Estado = estado,
                 FechaSolicitud = DateTime.UtcNow.AddDays(-new Random().Next(1, 30))

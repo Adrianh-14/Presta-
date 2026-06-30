@@ -5,6 +5,7 @@ using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Features.Dashboard.Queries.GetDashboardStats;
 using PréstamoPlus.Application.Features.Dashboard.Queries.GetLoansByMonth;
 using PréstamoPlus.Application.Features.Dashboard.Queries.GetLoansByType;
+using PréstamoPlus.Application.Features.Dashboard.Queries.GetCollections;
 
 namespace PréstamoPlus.API.Controllers
 {
@@ -41,6 +42,14 @@ namespace PréstamoPlus.API.Controllers
         public async Task<IActionResult> GetLoansByType()
         {
             var result = await _mediator.Send(new GetLoansByTypeQuery());
+            return Ok(result);
+        }
+
+        [HttpGet("collections")]
+        [ProducesResponseType(typeof(CollectionsDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetCollections()
+        {
+            var result = await _mediator.Send(new GetCollectionsQuery());
             return Ok(result);
         }
     }

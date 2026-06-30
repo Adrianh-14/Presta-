@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using PréstamoPlus.Domain.Entities;
 using PréstamoPlus.Domain.Entities.Tenancy;
 
@@ -6,6 +7,11 @@ namespace PréstamoPlus.Infrastructure.Persistence
 {
     public class ApplicationDbContext : DbContext
     {
+        static ApplicationDbContext()
+        {
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", false);
+        }
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
         public DbSet<Tenant> Tenants => Set<Tenant>();
@@ -22,6 +28,7 @@ namespace PréstamoPlus.Infrastructure.Persistence
         public DbSet<Loan> Loans => Set<Loan>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<LateFee> LateFees => Set<LateFee>();
+        public DbSet<Installment> Installments => Set<Installment>();
         public DbSet<TenantConfig> TenantConfigs => Set<TenantConfig>();
         public DbSet<MessageLog> MessageLogs => Set<MessageLog>();
         public DbSet<Invoice> Invoices => Set<Invoice>();

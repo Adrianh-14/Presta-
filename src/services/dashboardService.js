@@ -15,4 +15,9 @@ export const dashboardService = {
     const { data } = await api.get('/api/dashboard/loans-by-type');
     return data;
   },
+
+  getCollections: async () => {
+    const { data } = await api.get('/api/dashboard/collections');
+    return data;
+  },
 };

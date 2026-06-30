@@ -23,5 +23,6 @@ namespace PréstamoPlus.Domain.Entities
         public Client Client { get; set; } = null!;
         public LoanApplication LoanApplication { get; set; } = null!;
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public ICollection<Installment> Installments { get; set; } = new List<Installment>();
     }
 }

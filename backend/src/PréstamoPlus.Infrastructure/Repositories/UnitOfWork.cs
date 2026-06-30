@@ -18,6 +18,7 @@ namespace PréstamoPlus.Infrastructure.Repositories
         private GenericRepository<Loan>? _loans;
         private GenericRepository<Payment>? _payments;
         private GenericRepository<LateFee>? _lateFees;
+        private GenericRepository<Installment>? _installments;
         private GenericRepository<WorkInformation>? _workInformation;
         private GenericRepository<Address>? _addresses;
         private GenericRepository<Reference>? _references;
@@ -47,6 +48,9 @@ namespace PréstamoPlus.Infrastructure.Repositories
 
         public IRepositoryBase<LateFee> LateFees =>
             _lateFees ??= new GenericRepository<LateFee>(_context);
+
+        public IRepositoryBase<Installment> Installments =>
+            _installments ??= new GenericRepository<Installment>(_context);
 
         public IRepositoryBase<WorkInformation> WorkInformation =>
             _workInformation ??= new GenericRepository<WorkInformation>(_context);

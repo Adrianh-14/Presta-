@@ -5,13 +5,22 @@ namespace PréstamoPlus.Application.Features.Solicituds.Specifications
 {
     public class LoanApplicationByIdWithClientSpec : Specification<LoanApplication>
     {
-        public LoanApplicationByIdWithClientSpec(Guid id)
+        public LoanApplicationByIdWithClientSpec(Guid id, bool asNoTracking = true)
         {
             Query
                 .Include(l => l.Client)
+                    .ThenInclude(c => c.WorkInformation)
+                .Include(l => l.Client)
+                    .ThenInclude(c => c.Address)
+                .Include(l => l.Client)
+                    .ThenInclude(c => c.References)
+                .Include(l => l.Client)
+                    .ThenInclude(c => c.BankAccount)
                 .Include(l => l.VerificationMedia)
-                .Where(l => l.Id == id)
-                .AsNoTracking();
+                .Where(l => l.Id == id);
+
+            if (asNoTracking)
+                Query.AsNoTracking();
         }
     }
 
@@ -21,6 +30,13 @@ namespace PréstamoPlus.Application.Features.Solicituds.Specifications
         {
             Query
                 .Include(l => l.Client)
+                    .ThenInclude(c => c.WorkInformation)
+                .Include(l => l.Client)
+                    .ThenInclude(c => c.Address)
+                .Include(l => l.Client)
+                    .ThenInclude(c => c.References)
+                .Include(l => l.Client)
+                    .ThenInclude(c => c.BankAccount)
                 .Include(l => l.VerificationMedia)
                 .Where(l => l.TenantId == tenantId)
                 .OrderByDescending(l => l.FechaSolicitud)

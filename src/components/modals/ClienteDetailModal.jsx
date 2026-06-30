@@ -1,4 +1,5 @@
-import { X, User, Briefcase, MapPin, CreditCard, Phone, Mail, Calendar } from 'lucide-react';
+import { X, User, Briefcase, MapPin, CreditCard, Camera } from 'lucide-react';
+import MediaViewer from '../MediaViewer';
 
 export default function ClienteDetailModal({ client, onClose }) {
   if (!client) return null;
@@ -46,7 +47,7 @@ export default function ClienteDetailModal({ client, onClose }) {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Estado</p>
-                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${client.estado === 'Activo' || client.estado === 'activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${(client.estado || '').toLowerCase() === 'activo' || client.estado === 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                   {client.estado}
                 </span>
               </div>
@@ -132,6 +133,37 @@ export default function ClienteDetailModal({ client, onClose }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Verificación */}
+          {client.verificationMedia && (client.verificationMedia.fotoCedulaPath || client.verificationMedia.videoPath) && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Camera size={16} className="text-primary-500" /> Verificación de Identidad
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {client.verificationMedia.fotoCedulaPath && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs text-gray-500 mb-2">Foto de Identificación</p>
+                    <MediaViewer
+                      src={`/api/media/${client.verificationMedia.fotoCedulaPath}`}
+                      type="image"
+                      className="h-48"
+                    />
+                  </div>
+                )}
+                {client.verificationMedia.videoPath && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs text-gray-500 mb-2">Video de Verificación</p>
+                    <MediaViewer
+                      src={`/api/media/${client.verificationMedia.videoPath}`}
+                      type="video"
+                      className="h-48 bg-black"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

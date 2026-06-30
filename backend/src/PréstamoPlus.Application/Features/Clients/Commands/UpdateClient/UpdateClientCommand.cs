@@ -25,7 +25,7 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.UpdateClient
             client.Cedula = request.Data.Cedula;
             client.Email = request.Data.Email;
             client.Telefono = request.Data.Telefono;
-            client.FechaNacimiento = request.Data.FechaNacimiento;
+            client.FechaNacimiento = DateTime.SpecifyKind(request.Data.FechaNacimiento, DateTimeKind.Utc);
             client.EstadoCivil = request.Data.EstadoCivil;
             client.Estado = request.Data.Estado;
 

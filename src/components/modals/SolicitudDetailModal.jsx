@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { X, User, DollarSign, Briefcase, Check, XIcon } from 'lucide-react';
+import { X, User, DollarSign, Briefcase, MapPin, Users, CreditCard, Check, XIcon, Camera, Video } from 'lucide-react';
 import StatusBadge from '../StatusBadge';
+import MediaViewer from '../MediaViewer';
+
+const frecuenciaLabels = { 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual', diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual' };
+const tipoEmpleoLabels = { 0: 'Formal', 1: 'Informal', 2: 'Independiente', 3: 'Jubilado' };
+const relacionLabels = { 0: 'Familiar', 1: 'Amigo', 2: 'Compañero', 3: 'Otro' };
+const tipoCuentaLabels = { 0: 'Corriente', 1: 'Ahorro', 2: 'Nómina' };
 
 export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject }) {
   const [fechaInicio, setFechaInicio] = useState(() => {
@@ -12,6 +18,10 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   if (!solicitud) return null;
 
   const tipoLabels = { personal: 'Personal', garantia: 'Garantía', 0: 'Personal', 1: 'Garantía' };
+  const wi = solicitud.workInformation;
+  const addr = solicitud.address;
+  const refs = solicitud.references || [];
+  const bank = solicitud.bankAccount;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -68,7 +78,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           </div>
 
           {/* Info Laboral */}
-          {solicitud.client?.workInformation && (
+          {wi && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <Briefcase size={16} className="text-primary-500" /> Información Laboral
@@ -76,19 +86,129 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
                 <div>
                   <p className="text-xs text-gray-500">Empresa</p>
-                  <p className="font-medium text-gray-900">{solicitud.client.workInformation.empresa}</p>
+                  <p className="font-medium text-gray-900">{wi.empresa}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Cargo</p>
-                  <p className="font-medium text-gray-900">{solicitud.client.workInformation.cargo}</p>
+                  <p className="font-medium text-gray-900">{wi.cargo}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Salario</p>
-                  <p className="font-medium text-gray-900">${Number(solicitud.client.workInformation.salario || 0).toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">Salario Mensual</p>
+                  <p className="font-medium text-gray-900">${Number(wi.salario || 0).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Tipo Empleo</p>
-                  <p className="font-medium text-gray-900 capitalize">{solicitud.client.workInformation.tipoEmpleo}</p>
+                  <p className="font-medium text-gray-900">{tipoEmpleoLabels[wi.tipoEmpleo] || wi.tipoEmpleo}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Antigüedad</p>
+                  <p className="font-medium text-gray-900">{wi.antiguedadAnios} años</p>
+                </div>
+                {wi.direccionEmpresa && (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-gray-500">Dirección Empresa</p>
+                    <p className="font-medium text-gray-900">{wi.direccionEmpresa}</p>
+                  </div>
+                )}
+                {wi.telefonoEmpresa && (
+                  <div>
+                    <p className="text-xs text-gray-500">Teléfono Empresa</p>
+                    <p className="font-medium text-gray-900">{wi.telefonoEmpresa}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Ubicación */}
+          {addr && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <MapPin size={16} className="text-primary-500" /> Ubicación
+              </h3>
+              <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-gray-500">Dirección</p>
+                  <p className="font-medium text-gray-900">{addr.direccion}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Ciudad</p>
+                  <p className="font-medium text-gray-900">{addr.ciudad}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Provincia</p>
+                  <p className="font-medium text-gray-900">{addr.provincia}</p>
+                </div>
+                {addr.sector && (
+                  <div>
+                    <p className="text-xs text-gray-500">Sector</p>
+                    <p className="font-medium text-gray-900">{addr.sector}</p>
+                  </div>
+                )}
+                {addr.codigoPostal && (
+                  <div>
+                    <p className="text-xs text-gray-500">Código Postal</p>
+                    <p className="font-medium text-gray-900">{addr.codigoPostal}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Referencias */}
+          {refs.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Users size={16} className="text-primary-500" /> Referencias Personales
+              </h3>
+              <div className="space-y-3">
+                {refs.map((ref, i) => (
+                  <div key={i} className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Referencia {i + 1}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-gray-500">Nombre</p>
+                        <p className="font-medium text-gray-900">{ref.nombre}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Relación</p>
+                        <p className="font-medium text-gray-900">{relacionLabels[ref.relacion] || ref.relacion}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Teléfono</p>
+                        <p className="font-medium text-gray-900">{ref.telefono}</p>
+                      </div>
+                      {ref.email && (
+                        <div>
+                          <p className="text-xs text-gray-500">Email</p>
+                          <p className="font-medium text-gray-900">{ref.email}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Datos Bancarios */}
+          {bank && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <CreditCard size={16} className="text-primary-500" /> Datos Bancarios
+              </h3>
+              <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
+                <div>
+                  <p className="text-xs text-gray-500">Banco</p>
+                  <p className="font-medium text-gray-900">{bank.banco}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Tipo de Cuenta</p>
+                  <p className="font-medium text-gray-900">{tipoCuentaLabels[bank.tipoCuenta] || bank.tipoCuenta}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-gray-500">Número de Cuenta</p>
+                  <p className="font-medium text-gray-900">{bank.numeroCuenta}</p>
                 </div>
               </div>
             </div>
@@ -121,11 +241,50 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                 <p className="font-medium text-gray-900">${Number(solicitud.totalIntereses || 0).toLocaleString()}</p>
               </div>
               <div>
+                <p className="text-xs text-gray-500">Frecuencia de Pago</p>
+                <p className="font-medium text-gray-900">{frecuenciaLabels[solicitud.frecuenciaPago] || solicitud.frecuenciaPago}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Unidad de Plazo</p>
+                <p className="font-medium text-gray-900">{solicitud.unidadPlazo === 1 ? 'Años' : 'Meses'}</p>
+              </div>
+              <div>
                 <p className="text-xs text-gray-500">Fecha Solicitud</p>
                 <p className="font-medium text-gray-900">{solicitud.fechaSolicitud ? new Date(solicitud.fechaSolicitud).toLocaleDateString() : '-'}</p>
               </div>
             </div>
           </div>
+
+          {/* Verificación - Foto y Video */}
+          {solicitud.verificationMedia && (solicitud.verificationMedia.fotoCedulaPath || solicitud.verificationMedia.videoPath) && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Camera size={16} className="text-primary-500" /> Verificación de Identidad
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {solicitud.verificationMedia.fotoCedulaPath && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs text-gray-500 mb-2 flex items-center gap-1"><Camera size={12} /> Foto de Cédula</p>
+                    <MediaViewer
+                      src={`/api/media/${solicitud.verificationMedia.fotoCedulaPath}`}
+                      type="image"
+                      className="h-48"
+                    />
+                  </div>
+                )}
+                {solicitud.verificationMedia.videoPath && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs text-gray-500 mb-2 flex items-center gap-1"><Video size={12} /> Video de Verificación</p>
+                    <MediaViewer
+                      src={`/api/media/${solicitud.verificationMedia.videoPath}`}
+                      type="video"
+                      className="h-48 bg-black"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Acciones */}
           {(String(solicitud.estado || '').toLowerCase() === 'pendiente' || solicitud.estado === 0) && (

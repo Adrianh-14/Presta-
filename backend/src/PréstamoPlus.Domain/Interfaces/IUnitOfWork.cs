@@ -11,6 +11,7 @@ namespace PréstamoPlus.Domain.Interfaces
         IRepositoryBase<Loan> Loans { get; }
         IRepositoryBase<Payment> Payments { get; }
         IRepositoryBase<LateFee> LateFees { get; }
+        IRepositoryBase<Installment> Installments { get; }
         IRepositoryBase<WorkInformation> WorkInformation { get; }
         IRepositoryBase<Address> Addresses { get; }
         IRepositoryBase<Reference> References { get; }

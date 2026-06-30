@@ -94,4 +94,12 @@ namespace PréstamoPlus.Domain.Enums
         Enviado = 1,
         Fallido = 2
     }
+
+    public enum EstadoInstallment
+    {
+        Pendiente = 0,
+        Parcial = 1,
+        Pagado = 2,
+        Vencido = 3
+    }
 }
