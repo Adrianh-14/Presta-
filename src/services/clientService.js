@@ -18,4 +18,9 @@ export const clientService = {
     const { data } = await api.put(`/api/clients/${id}`, clientData);
     return data;
   },
+
+  register: async (clientData) => {
+    const { data } = await api.post('/api/clients/register', clientData);
+    return data;
+  },
 };

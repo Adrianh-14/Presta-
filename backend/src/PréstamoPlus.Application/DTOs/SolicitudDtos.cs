@@ -30,6 +30,7 @@ namespace PréstamoPlus.Application.DTOs
         public string Etiqueta { get; init; } = string.Empty;
         public decimal MontoEstimado { get; init; }
         public int CuotasPendientes { get; init; }
+        public List<Guid> LoanIds { get; init; } = new();
     }
 
     public record CollectionsDto
@@ -144,6 +145,9 @@ namespace PréstamoPlus.Application.DTOs
         public Guid Id { get; init; }
         public Guid ClientId { get; init; }
         public string Cliente { get; init; } = string.Empty;
+        public string Cedula { get; init; } = string.Empty;
+        public string Telefono { get; init; } = string.Empty;
+        public string Email { get; init; } = string.Empty;
         public decimal Monto { get; init; }
         public decimal Tasa { get; init; }
         public int Plazo { get; init; }

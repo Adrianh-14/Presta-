@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Features.Clients.Commands.UpdateClient;
+using PréstamoPlus.Application.Features.Clients.Commands.RegisterClient;
 using PréstamoPlus.Application.Features.Clients.Queries.GetAllClients;
 using PréstamoPlus.Application.Features.Clients.Queries.GetClientById;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetAllLoans;
@@ -66,6 +67,15 @@ namespace PréstamoPlus.API.Controllers
             var allLoans = await _mediator.Send(new GetAllLoansQuery());
             var myLoans = allLoans.Where(l => l.ClientId == clientId).ToList();
             return Ok(myLoans);
+        }
+
+        [HttpPost("register")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(ClientDto), StatusCodes.Status201Created)]
+        public async Task<IActionResult> Register([FromBody] RegisterClientRequest request)
+        {
+            var result = await _mediator.Send(new RegisterClientCommand(request));
+            return Created(string.Empty, result);
         }
 
         [HttpPut("{id:guid}")]

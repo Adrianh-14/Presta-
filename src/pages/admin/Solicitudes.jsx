@@ -107,7 +107,7 @@ export default function Solicitudes() {
           <select
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
           >
             <option value="todos">Todos</option>
             <option value="pendiente">Pendientes</option>
@@ -118,7 +118,7 @@ export default function Solicitudes() {
 
         <button
           onClick={handleCopyLink}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors text-sm font-medium"
         >
           {linkCopied ? <Check size={16} /> : <Link2 size={16} />}
           {linkCopied ? 'Link copiado' : 'Copiar link de solicitud'}

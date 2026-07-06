@@ -21,4 +21,9 @@ export const prestamoService = {
     });
     return data;
   },
+
+  createDirect: async (loanData) => {
+    const { data } = await api.post('/api/prestamos/direct', loanData);
+    return data;
+  },
 };

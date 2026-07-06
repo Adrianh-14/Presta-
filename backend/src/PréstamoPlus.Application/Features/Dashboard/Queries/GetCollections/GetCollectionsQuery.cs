@@ -72,13 +72,15 @@ namespace PréstamoPlus.Application.Features.Dashboard.Queries.GetCollections
                     .ToList();
 
                 decimal montoEstimado = pendientes.Sum(i => i.Capital - i.CapitalPagado + i.Interes - i.InteresPagado);
+                var periodLoanIds = pendientes.Select(i => i.LoanId).Distinct().ToList();
 
                 periodoDtos.Add(new PeriodCollectionDto
                 {
                     Frecuencia = freq.ToString().ToLower(),
                     Etiqueta = etiqueta,
                     MontoEstimado = Math.Round(montoEstimado, 2),
-                    CuotasPendientes = pendientes.Count
+                    CuotasPendientes = pendientes.Count,
+                    LoanIds = periodLoanIds
                 });
             }
 

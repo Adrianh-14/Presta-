@@ -9,8 +9,8 @@ export default function ClienteDetailModal({ client, onClose }) {
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-              <User className="text-primary-600" size={24} />
+            <div className="w-12 h-12 bg-navy-100 rounded-full flex items-center justify-center">
+              <User className="text-accent-500" size={24} />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">{client.nombre}</h2>
@@ -26,7 +26,7 @@ export default function ClienteDetailModal({ client, onClose }) {
           {/* Datos Personales */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <User size={16} className="text-primary-500" /> Datos Personales
+              <User size={16} className="text-accent-500" /> Datos Personales
             </h3>
             <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
               <div>
@@ -62,7 +62,7 @@ export default function ClienteDetailModal({ client, onClose }) {
           {client.workInformation && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Briefcase size={16} className="text-primary-500" /> Información Laboral
+                <Briefcase size={16} className="text-accent-500" /> Información Laboral
               </h3>
               <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
                 <div>
@@ -93,7 +93,7 @@ export default function ClienteDetailModal({ client, onClose }) {
           {client.address && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <MapPin size={16} className="text-primary-500" /> Dirección
+                <MapPin size={16} className="text-accent-500" /> Dirección
               </h3>
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="font-medium text-gray-900">{client.address.direccion}</p>
@@ -108,7 +108,7 @@ export default function ClienteDetailModal({ client, onClose }) {
           {client.bankAccount && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <CreditCard size={16} className="text-primary-500" /> Cuenta Bancaria
+                <CreditCard size={16} className="text-accent-500" /> Cuenta Bancaria
               </h3>
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="font-medium text-gray-900">{client.bankAccount.banco}</p>
@@ -124,7 +124,7 @@ export default function ClienteDetailModal({ client, onClose }) {
               <div className="space-y-2">
                 {client.references.map((ref, i) => (
                   <div key={i} className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-medium text-sm">
+                    <div className="w-8 h-8 bg-navy-100 rounded-full flex items-center justify-center text-accent-500 font-medium text-sm">
                       {i + 1}
                     </div>
                     <div>
@@ -141,7 +141,7 @@ export default function ClienteDetailModal({ client, onClose }) {
           {client.verificationMedia && (client.verificationMedia.fotoCedulaPath || client.verificationMedia.videoPath) && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Camera size={16} className="text-primary-500" /> Verificación de Identidad
+                <Camera size={16} className="text-accent-500" /> Verificación de Identidad
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {client.verificationMedia.fotoCedulaPath && (

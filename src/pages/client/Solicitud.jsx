@@ -1,17 +1,30 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ChevronRight, ChevronLeft, Check, User, Briefcase, MapPin, Users, Camera, Video, Square, CreditCard, Upload, RotateCcw, Calculator, AlertTriangle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, User, Briefcase, MapPin, Users, Camera, Video, Square, CreditCard, Upload, RotateCcw, Calculator, AlertTriangle, UserPlus } from 'lucide-react';
 import { solicitudService } from '../../services/solicitudService';
+import { clientService } from '../../services/clientService';
 
-const steps = [
-  { id: 1, title: 'Datos Personales', icon: User },
-  { id: 2, title: 'Información Laboral', icon: Briefcase },
-  { id: 3, title: 'Ubicación', icon: MapPin },
-  { id: 4, title: 'Referencias', icon: Users },
-  { id: 5, title: 'Verificación', icon: Video },
-  { id: 6, title: 'Préstamo', icon: Calculator },
-];
+const mode = new URLSearchParams(window.location.search).get('mode');
+const isClientMode = mode === 'client';
+const maxStep = isClientMode ? 5 : 6;
+
+const steps = isClientMode
+  ? [
+      { id: 1, title: 'Datos Personales', icon: User },
+      { id: 2, title: 'Información Laboral', icon: Briefcase },
+      { id: 3, title: 'Ubicación', icon: MapPin },
+      { id: 4, title: 'Referencias', icon: Users },
+      { id: 5, title: 'Verificación', icon: Camera },
+    ]
+  : [
+      { id: 1, title: 'Datos Personales', icon: User },
+      { id: 2, title: 'Información Laboral', icon: Briefcase },
+      { id: 3, title: 'Ubicación', icon: MapPin },
+      { id: 4, title: 'Referencias', icon: Users },
+      { id: 5, title: 'Verificación', icon: Camera },
+      { id: 6, title: 'Préstamo', icon: Calculator },
+    ];
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
@@ -192,7 +205,10 @@ export default function Solicitud() {
       setMovementProgress(0);
       motionDataRef.current = { prevLeft: 0, prevRight: 0, movementCount: 0 };
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: true });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' },
+        audio: false
+      });
       setStream(mediaStream);
       chunksRef.current = [];
       setRecordingTime(0);
@@ -200,6 +216,7 @@ export default function Solicitud() {
 
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = mediaStream;
+        videoPreviewRef.current.play().catch(() => {});
       }
 
       // Setup motion detection canvas
@@ -210,11 +227,11 @@ export default function Solicitud() {
       const ctx = canvas.getContext('2d');
 
       motionIntervalRef.current = setInterval(() => {
-        if (!videoPreviewRef.current) return;
+        if (!videoPreviewRef.current || !ctx) return;
         try {
           ctx.drawImage(videoPreviewRef.current, 0, 0, 120, 160);
-          const imageData = ctx.getImageData(0, 40, 60, 80);   // left half of face
-          const imageDataR = ctx.getImageData(60, 40, 60, 80); // right half of face
+          const imageData = ctx.getImageData(0, 40, 60, 80);
+          const imageDataR = ctx.getImageData(60, 40, 60, 80);
 
           let sumL = 0, sumR = 0;
           for (let i = 0; i < imageData.data.length; i += 4) sumL += imageData.data[i];
@@ -224,35 +241,44 @@ export default function Solicitud() {
 
           const prev = motionDataRef.current;
           const diff = Math.abs(avgL - prev.prevLeft) + Math.abs(avgR - prev.prevRight);
-          if (diff > 12) {
+          if (diff > 8) {
             prev.movementCount++;
-            setMovementProgress(Math.min(100, prev.movementCount * 5));
+            setMovementProgress(Math.min(100, prev.movementCount * 6));
           }
           prev.prevLeft = avgL;
           prev.prevRight = avgR;
-        } catch { /* canvas may fail if video not ready */ }
+        } catch { }
       }, 400);
 
-      const recorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : MediaRecorder.isTypeSupported('video/webm')
+          ? 'video/webm'
+          : MediaRecorder.isTypeSupported('video/mp4')
+            ? 'video/mp4'
+            : '';
+      const recorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : {});
+      const blobType = mimeType || 'video/webm';
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        const blob = new Blob(chunksRef.current, { type: blobType });
         setVideoBlob(blob);
         setVideoUrl(URL.createObjectURL(blob));
         mediaStream.getTracks().forEach(t => t.stop());
         setStream(null);
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
-        if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (motionIntervalRef.current) { clearInterval(motionIntervalRef.current); motionIntervalRef.current = null; }
 
         // Validate recording
-        if (motionDataRef.current.movementCount >= 4 && recordingTimeRef.current >= 4) {
+        const secs = recordingTimeRef.current;
+        const moves = motionDataRef.current.movementCount;
+        if (moves >= 3 && secs >= 3) {
           setVideoValid(true);
           setVideoError('');
-        } else if (recordingTimeRef.current < 4) {
-          setVideoError('Video muy corto. Graba al menos 5 segundos girando la cabeza.');
+        } else if (secs < 3) {
+          setVideoError('Video muy corto. Graba al menos 4 segundos girando la cabeza.');
         } else {
           setVideoError('No se detectó movimiento facial. Gira la cabeza de izquierda a derecha.');
         }
@@ -480,7 +506,7 @@ export default function Solicitud() {
     e.stopPropagation();
     const isValid = await validateStep();
     if (isValid) {
-      setCurrentStep(prev => Math.min(prev + 1, 6));
+      setCurrentStep(prev => Math.min(prev + 1, maxStep));
     }
   };
 
@@ -491,7 +517,8 @@ export default function Solicitud() {
   };
 
   const onSubmit = async (data) => {
-    if (currentStep !== 6) return;
+    if (isClientMode && currentStep !== 5) return;
+    if (!isClientMode && currentStep !== 6) return;
     try {
       let verificationMedia = null;
       if (videoBlob || idPhoto) {
@@ -514,7 +541,7 @@ export default function Solicitud() {
         }
       }
 
-      const solicitud = {
+      const solicitud = isClientMode ? null : {
         tenantId: tenantId || null,
         client: {
           nombre: data.nombre,
@@ -558,7 +585,50 @@ export default function Solicitud() {
         gastoCierrePorcentaje: parseFloat(calcClosingCost) || 3,
         tipoPrestamo: 0,
       };
-      await solicitudService.create(solicitud);
+
+      const clientPayload = {
+        tenantId: tenantId || null,
+        client: {
+          nombre: data.nombre,
+          cedula: data.cedula,
+          email: data.email,
+          telefono: data.telefono,
+          fechaNacimiento: data.fechaNacimiento,
+          estadoCivil: data.estadoCivil === 'casado' ? 1 : data.estadoCivil === 'divorciado' ? 2 : data.estadoCivil === 'viudo' ? 3 : 0,
+        },
+        workInformation: {
+          empresa: data.empresa,
+          cargo: data.cargo,
+          salario: parseFloat(data.salario) || 0,
+          antiguedadAnios: parseInt(data.antiguedad) || 0,
+          direccionEmpresa: data.direccionEmpresa,
+          telefonoEmpresa: data.telefonoEmpresa,
+          tipoEmpleo: data.tipoEmpleo === 'formal' ? 0 : data.tipoEmpleo === 'informal' ? 1 : data.tipoEmpleo === 'independiente' ? 2 : 3,
+        },
+        address: {
+          direccion: data.direccion,
+          ciudad: data.ciudad,
+          provincia: data.provincia,
+          sector: data.sector,
+          codigoPostal: data.codigoPostal,
+        },
+        references: [
+          { nombre: data.ref1Nombre, relacion: data.ref1Relacion === 'familiar' ? 0 : data.ref1Relacion === 'amigo' ? 1 : data.ref1Relacion === 'compañero' ? 2 : 3, telefono: data.ref1Telefono, email: data.ref1Email },
+          { nombre: data.ref2Nombre, relacion: data.ref2Relacion === 'familiar' ? 0 : data.ref2Relacion === 'amigo' ? 1 : data.ref2Relacion === 'compañero' ? 2 : 3, telefono: data.ref2Telefono, email: data.ref2Email },
+        ],
+        bankAccount: {
+          banco: data.banco,
+          tipoCuenta: data.tipoCuenta === 'corriente' ? 0 : data.tipoCuenta === 'ahorro' ? 1 : 2,
+          numeroCuenta: data.numeroCuenta,
+        },
+        verificationMedia,
+      };
+
+      if (isClientMode) {
+        await clientService.register(clientPayload);
+      } else {
+        await solicitudService.create(solicitud);
+      }
       setSubmitted(true);
     } catch (err) {
       console.error('Error enviando solicitud:', err);
@@ -574,18 +644,24 @@ export default function Solicitud() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-lg">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="text-green-600" size={32} />
+      <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
+        <div className="bg-white rounded-16 shadow-card-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-success-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="text-success-500" size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Solicitud Enviada!</h2>
-          <p className="text-gray-500 mb-6">
-            Tu solicitud ha sido recibida exitosamente. Nos pondremos en contacto contigo por correo electrónico en un plazo de 24-48 horas.
+          <h2 className="text-xl font-bold text-navy-500 mb-2">
+            {isClientMode ? '¡Registro Completado!' : '¡Solicitud Enviada!'}
+          </h2>
+          <p className="text-slate-400 text-sm mb-6">
+            {isClientMode
+              ? 'Tus datos han sido registrados. El asesor te atenderá para continuar con tu préstamo.'
+              : 'Tu solicitud ha sido recibida. Nos pondremos en contacto en 24-48 horas.'}
           </p>
-          <p className="text-sm text-gray-400">
-            Referencia: #SP-{Date.now().toString().slice(-6)}
-          </p>
+          {!isClientMode && (
+            <p className="text-xs text-slate-300">
+              Referencia: #SP-{Date.now().toString().slice(-6)}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -595,7 +671,7 @@ export default function Solicitud() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-primary-600">PréstamoPlus</h1>
+          <h1 className="text-xl font-bold text-accent-500">PréstamoPlus</h1>
           <p className="text-sm text-gray-500">Solicitud de Préstamo</p>
         </div>
       </header>
@@ -605,10 +681,10 @@ export default function Solicitud() {
           <div className="flex items-center justify-between overflow-x-auto pb-2">
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
-                <div className={`flex items-center gap-2 ${currentStep >= step.id ? 'text-primary-600' : 'text-gray-400'}`}>
+                <div className={`flex items-center gap-2 ${currentStep >= step.id ? 'text-accent-500' : 'text-gray-400'}`}>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     currentStep > step.id ? 'bg-green-500 text-white' :
-                    currentStep === step.id ? 'bg-primary-600 text-white' :
+                    currentStep === step.id ? 'bg-accent-600 text-white' :
                     'bg-gray-200 text-gray-500'
                   }`}>
                     {currentStep > step.id ? <Check size={20} /> : <step.icon size={20} />}
@@ -631,32 +707,32 @@ export default function Solicitud() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nombre completo *</label>
-                  <input {...register('nombre', { required: 'El nombre es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Juan Pérez" />
+                  <input {...register('nombre', { required: 'El nombre es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Juan Pérez" />
                   {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Cédula/RNC *</label>
-                  <input {...register('cedula', { required: 'La cédula es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="001-1234567-8" />
+                  <input {...register('cedula', { required: 'La cédula es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="001-1234567-8" />
                   {errors.cedula && <p className="text-red-500 text-sm mt-1">{errors.cedula.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                  <input {...register('email', { required: 'El email es requerido', pattern: { value: /^\S+@\S+$/i, message: 'Email inválido' } })} type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="tu@email.com" />
+                  <input {...register('email', { required: 'El email es requerido', pattern: { value: /^\S+@\S+$/i, message: 'Email inválido' } })} type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="tu@email.com" />
                   {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono *</label>
-                  <input {...register('telefono', { required: 'El teléfono es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="809-555-0101" />
+                  <input {...register('telefono', { required: 'El teléfono es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="809-555-0101" />
                   {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de nacimiento *</label>
-                  <input {...register('fechaNacimiento', { required: 'La fecha es requerida' })} type="date" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                  <input {...register('fechaNacimiento', { required: 'La fecha es requerida' })} type="date" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" />
                   {errors.fechaNacimiento && <p className="text-red-500 text-sm mt-1">{errors.fechaNacimiento.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Estado civil *</label>
-                  <select {...register('estadoCivil', { required: 'El estado civil es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <select {...register('estadoCivil', { required: 'El estado civil es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500">
                     <option value="">Seleccionar</option>
                     <option value="soltero">Soltero/a</option>
                     <option value="casado">Casado/a</option>
@@ -676,35 +752,35 @@ export default function Solicitud() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Empresa *</label>
-                  <input {...register('empresa', { required: 'La empresa es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Nombre de la empresa" />
+                  <input {...register('empresa', { required: 'La empresa es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Nombre de la empresa" />
                   {errors.empresa && <p className="text-red-500 text-sm mt-1">{errors.empresa.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Cargo *</label>
-                  <input {...register('cargo', { required: 'El cargo es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Tu cargo actual" />
+                  <input {...register('cargo', { required: 'El cargo es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Tu cargo actual" />
                   {errors.cargo && <p className="text-red-500 text-sm mt-1">{errors.cargo.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Salario mensual *</label>
-                  <input {...register('salario', { required: 'El salario es requerido' })} type="number" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="15000" />
+                  <input {...register('salario', { required: 'El salario es requerido' })} type="number" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="15000" />
                   {errors.salario && <p className="text-red-500 text-sm mt-1">{errors.salario.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Antigüedad (años) *</label>
-                  <input {...register('antiguedad', { required: 'La antigüedad es requerida' })} type="number" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="3" />
+                  <input {...register('antiguedad', { required: 'La antigüedad es requerida' })} type="number" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="3" />
                   {errors.antiguedad && <p className="text-red-500 text-sm mt-1">{errors.antiguedad.message}</p>}
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Dirección de la empresa</label>
-                  <input {...register('direccionEmpresa')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Dirección completa" />
+                  <input {...register('direccionEmpresa')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Dirección completa" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono de la empresa</label>
-                  <input {...register('telefonoEmpresa')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="809-555-0202" />
+                  <input {...register('telefonoEmpresa')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="809-555-0202" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de empleo *</label>
-                  <select {...register('tipoEmpleo', { required: 'El tipo de empleo es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <select {...register('tipoEmpleo', { required: 'El tipo de empleo es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500">
                     <option value="">Seleccionar</option>
                     <option value="formal">Formal (con contrato)</option>
                     <option value="informal">Informal</option>
@@ -724,17 +800,17 @@ export default function Solicitud() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Dirección completa *</label>
-                  <input {...register('direccion', { required: 'La dirección es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Calle, número, urbanización" />
+                  <input {...register('direccion', { required: 'La dirección es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Calle, número, urbanización" />
                   {errors.direccion && <p className="text-red-500 text-sm mt-1">{errors.direccion.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ciudad *</label>
-                  <input {...register('ciudad', { required: 'La ciudad es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Santo Domingo" />
+                  <input {...register('ciudad', { required: 'La ciudad es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Santo Domingo" />
                   {errors.ciudad && <p className="text-red-500 text-sm mt-1">{errors.ciudad.message}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Provincia *</label>
-                  <select {...register('provincia', { required: 'La provincia es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <select {...register('provincia', { required: 'La provincia es requerida' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500">
                     <option value="">Seleccionar</option>
                     <option value="DN">Distrito Nacional</option>
                     <option value="SD">Santo Domingo</option>
@@ -746,11 +822,11 @@ export default function Solicitud() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Sector</label>
-                  <input {...register('sector')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Zona colonial" />
+                  <input {...register('sector')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Zona colonial" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Código Postal</label>
-                  <input {...register('codigoPostal')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="10101" />
+                  <input {...register('codigoPostal')} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="10101" />
                 </div>
               </div>
             </div>
@@ -767,11 +843,11 @@ export default function Solicitud() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Nombre completo *</label>
-                    <input {...register('ref1Nombre', { required: currentStep === 4 ? 'El nombre es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Nombre de la referencia" />
+                    <input {...register('ref1Nombre', { required: currentStep === 4 ? 'El nombre es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Nombre de la referencia" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Relación *</label>
-                    <select {...register('ref1Relacion', { required: currentStep === 4 ? 'La relación es requerida' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <select {...register('ref1Relacion', { required: currentStep === 4 ? 'La relación es requerida' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500">
                       <option value="">Seleccionar</option>
                       <option value="familiar">Familiar</option>
                       <option value="amigo">Amigo</option>
@@ -781,11 +857,11 @@ export default function Solicitud() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono *</label>
-                    <input {...register('ref1Telefono', { required: currentStep === 4 ? 'El teléfono es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="809-555-0301" />
+                    <input {...register('ref1Telefono', { required: currentStep === 4 ? 'El teléfono es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="809-555-0301" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                    <input {...register('ref1Email')} type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="referencia@email.com" />
+                    <input {...register('ref1Email')} type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="referencia@email.com" />
                   </div>
                 </div>
               </div>
@@ -795,11 +871,11 @@ export default function Solicitud() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Nombre completo *</label>
-                    <input {...register('ref2Nombre', { required: currentStep === 4 ? 'El nombre es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Nombre de la referencia" />
+                    <input {...register('ref2Nombre', { required: currentStep === 4 ? 'El nombre es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="Nombre de la referencia" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Relación *</label>
-                    <select {...register('ref2Relacion', { required: currentStep === 4 ? 'La relación es requerida' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <select {...register('ref2Relacion', { required: currentStep === 4 ? 'La relación es requerida' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500">
                       <option value="">Seleccionar</option>
                       <option value="familiar">Familiar</option>
                       <option value="amigo">Amigo</option>
@@ -809,11 +885,11 @@ export default function Solicitud() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono *</label>
-                    <input {...register('ref2Telefono', { required: currentStep === 4 ? 'El teléfono es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="809-555-0302" />
+                    <input {...register('ref2Telefono', { required: currentStep === 4 ? 'El teléfono es requerido' : false })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="809-555-0302" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                    <input {...register('ref2Email')} type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="referencia@email.com" />
+                    <input {...register('ref2Email')} type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="referencia@email.com" />
                   </div>
                 </div>
               </div>
@@ -823,17 +899,21 @@ export default function Solicitud() {
           {/* Step 5: Verificación Facial + Foto ID + Datos Bancarios */}
           {currentStep === 5 && (
             <div className="space-y-8">
-              {/* Video Facial Ovalado */}
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificación Facial</h2>
-                <p className="text-gray-500 mb-4">
-                  Graba un video de tu rostro girando la cabeza de izquierda a derecha.
-                  El sistema detectará el movimiento para confirmar que eres una persona real.
-                </p>
+              {/* Video Facial */}
+              <div className="bg-white rounded-16 border border-surface-border shadow-card p-6 sm:p-8">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-navy-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Camera className="text-navy-500" size={24} />
+                  </div>
+                  <h2 className="text-xl font-bold text-navy-500">Verificación Facial</h2>
+                  <p className="text-slate-400 text-sm mt-1 max-w-md mx-auto">
+                    Graba un video girando la cabeza. Detectamos el movimiento en tiempo real para asegurar que eres tú.
+                  </p>
+                </div>
 
                 <div className="flex flex-col items-center">
-                  {/* Marco ovalado para el video */}
-                  <div className="relative w-56 h-72 sm:w-72 sm:h-96 rounded-[50%] overflow-hidden bg-gray-900 border-4 border-primary-500 shadow-lg">
+                  {/* Preview */}
+                  <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-[3/4] rounded-16 overflow-hidden bg-navy-500/5 border-2 border-surface-border shadow-card">
                     {!videoUrl ? (
                       <>
                         <video
@@ -841,95 +921,104 @@ export default function Solicitud() {
                           autoPlay
                           muted
                           playsInline
-                          className="w-full h-full object-cover scale-x-[-1]"
+                          className="w-full h-full object-cover"
                         />
                         {!stream && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
-                            <div className="text-center px-4">
-                              <Camera className="mx-auto text-primary-400 mb-3" size={40} />
-                              <p className="text-gray-300 text-xs sm:text-sm">Haz clic en "Iniciar" para comenzar</p>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 gap-3">
+                            <div className="w-32 h-32 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center">
+                              <Camera size={36} className="text-slate-300" />
                             </div>
+                            <p className="text-xs font-medium text-slate-400">Presiona "Iniciar" para comenzar</p>
                           </div>
                         )}
                         {isRecording && (
-                          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-3/4">
-                            <div className="flex items-center gap-2 bg-red-600/90 px-3 py-1.5 rounded-full mb-2">
-                              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                              <span className="text-white text-xs font-medium">{formatTime(recordingTime)}</span>
+                          <>
+                            {/* Face guide */}
+                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                              <div className="w-[70%] h-[50%] rounded-full border-2 border-white/30" />
                             </div>
-                            <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all duration-300"
-                                style={{
-                                  width: `${movementProgress}%`,
-                                  backgroundColor: movementProgress >= 80 ? '#22c55e' : '#3b82f6'
-                                }}
-                              />
+                            {/* Recording HUD */}
+                            <div className="absolute top-3 left-0 right-0 px-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                                  <span className="text-white text-xs font-mono font-bold">{formatTime(recordingTime)}</span>
+                                </div>
+                                <span className="text-white text-[10px] font-medium bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full">
+                                  {movementProgress < 20 ? 'Gira la cabeza' :
+                                   movementProgress < 50 ? 'Sigue girando...' :
+                                   movementProgress < 80 ? 'Casi listo' :
+                                   'Completado'}
+                                </span>
+                              </div>
+                              <div className="w-full bg-white/15 rounded-full h-1.5 overflow-hidden backdrop-blur-sm">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${Math.min(100, movementProgress)}%`,
+                                    background: movementProgress >= 80
+                                      ? 'linear-gradient(90deg, #059669, #10b981)'
+                                      : 'linear-gradient(90deg, #006bff, #60a5fa)'
+                                  }}
+                                />
+                              </div>
                             </div>
-                            <p className="text-white text-xs mt-1 text-center drop-shadow">
-                              {movementProgress < 20 ? 'Gira la cabeza...' :
-                               movementProgress < 50 ? 'Bien, sigue girando...' :
-                               movementProgress < 80 ? '¡Casi listo!' :
-                               '¡Movimiento detectado!'}
-                            </p>
-                          </div>
+                          </>
                         )}
                       </>
                     ) : (
                       <video src={videoUrl} controls className="w-full h-full object-cover" />
                     )}
-
-                    {/* Guía ovalada */}
-                    {!videoUrl && (
-                      <div className="absolute inset-0 pointer-events-none">
-                        <svg viewBox="0 0 288 384" className="w-full h-full">
-                          <ellipse cx="144" cy="160" rx="90" ry="110" fill="none" stroke="rgba(59,130,246,0.5)" strokeWidth="2" strokeDasharray="8 4" />
-                        </svg>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Estado de validación */}
+                  {/* Status */}
                   {videoUrl && (
-                    <div className="mt-3">
+                    <div className="mt-4">
                       {videoValid ? (
-                        <p className="text-green-600 text-sm font-medium flex items-center gap-1">
-                          <Check size={16} /> Video válido — rostro verificado
-                        </p>
+                        <div className="flex items-center gap-2 text-success-600 text-sm font-semibold bg-success-50 px-4 py-2 rounded-full">
+                          <Check size={16} /> Video válido — verificado
+                        </div>
                       ) : videoError ? (
-                        <p className="text-red-500 text-sm">{videoError}</p>
+                        <div className="flex items-center gap-2 text-danger-500 text-sm bg-danger-50 px-4 py-2 rounded-full">
+                          <AlertTriangle size={14} /> {videoError}
+                        </div>
                       ) : null}
                     </div>
                   )}
 
-                  {/* Instrucciones */}
-                  <div className="mt-4 text-center max-w-xs sm:max-w-sm">
-                    <p className="text-sm text-gray-600 font-medium">Instrucciones:</p>
-                    <ul className="text-xs text-gray-500 mt-1 space-y-1">
-                      <li>• Mantén tu rostro dentro del óvalo</li>
-                      {isRecording && <li className="text-primary-600 font-medium">• Gira suavemente la cabeza de izquierda a derecha</li>}
-                      <li>• Asegúrate de tener buena iluminación</li>
-                      <li>• El video debe durar al menos 5 segundos con movimiento</li>
-                    </ul>
+                  {/* Steps */}
+                  <div className="flex items-center gap-4 sm:gap-8 mt-6 text-xs text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 bg-navy-50 text-navy-500 rounded-full flex items-center justify-center text-[10px] font-bold">1</span>
+                      Buena iluminación
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 bg-navy-50 text-navy-500 rounded-full flex items-center justify-center text-[10px] font-bold">2</span>
+                      Rostro en el círculo
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 bg-navy-50 text-navy-500 rounded-full flex items-center justify-center text-[10px] font-bold">3</span>
+                      Gira la cabeza
+                    </div>
                   </div>
 
-                  {/* Botones */}
-                  <div className="flex flex-wrap justify-center gap-3 mt-4">
+                  {/* Buttons */}
+                  <div className="flex flex-wrap justify-center gap-3 mt-6">
                     {!videoUrl && !isRecording && (
-                      <button type="button" onClick={startRecording} className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                        <Video size={20} />
+                      <button type="button" onClick={startRecording} className="flex items-center gap-2 px-6 py-3 gradient-accent text-white rounded-8 hover:opacity-90 transition-opacity font-semibold text-sm shadow-btn">
+                        <Video size={18} />
                         Iniciar Grabación
                       </button>
                     )}
                     {isRecording && (
-                      <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
-                        <Square size={20} />
+                      <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-6 py-3 bg-navy-500 text-white rounded-8 hover:bg-navy-600 transition-colors font-semibold text-sm shadow-btn">
+                        <Square size={18} />
                         Detener ({formatTime(recordingTime)})
                       </button>
                     )}
                     {videoUrl && (
-                      <button type="button" onClick={deleteVideo} className="flex items-center gap-2 px-4 sm:px-6 py-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors">
-                        <RotateCcw size={18} />
+                      <button type="button" onClick={deleteVideo} className="flex items-center gap-2 px-5 py-3 border-2 border-danger-200 text-danger-500 rounded-8 hover:bg-danger-50 transition-colors font-semibold text-sm">
+                        <RotateCcw size={16} />
                         Grabar de nuevo
                       </button>
                     )}
@@ -938,63 +1027,61 @@ export default function Solicitud() {
               </div>
 
               {/* Foto de Identificación */}
-              <div className="p-4 sm:p-6 bg-amber-50 rounded-xl border border-amber-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
-                    <Upload className="text-amber-600" size={24} />
+              <div className="bg-white rounded-16 border border-surface-border shadow-card p-6 sm:p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-warning-50 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Upload className="text-warning-500" size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Foto de Identificación *</h3>
-                    <p className="text-sm text-gray-500">Sube una foto de tu cédula o pasaporte (obligatorio)</p>
+                    <h3 className="text-lg font-bold text-navy-500">Foto de Identificación *</h3>
+                    <p className="text-slate-400 text-sm">Sube una foto clara de tu cédula o pasaporte</p>
                   </div>
                 </div>
 
                 {!idPhotoUrl ? (
-                  <label className="flex flex-col items-center justify-center w-full h-32 sm:h-40 border-2 border-dashed border-amber-300 rounded-xl cursor-pointer hover:bg-amber-100 transition-colors">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 sm:w-10 sm:h-10 mb-3 text-amber-400" />
-                      <p className="mb-2 text-sm text-gray-600"><span className="font-semibold">Haz clic para subir</span></p>
-                      <p className="text-xs text-gray-500">PNG, JPG o PDF (MAX. 5MB)</p>
-                    </div>
+                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-surface-border rounded-12 cursor-pointer hover:border-accent-500 hover:bg-accent-50/30 transition-all group">
+                    <Upload className="w-10 h-10 mb-3 text-slate-300 group-hover:text-accent-500 transition-colors" />
+                    <p className="text-sm font-medium text-slate-400 group-hover:text-accent-500 transition-colors">Haz clic para subir</p>
+                    <p className="text-xs text-slate-300 mt-1">PNG, JPG — Máx. 5MB</p>
                     <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleIdPhoto} />
                   </label>
                 ) : (
                   <div className="relative">
-                    <img src={idPhotoUrl} alt="Identificación" className="w-full h-32 sm:h-48 object-contain bg-white rounded-xl border border-gray-200" />
-                    <button type="button" onClick={removeIdPhoto} className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700">
+                    <img src={idPhotoUrl} alt="Identificación" className="w-full h-48 object-contain bg-surface-canvas rounded-12 border border-surface-border" />
+                    <button type="button" onClick={removeIdPhoto} className="absolute top-3 right-3 p-2 bg-danger-500 text-white rounded-full hover:bg-danger-600 transition-colors shadow-btn">
                       <Square size={14} />
                     </button>
                   </div>
                 )}
                 {idPhotoUrl && idPhotoValid && (
-                  <p className="text-green-600 text-sm font-medium mt-2 flex items-center gap-1">
+                  <div className="flex items-center gap-2 text-success-600 text-sm font-semibold bg-success-50 px-4 py-2 rounded-full mt-3 w-fit">
                     <Check size={16} /> Identificación válida
-                  </p>
+                  </div>
                 )}
                 {idPhotoError && (
-                  <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                  <div className="flex items-center gap-2 text-danger-500 text-sm bg-danger-50 px-4 py-2 rounded-full mt-3 w-fit">
                     <AlertTriangle size={14} /> {idPhotoError}
-                  </p>
+                  </div>
                 )}
-                {!idPhotoUrl && <p className="text-red-500 text-sm mt-2">* La foto de identificación es requerida</p>}
+                {!idPhotoUrl && <p className="text-danger-500 text-xs mt-3 font-medium">* Requerido para continuar</p>}
               </div>
 
               {/* Datos Bancarios */}
-              <div className="p-4 sm:p-6 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                    <CreditCard className="text-blue-600" size={24} />
+              <div className="bg-white rounded-16 border border-surface-border shadow-card p-6 sm:p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-navy-50 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="text-navy-500" size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Datos Bancarios</h3>
-                    <p className="text-sm text-gray-500">Ingresa los datos de la cuenta donde recibirás el dinero</p>
+                    <h3 className="text-lg font-bold text-navy-500">Datos Bancarios *</h3>
+                    <p className="text-slate-400 text-sm">Cuenta donde recibirás el desembolso</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Institución Bancaria *</label>
-                    <select {...register('banco', { required: 'El banco es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white">
+                    <select {...register('banco', { required: 'El banco es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 bg-white">
                       <option value="">Seleccionar banco</option>
                       <option value="banco_reservas">Banco de Reservas</option>
                       <option value="banco_popular">Banco Popular</option>
@@ -1014,7 +1101,7 @@ export default function Solicitud() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Cuenta *</label>
-                    <select {...register('tipoCuenta', { required: 'El tipo de cuenta es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white">
+                    <select {...register('tipoCuenta', { required: 'El tipo de cuenta es requerido' })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 bg-white">
                       <option value="">Seleccionar tipo</option>
                       <option value="corriente">Corriente</option>
                       <option value="ahorro">Ahorro</option>
@@ -1027,7 +1114,7 @@ export default function Solicitud() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Número de Cuenta *</label>
                     <input
                       {...register('numeroCuenta', { required: 'El número de cuenta es requerido' })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
                       placeholder="0000000000"
                     />
                     {errors.numeroCuenta && <p className="text-red-500 text-sm mt-1">{errors.numeroCuenta.message}</p>}
@@ -1050,7 +1137,7 @@ export default function Solicitud() {
                     type="text"
                     value={calcAmount}
                     onChange={(e) => setCalcAmount(formatAmountInput(e.target.value))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 text-lg"
                     placeholder="50,000"
                   />
                 </div>
@@ -1061,7 +1148,7 @@ export default function Solicitud() {
                     step="0.1"
                     value={calcRate}
                     onChange={(e) => setCalcRate(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 text-lg"
                     placeholder="2.5"
                   />
                 </div>
@@ -1070,7 +1157,7 @@ export default function Solicitud() {
                   <select
                     value={calcTerm}
                     onChange={(e) => setCalcTerm(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 text-lg"
                   >
                     <option value="1">1 mes</option>
                     <option value="2">2 meses</option>
@@ -1091,7 +1178,7 @@ export default function Solicitud() {
                   <select
                     value={calcFrequency}
                     onChange={(e) => setCalcFrequency(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
                   >
                     <option value="daily">Diaria</option>
                     <option value="weekly">Semanal</option>
@@ -1106,7 +1193,7 @@ export default function Solicitud() {
                     step="0.5"
                     value={calcClosingCost}
                     onChange={(e) => setCalcClosingCost(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
                     placeholder="3"
                   />
                 </div>
@@ -1114,10 +1201,10 @@ export default function Solicitud() {
 
               {calcResults && calcResults.payment > 0 && (
                 <div className="mt-8">
-                  <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-6 sm:p-8 text-white text-center">
-                    <p className="text-primary-100 mb-2 text-sm sm:text-base">Tu cuota {getFrequencyName(calcFrequency).toLowerCase()} sería</p>
+                  <div className="bg-gradient-to-r from-navy-500 to-navy-600 rounded-2xl p-6 sm:p-8 text-white text-center">
+                    <p className="text-navy-200 mb-2 text-sm sm:text-base">Tu cuota {getFrequencyName(calcFrequency).toLowerCase()} sería</p>
                     <p className="text-3xl sm:text-4xl font-bold mb-4">{formatCurrency(calcResults.payment)}</p>
-                    <p className="text-primary-200 text-xs sm:text-sm">* Cálculo sujeto a aprobación de crédito</p>
+                    <p className="text-navy-200 text-xs sm:text-sm">* Cálculo sujeto a aprobación de crédito</p>
                   </div>
 
                   <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
@@ -1156,7 +1243,7 @@ export default function Solicitud() {
             ) : <div />}
 
             {currentStep < 6 ? (
-              <button type="button" onClick={(e) => nextStep(e)} className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+              <button type="button" onClick={(e) => nextStep(e)} className="flex items-center gap-2 px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors">
                 Siguiente
                 <ChevronRight size={20} />
               </button>

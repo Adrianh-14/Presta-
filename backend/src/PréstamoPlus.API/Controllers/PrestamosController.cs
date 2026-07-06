@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Features.Prestamos.Commands.UpdateLoanStatus;
+using PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetAllLoans;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetLoanById;
@@ -60,6 +61,14 @@ namespace PréstamoPlus.API.Controllers
             var result = await _mediator.Send(new UpdateLoanStatusCommand(id, estadoEnum));
             if (result is null) return NotFound();
             return Ok(result);
+        }
+
+        [HttpPost("direct")]
+        [ProducesResponseType(typeof(LoanDto), StatusCodes.Status201Created)]
+        public async Task<IActionResult> CreateDirect([FromBody] CreateDirectLoanRequest request)
+        {
+            var result = await _mediator.Send(new CreateDirectLoanCommand(request));
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
     }
 }

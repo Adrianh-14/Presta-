@@ -109,7 +109,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
                 type="text"
                 value={monto}
                 onChange={(e) => setMonto(e.target.value.replace(/[^0-9.,]/g, ''))}
-                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg font-semibold"
+                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 text-lg font-semibold"
                 placeholder="0"
                 required
               />
@@ -139,7 +139,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
                   onClick={() => setMetodo(value)}
                   className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-colors ${
                     metodo === value
-                      ? 'border-primary-500 bg-primary-50 text-primary-600'
+                      ? 'border-accent-500 bg-navy-50 text-accent-500'
                       : 'border-gray-200 hover:border-gray-300 text-gray-600'
                   }`}
                 >
@@ -157,7 +157,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
               type="text"
               value={referencia}
               onChange={(e) => setReferencia(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
               placeholder="Ej: TRANS-12345"
             />
           </div>
@@ -168,7 +168,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
             <textarea
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 resize-none"
               rows={2}
               placeholder="Observaciones del pago..."
             />

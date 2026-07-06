@@ -6,6 +6,7 @@ import Clientes from './pages/admin/Clientes';
 import Prestamos from './pages/admin/Prestamos';
 import Solicitudes from './pages/admin/Solicitudes';
 import Solicitud from './pages/client/Solicitud';
+import NuevoPrestamo from './pages/admin/NuevoPrestamo';
 import Login from './pages/Login';
 import PortalLayout from './pages/portal/Layout';
 import PortalDashboard from './pages/portal/Dashboard';
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="prestamos" element={<Prestamos />} />
+        <Route path="nuevo-prestamo" element={<NuevoPrestamo />} />
         <Route path="solicitudes" element={<Solicitudes />} />
       </Route>
       <Route path="/portal/login" element={<PortalLogin />} />

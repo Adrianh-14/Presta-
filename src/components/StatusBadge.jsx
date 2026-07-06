@@ -3,16 +3,16 @@ export default function StatusBadge({ status }) {
   const s = String(raw ?? '').toLowerCase();
 
   const styles = {
-    activo: 'bg-green-100 text-green-700',
-    inactivo: 'bg-gray-100 text-gray-700',
-    pendiente: 'bg-yellow-100 text-yellow-700',
-    aprobada: 'bg-green-100 text-green-700',
-    rechazada: 'bg-red-100 text-red-700',
-    vencido: 'bg-red-100 text-red-700',
-    mora: 'bg-orange-100 text-orange-700',
-    pagado: 'bg-blue-100 text-blue-700',
-    cancelado: 'bg-gray-200 text-gray-600',
-    en_revision: 'bg-purple-100 text-purple-700',
+    activo: 'bg-success-50 text-success-700',
+    inactivo: 'bg-surface-fill text-slate-400',
+    pendiente: 'bg-warning-50 text-warning-700',
+    aprobada: 'bg-success-50 text-success-700',
+    rechazada: 'bg-danger-50 text-danger-700',
+    vencido: 'bg-danger-50 text-danger-700',
+    mora: 'bg-warning-50 text-warning-700 border border-warning-200',
+    pagado: 'bg-navy-50 text-navy-500',
+    cancelado: 'bg-surface-fill text-slate-400',
+    en_revision: 'bg-accent-50 text-accent-600',
   };
 
   const solicitudMap = { 0: 'pendiente', 1: 'en_revision', 2: 'aprobada', 3: 'rechazada', 4: 'cancelado' };
@@ -22,7 +22,7 @@ export default function StatusBadge({ status }) {
   const label = mapped ? mapped.charAt(0).toUpperCase() + mapped.slice(1).replace('_', ' ') : '-';
 
   return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[mapped] || 'bg-gray-100 text-gray-700'}`}>
+    <span className={`inline-block px-3 py-0.5 rounded-full text-xs font-semibold ${styles[mapped] || 'bg-surface-fill text-slate-400'}`}>
       {label}
     </span>
   );

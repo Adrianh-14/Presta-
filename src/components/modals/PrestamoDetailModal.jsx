@@ -109,7 +109,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-white text-primary-600 shadow-sm'
+                    ? 'bg-white text-accent-500 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -123,29 +123,29 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
           {/* TAB: Resumen */}
           {activeTab === 'resumen' && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
+              <div className="gradient-hero rounded-xl p-6 text-white">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
-                    <p className="text-primary-200 text-xs">Monto Original</p>
+                    <p className="text-navy-200 text-xs">Monto Original</p>
                     <p className="text-2xl font-bold">${monto.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-primary-200 text-xs">Cuota {freqLabel}</p>
+                    <p className="text-navy-200 text-xs">Cuota {freqLabel}</p>
                     <p className="text-2xl font-bold">${cuotaPorPeriodo.toLocaleString()}</p>
-                    <p className="text-primary-300 text-xs">${(cuotaPorPeriodo * periodsPerMonth).toLocaleString()}/mes</p>
+                    <p className="text-navy-300 text-xs">${(cuotaPorPeriodo * periodsPerMonth).toLocaleString()}/mes</p>
                   </div>
                   <div>
-                    <p className="text-primary-200 text-xs">Saldo Pendiente</p>
+                    <p className="text-navy-200 text-xs">Saldo Pendiente</p>
                     <p className="text-2xl font-bold">${saldo.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-primary-200 text-xs">Total Pagado</p>
+                    <p className="text-navy-200 text-xs">Total Pagado</p>
                     <p className="text-2xl font-bold">${totalPagado.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-primary-200 text-xs">Frecuencia</p>
+                    <p className="text-navy-200 text-xs">Frecuencia</p>
                     <p className="text-2xl font-bold">{freqLabel}</p>
-                    <p className="text-primary-300 text-xs">{periodsPerMonth} pagos/mes</p>
+                    <p className="text-navy-300 text-xs">{periodsPerMonth} pagos/mes</p>
                   </div>
                 </div>
               </div>
@@ -310,7 +310,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                   <p className="text-gray-500">No hay pagos registrados</p>
                   <button
                     onClick={() => setShowPaymentModal(true)}
-                    className="mt-3 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                    className="mt-3 text-accent-500 hover:text-accent-600 text-sm font-medium"
                   >
                     Registrar primer pago
                   </button>

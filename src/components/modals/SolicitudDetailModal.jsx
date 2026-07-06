@@ -55,7 +55,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {/* Datos del Solicitante */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <User size={16} className="text-primary-500" /> Datos del Solicitante
+              <User size={16} className="text-accent-500" /> Datos del Solicitante
             </h3>
             <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
               <div>
@@ -81,7 +81,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {wi && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Briefcase size={16} className="text-primary-500" /> Información Laboral
+                <Briefcase size={16} className="text-accent-500" /> Información Laboral
               </h3>
               <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
                 <div>
@@ -124,7 +124,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {addr && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <MapPin size={16} className="text-primary-500" /> Ubicación
+                <MapPin size={16} className="text-accent-500" /> Ubicación
               </h3>
               <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
                 <div className="sm:col-span-2">
@@ -159,7 +159,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {refs.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Users size={16} className="text-primary-500" /> Referencias Personales
+                <Users size={16} className="text-accent-500" /> Referencias Personales
               </h3>
               <div className="space-y-3">
                 {refs.map((ref, i) => (
@@ -195,7 +195,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {bank && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <CreditCard size={16} className="text-primary-500" /> Datos Bancarios
+                <CreditCard size={16} className="text-accent-500" /> Datos Bancarios
               </h3>
               <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
                 <div>
@@ -217,7 +217,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {/* Detalles del Préstamo */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <DollarSign size={16} className="text-primary-500" /> Detalles del Préstamo
+              <DollarSign size={16} className="text-accent-500" /> Detalles del Préstamo
             </h3>
             <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
               <div>
@@ -259,7 +259,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {solicitud.verificationMedia && (solicitud.verificationMedia.fotoCedulaPath || solicitud.verificationMedia.videoPath) && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Camera size={16} className="text-primary-500" /> Verificación de Identidad
+                <Camera size={16} className="text-accent-500" /> Verificación de Identidad
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {solicitud.verificationMedia.fotoCedulaPath && (
@@ -295,7 +295,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                   type="date"
                   value={fechaInicio}
                   onChange={(e) => setFechaInicio(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
                 />
               </div>
               <div className="flex gap-3">
