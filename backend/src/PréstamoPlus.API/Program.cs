@@ -12,8 +12,11 @@ using PréstamoPlus.Infrastructure.DependencyInjection;
 using PréstamoPlus.Infrastructure.Persistence;
 using PréstamoPlus.Infrastructure.Services;
 using PréstamoPlus.Infrastructure.Persistence.SeedData;
+using PréstamoPlus.API.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+
+SecurityConfigurationValidator.Validate(builder.Configuration, builder.Environment);
 
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -91,9 +94,18 @@ using (var scope = app.Services.CreateScope())
     logger.LogInformation("Aplicando migraciones...");
     await db.Database.MigrateAsync();
 
-    logger.LogInformation("Ejecutando seed de datos...");
-    await ApplicationDbContextSeed.SeedAsync(db);
-    logger.LogInformation("Seed completado. Usuarios en BD: {count}", await db.Users.CountAsync());
+    if (builder.Configuration.GetValue<bool>("DemoData:Enabled"))
+    {
+        logger.LogWarning("DemoData está habilitado. Esta opción solo es válida en Development.");
+        await ApplicationDbContextSeed.SeedAsync(
+            db,
+            builder.Configuration["DemoData:Password"]!);
+        logger.LogInformation("Seed demo completado. Usuarios en BD: {count}", await db.Users.CountAsync());
+    }
+    else
+    {
+        logger.LogInformation("Seed demo deshabilitado.");
+    }
 }
 
 app.UseHttpsRedirection();

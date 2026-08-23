@@ -8,7 +8,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
 {
     public static class ApplicationDbContextSeed
     {
-        public static async Task SeedAsync(ApplicationDbContext context)
+        public static async Task SeedAsync(ApplicationDbContext context, string demoPassword)
         {
             if (await context.Tenants.AnyAsync()) return;
 
@@ -94,7 +94,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 Id = Guid.NewGuid(),
                 TenantId = tenantBasic.Id,
                 Email = "admin@lanacional.com",
-                PasswordHash = HashPassword("Admin123!"),
+                PasswordHash = HashPassword(demoPassword),
                 Nombre = "Carlos Mendoza",
                 Role = "Admin",
                 IsActive = true,
@@ -106,7 +106,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 Id = Guid.NewGuid(),
                 TenantId = tenantPro.Id,
                 Email = "admin@bancopopular.com",
-                PasswordHash = HashPassword("Admin123!"),
+                PasswordHash = HashPassword(demoPassword),
                 Nombre = "María Fernández",
                 Role = "Admin",
                 IsActive = true,
@@ -118,7 +118,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 Id = Guid.NewGuid(),
                 TenantId = tenantEnterprise.Id,
                 Email = "admin@prestamoplus.com",
-                PasswordHash = HashPassword("Admin123!"),
+                PasswordHash = HashPassword(demoPassword),
                 Nombre = "Roberto Sánchez",
                 Role = "Admin",
                 IsActive = true,
@@ -131,7 +131,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 Id = Guid.NewGuid(),
                 TenantId = tenantEnterprise.Id,
                 Email = "manager@prestamoplus.com",
-                PasswordHash = HashPassword("Manager123!"),
+                PasswordHash = HashPassword(demoPassword),
                 Nombre = "Ana García",
                 Role = "Manager",
                 IsActive = true,
@@ -143,7 +143,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 Id = Guid.NewGuid(),
                 TenantId = tenantEnterprise.Id,
                 Email = "operator@prestamoplus.com",
-                PasswordHash = HashPassword("Operator123!"),
+                PasswordHash = HashPassword(demoPassword),
                 Nombre = "Pedro López",
                 Role = "Operator",
                 IsActive = true,

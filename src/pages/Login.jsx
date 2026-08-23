@@ -58,7 +58,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-surface-border rounded-4 focus:ring-2 focus:ring-accent-500 focus:border-accent-500 outline-none text-sm"
-                placeholder="admin@prestamoplus.com"
+                placeholder="tu@empresa.com"
                 required
               />
             </div>
@@ -95,14 +95,6 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 p-4 bg-surface-canvas rounded-lg border border-surface-border">
-          <p className="text-xs text-slate-500 font-semibold mb-2">Cuentas de prueba</p>
-          <div className="space-y-1 text-xs text-slate-500">
-            <p><span className="font-semibold text-navy-500">Enterprise:</span> admin@prestamoplus.com / Admin123!</p>
-            <p><span className="font-semibold text-navy-500">Pro:</span> admin@bancopopular.com / Admin123!</p>
-            <p><span className="font-semibold text-navy-500">Basic:</span> admin@lanacional.com / Admin123!</p>
-          </div>
-        </div>
       </div>
     </div>
   );
