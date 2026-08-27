@@ -42,6 +42,10 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
             builder.Property(p => p.Notas)
                 .HasMaxLength(500);
 
+            builder.Property(p => p.IdempotencyKey).HasMaxLength(100);
+            builder.HasIndex(p => new { p.LoanId, p.IdempotencyKey }).IsUnique()
+                .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+
             builder.HasOne(p => p.Loan)
                 .WithMany(l => l.Payments)
                 .HasForeignKey(p => p.LoanId)

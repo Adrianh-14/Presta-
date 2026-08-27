@@ -13,6 +13,7 @@ namespace PréstamoPlus.Application.Features.Clients.Specifications
                 .Include(c => c.Address)
                 .Include(c => c.BankAccount)
                 .Include(c => c.References)
+                .Include(c => c.VerificationMedia)
                 .Include(c => c.LoanApplications)
                     .ThenInclude(la => la.VerificationMedia)
                 .Where(c => c.Id == id)
@@ -32,9 +33,12 @@ namespace PréstamoPlus.Application.Features.Clients.Specifications
 
     public class AllClientsSpec : Specification<Client>
     {
-        public AllClientsSpec(string? search = null, EstadoCliente? estado = null)
+        public AllClientsSpec(string? search = null, EstadoCliente? estado = null, Guid? tenantId = null)
         {
             Query.Where(c => true);
+
+            if (tenantId.HasValue && tenantId.Value != Guid.Empty)
+                Query.Where(c => c.TenantId == tenantId.Value);
 
             if (!string.IsNullOrWhiteSpace(search))
                 Query.Where(c => c.Nombre.Contains(search) || c.Email.Contains(search) || c.Cedula.Contains(search));

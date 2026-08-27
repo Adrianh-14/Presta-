@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, User, DollarSign, Briefcase, MapPin, Users, CreditCard, Check, XIcon, Camera, Video } from 'lucide-react';
+import { X, User, DollarSign, Briefcase, MapPin, Users, CreditCard, Check, XIcon, Camera, Video, Clock, SlidersHorizontal } from 'lucide-react';
 import StatusBadge from '../StatusBadge';
 import MediaViewer from '../MediaViewer';
 
@@ -8,12 +8,23 @@ const tipoEmpleoLabels = { 0: 'Formal', 1: 'Informal', 2: 'Independiente', 3: 'J
 const relacionLabels = { 0: 'Familiar', 1: 'Amigo', 2: 'Compañero', 3: 'Otro' };
 const tipoCuentaLabels = { 0: 'Corriente', 1: 'Ahorro', 2: 'Nómina' };
 
-export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject }) {
+export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject, onProcess }) {
+  const [instrucciones, setInstrucciones] = useState('');
   const [fechaInicio, setFechaInicio] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  });
+  const [fechaPrimerPago, setFechaPrimerPago] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
   });
+  const [montoAprobado, setMontoAprobado] = useState(() => String(solicitud?.montoSolicitado ?? ''));
+  const [tasaAprobada, setTasaAprobada] = useState(() => String(solicitud?.tasaInteresMensual ?? ''));
+  const [gastoCierreAprobado, setGastoCierreAprobado] = useState(() => String(solicitud?.gastoCierrePorcentaje ?? ''));
+  const [plazoAprobado, setPlazoAprobado] = useState(() => String(solicitud?.plazo ?? ''));
+  const [unidadPlazoAprobada, setUnidadPlazoAprobada] = useState(() => Number(solicitud?.unidadPlazo ?? 0));
+  const [frecuenciaAprobada, setFrecuenciaAprobada] = useState(() => Number(solicitud?.frecuenciaPago ?? 3));
 
   if (!solicitud) return null;
 
@@ -22,6 +33,32 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   const addr = solicitud.address;
   const refs = solicitud.references || [];
   const bank = solicitud.bankAccount;
+  const estadoRaw = String(solicitud.estado ?? '').toLowerCase();
+  const isPending = solicitud.estado === 0 || estadoRaw === 'pendiente';
+  const isProcessing = solicitud.estado === 1 || estadoRaw === 'procesando' || estadoRaw === 'enrevision' || estadoRaw === 'en_revision';
+  const montoNumero = Number(montoAprobado) || 0;
+  const tasaNumero = Number(tasaAprobada) || 0;
+  const cierreNumero = Number(gastoCierreAprobado) || 0;
+  const plazoNumero = Number(plazoAprobado) || 0;
+  const plazoMeses = unidadPlazoAprobada === 1 ? plazoNumero * 12 : plazoNumero;
+  const periodsPerMonth = { 0: 30, 1: 4, 2: 2, 3: 1 }[frecuenciaAprobada] || 1;
+  const totalPeriods = plazoMeses * periodsPerMonth;
+  const principalAprobado = montoNumero * (1 + cierreNumero / 100);
+  const ratePerPeriod = tasaNumero / 100 / periodsPerMonth;
+  const factor = ratePerPeriod > 0 && totalPeriods > 0 ? Math.pow(1 + ratePerPeriod, totalPeriods) : 0;
+  const cuotaAprobada = totalPeriods <= 0 || principalAprobado <= 0
+    ? 0
+    : ratePerPeriod <= 0
+      ? principalAprobado / totalPeriods
+      : principalAprobado * (ratePerPeriod * factor) / (factor - 1);
+  const totalAprobado = cuotaAprobada * totalPeriods;
+  const termsAreValid = montoNumero > 0
+    && tasaNumero >= 0
+    && cierreNumero >= 0
+    && plazoNumero > 0
+    && fechaInicio
+    && fechaPrimerPago
+    && fechaPrimerPago >= fechaInicio;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -287,23 +324,117 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           )}
 
           {/* Acciones */}
-          {(String(solicitud.estado || '').toLowerCase() === 'pendiente' || solicitud.estado === 0) && (
+          {isPending && (
             <div className="pt-4 border-t border-gray-100 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de inicio del préstamo</label>
-                <input
-                  type="date"
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                <label className="block text-sm font-medium text-gray-700 mb-2">Instrucciones para el cliente</label>
+                <textarea
+                  value={instrucciones}
+                  onChange={(e) => setInstrucciones(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500 resize-none"
+                  placeholder="Ej.: Envíanos una certificación laboral actualizada antes del viernes."
                 />
+                <p className="mt-1 text-xs text-gray-500">Estas instrucciones aparecerán en el correo de revisión.</p>
               </div>
+              <button
+                onClick={() => onProcess(solicitud.id, instrucciones.trim() || null)}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors font-medium"
+              >
+                <Clock size={20} /> Marcar como procesando
+              </button>
+            </div>
+          )}
+
+          {isProcessing && (
+            <div className="pt-4 border-t border-gray-100 space-y-4">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal size={18} className="text-accent-600" />
+                <div>
+                  <h3 className="font-semibold text-gray-900">Condiciones aprobadas</h3>
+                  <p className="text-xs text-gray-500">Conserva la propuesta o prepara una contraoferta.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 rounded-xl border border-accent-100 bg-accent-50/40 p-4 sm:grid-cols-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Monto a facilitar
+                  <input type="number" min="0.01" step="0.01" value={montoAprobado} onChange={(e) => setMontoAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
+                  <span className="mt-1 block text-xs font-normal text-gray-500">Solicitó RD$ {Number(solicitud.montoSolicitado || 0).toLocaleString('es-DO')}</span>
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  Tasa mensual (%)
+                  <input type="number" min="0" step="0.01" value={tasaAprobada} onChange={(e) => setTasaAprobada(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  Gasto de cierre (%)
+                  <input type="number" min="0" step="0.01" value={gastoCierreAprobado} onChange={(e) => setGastoCierreAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
+                </label>
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Plazo
+                    <input type="number" min="1" step="1" value={plazoAprobado} onChange={(e) => setPlazoAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
+                  </label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Unidad
+                    <select value={unidadPlazoAprobada} onChange={(e) => setUnidadPlazoAprobada(Number(e.target.value))} className="mt-1.5 rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500">
+                      <option value={0}>Meses</option>
+                      <option value={1}>Años</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="text-sm font-medium text-gray-700">
+                  Frecuencia de pago
+                  <select value={frecuenciaAprobada} onChange={(e) => setFrecuenciaAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500">
+                    <option value={0}>Diaria</option>
+                    <option value={1}>Semanal</option>
+                    <option value={2}>Quincenal</option>
+                    <option value={3}>Mensual</option>
+                  </select>
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  Fecha del contrato
+                  <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
+                </label>
+                <label className="text-sm font-medium text-gray-700 sm:col-span-2">
+                  Primera fecha de pago
+                  <input type="date" min={fechaInicio} value={fechaPrimerPago} onChange={(e) => setFechaPrimerPago(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
+                  <span className="mt-1 block text-xs font-normal text-gray-500">Las fechas siguientes se generan desde aquí según la frecuencia.</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                <div className="p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Cuota</p>
+                  <p className="mt-1 font-bold text-accent-700">RD$ {cuotaAprobada.toLocaleString('es-DO', { maximumFractionDigits: 2 })}</p>
+                </div>
+                <div className="border-x border-gray-200 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Total</p>
+                  <p className="mt-1 font-bold text-gray-900">RD$ {totalAprobado.toLocaleString('es-DO', { maximumFractionDigits: 2 })}</p>
+                </div>
+                <div className="p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Intereses</p>
+                  <p className="mt-1 font-bold text-amber-600">RD$ {Math.max(0, totalAprobado - principalAprobado).toLocaleString('es-DO', { maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+
+              {!termsAreValid && <p className="text-sm text-red-600">Completa condiciones válidas y revisa las fechas de pago.</p>}
               <div className="flex gap-3">
                 <button
-                  onClick={() => onApprove(solicitud.id, fechaInicio)}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  disabled={!termsAreValid}
+                  onClick={() => onApprove(solicitud.id, {
+                    fechaInicio,
+                    fechaPrimerPago,
+                    montoAprobado: montoNumero,
+                    tasaInteresMensual: tasaNumero,
+                    gastoCierrePorcentaje: cierreNumero,
+                    plazo: plazoNumero,
+                    unidadPlazo: unidadPlazoAprobada,
+                    frecuenciaPago: frecuenciaAprobada,
+                  })}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Check size={20} /> Aprobar Solicitud
+                  <Check size={20} /> Aprobar con estas condiciones
                 </button>
                 <button
                   onClick={() => onReject(solicitud.id)}

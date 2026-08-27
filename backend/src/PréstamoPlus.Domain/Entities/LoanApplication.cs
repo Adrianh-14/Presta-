@@ -19,6 +19,10 @@ namespace PréstamoPlus.Domain.Entities
         public EstadoSolicitud Estado { get; set; } = EstadoSolicitud.Pendiente;
         public TipoPrestamo TipoPrestamo { get; set; } = TipoPrestamo.Personal;
         public DateTime FechaSolicitud { get; set; } = DateTime.UtcNow;
+        public Guid? FirstApprovedBy { get; set; }
+        public DateTime? FirstApprovedAt { get; set; }
+        public Guid? SecondApprovedBy { get; set; }
+        public DateTime? SecondApprovedAt { get; set; }
 
         public Client Client { get; set; } = null!;
         public VerificationMedia? VerificationMedia { get; set; }

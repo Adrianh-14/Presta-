@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>PréstamoPlus.API</RootNamespace>
+    <UserSecretsId>prestamoplus-api-development</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import { QrCode, User, Calculator, DollarSign, ChevronDown, ChevronUp, Check, AlertTriangle, Search, RefreshCw, UserPlus, ArrowRight } from 'lucide-react';
+import { QrCode, User, Calculator, DollarSign, ChevronDown, ChevronUp, Check, AlertTriangle, Search, RefreshCw, UserPlus, ArrowRight, Printer } from 'lucide-react';
 import { prestamoService } from '../../services/prestamoService';
 import { clientService } from '../../services/clientService';
 import { generateAmortizationTable } from '../../utils/amortization';
+import { printAmortization } from '../../utils/printAmortization';
 
 function formatCurrency(v) { return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v); }
 function formatNumber(v) { return new Intl.NumberFormat('es-DO').format(Math.round(v)); }
@@ -352,10 +353,31 @@ export default function NuevoPrestamo() {
                 <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-warning-500" /> Intereses {(results.totalInterest / results.totalPaid * 100).toFixed(1)}%</span>
               </div>
 
-              <button onClick={() => setTableVisible(!tableVisible)} className="mt-6 flex items-center gap-2 text-accent-500 text-sm font-semibold hover:text-accent-600 transition-colors">
-                {tableVisible ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                {tableVisible ? 'Ocultar tabla de amortización' : 'Ver tabla de amortización'}
-              </button>
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                <button onClick={() => setTableVisible(!tableVisible)} className="flex items-center gap-2 text-accent-500 text-sm font-semibold hover:text-accent-600 transition-colors">
+                  {tableVisible ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {tableVisible ? 'Ocultar tabla de amortización' : 'Ver tabla de amortización'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => printAmortization({
+                    client,
+                    loan: {
+                      monto: getAmount(),
+                      tasa,
+                      plazo,
+                      frecuencia: freqNames[frecuencia],
+                      cuota: results.cuota,
+                      totalPagar: results.totalPaid,
+                    },
+                    rows: amortTable,
+                  })}
+                  className="inline-flex items-center gap-2 rounded-8 border border-accent-200 bg-white px-4 py-2 text-sm font-semibold text-accent-600 shadow-sm transition-colors hover:bg-accent-50 focus:outline-none focus:ring-2 focus:ring-accent-300"
+                >
+                  <Printer size={16} />
+                  Imprimir / Guardar PDF
+                </button>
+              </div>
 
               {tableVisible && (
                 <div className="mt-4 bg-white rounded-12 border border-surface-border shadow-card overflow-hidden">

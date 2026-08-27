@@ -1,8 +1,11 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Tokens;
 using PréstamoPlus.API.DependencyInjection;
 using PréstamoPlus.API.Middleware;
@@ -13,8 +16,20 @@ using PréstamoPlus.Infrastructure.Persistence;
 using PréstamoPlus.Infrastructure.Services;
 using PréstamoPlus.Infrastructure.Persistence.SeedData;
 using PréstamoPlus.API.Configuration;
+using PréstamoPlus.API.Health;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
+if (builder.Environment.IsDevelopment())
+{
+    var keyDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "prestamoplus-dataprotection-keys"));
+    keyDirectory.Create();
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(keyDirectory)
+        .SetApplicationName("PrestamoPlus");
+}
 
 SecurityConfigurationValidator.Validate(builder.Configuration, builder.Environment);
 
@@ -24,7 +39,10 @@ builder.WebHost.ConfigureKestrel(options =>
     options.ConfigureEndpointDefaults(o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2);
 });
 
-builder.WebHost.UseUrls(FindAvailableUrls());
+if (builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseUrls(FindAvailableDevelopmentUrls());
+}
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
@@ -45,11 +63,38 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddPrestamoPlusAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("client-otp-request", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetRemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+    options.AddPolicy("client-otp-verify", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetRemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+});
 builder.Services.AddScoped<ITenantService, TenantService>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApi();
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: new[] { "ready" });
 builder.Services.AddApplicationDecorators();
 builder.Services.AddHostedService<LoanManagementService>();
 
@@ -80,8 +125,10 @@ app.UseExceptionHandler(error =>
         else
         {
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            var innerMsg = exception?.InnerException?.Message ?? exception?.Message ?? "Error interno del servidor";
-            await context.Response.WriteAsJsonAsync(new { message = innerMsg, detail = exception?.Message });
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message = "Ocurrió un error interno. Intenta nuevamente más tarde."
+            });
         }
     });
 });
@@ -108,37 +155,109 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+app.Use(async (context, next) =>
+{
+    var correlationId = context.Request.Headers.TryGetValue("X-Correlation-ID", out var incoming) && Guid.TryParse(incoming, out _)
+        ? incoming.ToString()
+        : Guid.NewGuid().ToString("N");
+    context.Response.Headers["X-Correlation-ID"] = correlationId;
+    var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("RequestCorrelation");
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)";
+    using (logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId, ["Path"] = context.Request.Path.ToString() }))
+    {
+        await next();
+    }
+});
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantMiddleware>();
+app.UseMiddleware<ClientSessionMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health").AllowAnonymous();
+app.MapHealthChecks("/health/ready").AllowAnonymous();
+app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
 
 app.Run();
 
-static string[] FindAvailableUrls()
+static string GetRemoteAddress(HttpContext context) =>
+    context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+static string[] FindAvailableDevelopmentUrls()
 {
     for (int port = 5001; port <= 5020; port++)
     {
-        try
+        if (!IsPortAvailable(port))
         {
-            using var socket = new System.Net.Sockets.Socket(
-                System.Net.Sockets.AddressFamily.InterNetwork,
-                System.Net.Sockets.SocketType.Stream,
-                System.Net.Sockets.ProtocolType.Tcp);
-            socket.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, port));
+            continue;
+        }
 
-            var portFile = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", ".api-port");
-            File.WriteAllText(portFile, port.ToString());
-            Console.WriteLine($">>> API puerto HTTPS: {port} (guardado en .api-port) <<<");
-            return [$"https://localhost:{port}", $"http://localhost:{port + 1}"];
-        }
-        catch
+        var repositoryRoot = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "..", "..", ".."));
+        File.WriteAllText(Path.Combine(repositoryRoot, ".api-port"), port.ToString());
+
+        Console.WriteLine($">>> API HTTP local: http://localhost:{port} <<<");
+
+        foreach (var address in GetLocalIpv4Addresses())
         {
+            Console.WriteLine($">>> API accesible en la red: http://{address}:{port} <<<");
         }
+
+        return [$"http://0.0.0.0:{port}"];
     }
 
     Console.WriteLine("No se encontró puerto libre en 5001-5020.");
-    return ["https://localhost:5000", "http://localhost:5001"];
+    return ["http://0.0.0.0:5000"];
+}
+
+static bool IsPortAvailable(int port)
+{
+    try
+    {
+        if (System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties()
+            .GetActiveTcpListeners()
+            .Any(endpoint => endpoint.Port == port))
+        {
+            return false;
+        }
+
+        using var socket = new System.Net.Sockets.Socket(
+            System.Net.Sockets.AddressFamily.InterNetwork,
+            System.Net.Sockets.SocketType.Stream,
+            System.Net.Sockets.ProtocolType.Tcp);
+        socket.ExclusiveAddressUse = true;
+        socket.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Any, port));
+        return true;
+    }
+    catch (System.Net.Sockets.SocketException)
+    {
+        return false;
+    }
+}
+
+static IEnumerable<System.Net.IPAddress> GetLocalIpv4Addresses()
+{
+    try
+    {
+        return System.Net.Dns.GetHostEntry(System.Net.Dns.GetHostName())
+            .AddressList
+            .Where(address =>
+                address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                !System.Net.IPAddress.IsLoopback(address))
+            .Distinct()
+            .ToArray();
+    }
+    catch (System.Net.Sockets.SocketException)
+    {
+        return [];
+    }
 }

@@ -14,9 +14,14 @@ namespace PréstamoPlus.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<Client?> GetByCedulaAsync(string cedula)
+        public async Task<Client?> GetByCedulaAsync(string cedula, Guid tenantId)
         {
-            return await _context.Clients.FirstOrDefaultAsync(c => c.Cedula == cedula);
+            return await _context.Clients
+                .Include(c => c.WorkInformation)
+                .Include(c => c.Address)
+                .Include(c => c.BankAccount)
+                .Include(c => c.References)
+                .FirstOrDefaultAsync(c => c.Cedula == cedula && c.TenantId == tenantId);
         }
     }
 }

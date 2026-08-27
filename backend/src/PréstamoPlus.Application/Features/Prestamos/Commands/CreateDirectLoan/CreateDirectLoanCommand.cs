@@ -1,4 +1,5 @@
 using MediatR;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
 using PréstamoPlus.Domain.Enums;
@@ -18,7 +19,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
         public FrecuenciaPago FrecuenciaPago { get; init; }
         public decimal GastoCierrePorcentaje { get; init; }
         public TipoPrestamo TipoPrestamo { get; init; }
-        public Guid TenantId { get; init; }
+        public Guid? TenantId { get; init; }
     }
 
     public record CreateDirectLoanCommand(CreateDirectLoanRequest Request) : IRequest<LoanDto>;
@@ -26,10 +27,16 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
     public class CreateDirectLoanCommandHandler : IRequestHandler<CreateDirectLoanCommand, LoanDto>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
+        private readonly IJournalService _journal;
 
-        public CreateDirectLoanCommandHandler(IUnitOfWork unitOfWork)
+        public CreateDirectLoanCommandHandler(
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService, IJournalService journal)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
+            _journal = journal;
         }
 
         public async Task<LoanDto> Handle(CreateDirectLoanCommand command, CancellationToken cancellationToken)
@@ -41,13 +48,14 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
             {
                 var existingClients = await _unitOfWork.Clients.ListAsync(cancellationToken);
                 var client = existingClients.FirstOrDefault(c => c.Cedula == req.Cedula);
+                var tenantId = req.TenantId ?? client?.TenantId ?? Guid.Empty;
 
                 if (client is null)
                 {
                     client = new Client
                     {
                         Id = Guid.NewGuid(),
-                        TenantId = req.TenantId,
+                        TenantId = tenantId,
                         Nombre = req.Nombre,
                         Cedula = req.Cedula,
                         Email = req.Email,
@@ -91,12 +99,33 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                 cuota = Math.Round(cuota, 2);
 
                 var fechaInicio = DateTime.UtcNow;
+                var totalPagar = Math.Round(cuota * totalPeriods, 2);
+                var loanApplication = new LoanApplication
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ClientId = client.Id,
+                    MontoSolicitado = req.Monto,
+                    TasaInteresMensual = req.TasaMensual,
+                    Plazo = plazoMeses,
+                    UnidadPlazo = UnidadPlazo.Meses,
+                    FrecuenciaPago = req.FrecuenciaPago,
+                    GastoCierrePorcentaje = req.GastoCierrePorcentaje,
+                    CuotaEstimada = cuota,
+                    TotalPagar = totalPagar,
+                    TotalIntereses = Math.Round(totalPagar - principal, 2),
+                    Estado = EstadoSolicitud.Aprobada,
+                    TipoPrestamo = req.TipoPrestamo,
+                    FechaSolicitud = fechaInicio
+                };
+                await _unitOfWork.LoanApplications.AddAsync(loanApplication);
+
                 var loan = new Loan
                 {
                     Id = Guid.NewGuid(),
-                    TenantId = req.TenantId,
+                    TenantId = tenantId,
                     ClientId = client.Id,
-                    LoanApplicationId = Guid.NewGuid(),
+                    LoanApplicationId = loanApplication.Id,
                     MontoOriginal = principal,
                     TasaInteresAnual = req.TasaMensual * 12,
                     PlazoMeses = plazoMeses,
@@ -112,8 +141,28 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
 
                 GenerateInstallments(loan, principal, req.TasaMensual, cuota);
                 await _unitOfWork.Loans.AddAsync(loan, cancellationToken);
+                var disbursementLines = new List<JournalLineInput>
+                {
+                    new("LOAN_RECEIVABLE", req.Monto, 0, "Desembolso de préstamo"),
+                    new("CASH", 0, req.Monto, "Salida por desembolso")
+                };
+                var closingFee = loan.MontoOriginal - req.Monto;
+                if (closingFee > 0)
+                {
+                    disbursementLines[0] = new JournalLineInput("LOAN_RECEIVABLE", loan.MontoOriginal, 0, "Desembolso y gasto de cierre capitalizado");
+                    disbursementLines.Add(new JournalLineInput("COMMISSION_INCOME", 0, closingFee, "Gasto de cierre"));
+                }
+                await _journal.PostAsync(tenantId, "loan.disbursement", loan.Id, disbursementLines, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                var email = LoanEmailBuilder.Created(loan, client, _notificationService.ClientPortalUrl);
+                var pdf = AmortizationPdfBuilder.Build(loan, client);
+                await _notificationService.SendEmailAsync(
+                    client.Email,
+                    email.Subject,
+                    email.Html,
+                    new[] { new EmailAttachment($"tabla-amortizacion-{loan.Id:N}.pdf", pdf) });
 
                 return new LoanDto
                 {

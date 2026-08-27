@@ -1,4 +1,5 @@
 using MediatR;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
 using PréstamoPlus.Domain.Enums;
@@ -10,10 +11,17 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
     public class UpdateSolicitudCommandHandler : IRequestHandler<UpdateSolicitudCommand, LoanApplicationDto?>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
+        private readonly IAuditLogService _auditLog;
 
-        public UpdateSolicitudCommandHandler(IUnitOfWork unitOfWork)
+        public UpdateSolicitudCommandHandler(
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService,
+            IAuditLogService auditLog)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
+            _auditLog = auditLog;
         }
 
         public async Task<LoanApplicationDto?> Handle(UpdateSolicitudCommand request, CancellationToken cancellationToken)
@@ -22,17 +30,72 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
             var loanApp = await _unitOfWork.LoanApplications.FirstOrDefaultAsync(spec, cancellationToken);
             if (loanApp is null) return null;
 
-            loanApp.Estado = request.Estado;
+            var validTransition = loanApp.Estado switch
+            {
+                EstadoSolicitud.Pendiente => request.Estado == EstadoSolicitud.Procesando,
+                EstadoSolicitud.Procesando => request.Estado is EstadoSolicitud.Aprobada or EstadoSolicitud.Rechazada,
+                _ => false
+            };
+
+            if (!validTransition)
+                throw new InvalidOperationException(
+                    $"No se puede cambiar una solicitud de {loanApp.Estado} a {request.Estado}.");
 
             if (request.Estado == EstadoSolicitud.Aprobada)
             {
+                if (!request.ActorUserId.HasValue)
+                    throw new UnauthorizedAccessException("La aprobación requiere un usuario autenticado.");
+                if (loanApp.FirstApprovedBy is null)
+                {
+                    loanApp.FirstApprovedBy = request.ActorUserId;
+                    loanApp.FirstApprovedAt = DateTime.UtcNow;
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    return null;
+                }
+                loanApp.SecondApprovedBy = request.ActorUserId;
+                loanApp.SecondApprovedAt = DateTime.UtcNow;
+            }
+
+            loanApp.Estado = request.Estado;
+            Loan? createdLoan = null;
+
+            if (request.Estado == EstadoSolicitud.Aprobada)
+            {
+                var montoAprobado = request.MontoAprobado ?? loanApp.MontoSolicitado;
+                var tasaMensual = request.TasaInteresMensual ?? loanApp.TasaInteresMensual;
+                var gastoCierre = request.GastoCierrePorcentaje ?? loanApp.GastoCierrePorcentaje;
+                var plazo = request.Plazo ?? loanApp.Plazo;
+                var unidadPlazo = request.UnidadPlazo ?? loanApp.UnidadPlazo;
+                var frecuencia = request.FrecuenciaPago ?? loanApp.FrecuenciaPago;
+
+                if (montoAprobado <= 0)
+                    throw new ArgumentException("El monto aprobado debe ser mayor que cero.");
+                if (tasaMensual < 0 || gastoCierre < 0)
+                    throw new ArgumentException("Las tasas no pueden ser negativas.");
+                if (plazo <= 0)
+                    throw new ArgumentException("El plazo debe ser mayor que cero.");
+                if (!Enum.IsDefined(frecuencia))
+                    throw new ArgumentException("La frecuencia de pago no es válida.");
+
                 var rawFecha = request.FechaInicio ?? DateTime.UtcNow;
                 var fechaInicio = rawFecha.Kind == DateTimeKind.Utc ? rawFecha : DateTime.SpecifyKind(rawFecha, DateTimeKind.Utc);
-                var plazoMeses = loanApp.UnidadPlazo == UnidadPlazo.Anios
-                    ? loanApp.Plazo * 12
-                    : loanApp.Plazo;
+                var plazoMeses = unidadPlazo == UnidadPlazo.Anios ? plazo * 12 : plazo;
+                var principal = montoAprobado + (montoAprobado * gastoCierre / 100);
+                var (cuota, totalPagar, totalIntereses) = CalculateLoan(
+                    principal,
+                    tasaMensual,
+                    plazoMeses,
+                    frecuencia);
 
-                var principal = loanApp.MontoSolicitado + (loanApp.MontoSolicitado * loanApp.GastoCierrePorcentaje / 100);
+                loanApp.MontoSolicitado = montoAprobado;
+                loanApp.TasaInteresMensual = tasaMensual;
+                loanApp.GastoCierrePorcentaje = gastoCierre;
+                loanApp.Plazo = plazo;
+                loanApp.UnidadPlazo = unidadPlazo;
+                loanApp.FrecuenciaPago = frecuencia;
+                loanApp.CuotaEstimada = cuota;
+                loanApp.TotalPagar = totalPagar;
+                loanApp.TotalIntereses = totalIntereses;
 
                 var loan = new Loan
                 {
@@ -41,23 +104,63 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                     ClientId = loanApp.ClientId,
                     LoanApplicationId = loanApp.Id,
                     MontoOriginal = principal,
-                    TasaInteresAnual = loanApp.TasaInteresMensual * 12,
+                    TasaInteresAnual = tasaMensual * 12,
                     PlazoMeses = plazoMeses,
-                    CuotaMensual = loanApp.CuotaEstimada,
+                    CuotaMensual = cuota,
                     SaldoPendiente = principal,
                     Estado = EstadoPrestamo.Activo,
                     Tipo = loanApp.TipoPrestamo,
-                    FrecuenciaPago = loanApp.FrecuenciaPago,
+                    FrecuenciaPago = frecuencia,
                     FechaInicio = fechaInicio,
                     FechaVencimiento = fechaInicio.AddMonths(plazoMeses),
                     CreatedAt = DateTime.UtcNow
                 };
 
-                GenerateInstallments(loan, principal, loanApp.TasaInteresMensual, loanApp.CuotaEstimada);
+                var defaultFirstPayment = CalculatePaymentDate(fechaInicio, 1, frecuencia);
+                var rawFirstPayment = request.FechaPrimerPago ?? defaultFirstPayment;
+                var firstPayment = rawFirstPayment.Kind == DateTimeKind.Utc
+                    ? rawFirstPayment
+                    : DateTime.SpecifyKind(rawFirstPayment, DateTimeKind.Utc);
+                if (firstPayment.Date < fechaInicio.Date)
+                    throw new ArgumentException("La primera fecha de pago no puede ser anterior a la fecha de inicio.");
+
+                GenerateInstallments(loan, principal, tasaMensual, cuota, firstPayment);
+                loan.FechaVencimiento = loan.Installments.Max(i => i.FechaPago);
                 await _unitOfWork.Loans.AddAsync(loan, cancellationToken);
+                createdLoan = loan;
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _auditLog.AppendAsync(loanApp.TenantId, null, $"loan_application.{request.Estado.ToString().ToLowerInvariant()}",
+                "LoanApplication", loanApp.Id,
+                new { request.Estado, request.MontoAprobado, CreatedLoanId = createdLoan?.Id }, cancellationToken);
+
+            if (createdLoan is not null)
+            {
+                var loanEmail = LoanEmailBuilder.Created(
+                    createdLoan,
+                    loanApp.Client,
+                    _notificationService.ClientPortalUrl);
+                var pdf = AmortizationPdfBuilder.Build(createdLoan, loanApp.Client);
+                await _notificationService.SendEmailAsync(
+                    loanApp.Client.Email,
+                    loanEmail.Subject,
+                    loanEmail.Html,
+                    new[] { new EmailAttachment($"tabla-amortizacion-{createdLoan.Id:N}.pdf", pdf) });
+            }
+            else
+            {
+                var statusEmail = SolicitudEmailBuilder.Build(
+                    loanApp,
+                    loanApp.Client,
+                    request.Estado,
+                    request.Instrucciones,
+                    _notificationService.ClientPortalUrl);
+                await _notificationService.SendEmailAsync(
+                    loanApp.Client.Email,
+                    statusEmail.Subject,
+                    statusEmail.Html);
+            }
 
             return new LoanApplicationDto
             {
@@ -124,7 +227,12 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
             };
         }
 
-        private static void GenerateInstallments(Loan loan, decimal principal, decimal tasaMensual, decimal cuotaPeriodo)
+        private static void GenerateInstallments(
+            Loan loan,
+            decimal principal,
+            decimal tasaMensual,
+            decimal cuotaPeriodo,
+            DateTime firstPaymentDate)
         {
             var periodsPerMonth = GetPeriodsPerMonth(loan.FrecuenciaPago);
             var totalPayments = loan.PlazoMeses * periodsPerMonth;
@@ -138,7 +246,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 var capital = Math.Round(cuotaPeriodo - interes, 2);
                 saldo -= capital;
 
-                var fechaPago = CalculatePaymentDate(loan.FechaInicio, i, loan.FrecuenciaPago);
+                var fechaPago = CalculatePaymentDate(firstPaymentDate, i - 1, loan.FrecuenciaPago);
 
                 loan.Installments.Add(new Installment
                 {
@@ -166,6 +274,32 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 FrecuenciaPago.Quincenal => 2,
                 _ => 1
             };
+        }
+
+        private static (decimal Cuota, decimal TotalPagar, decimal TotalIntereses) CalculateLoan(
+            decimal principal,
+            decimal tasaMensual,
+            int plazoMeses,
+            FrecuenciaPago frecuencia)
+        {
+            var periodsPerMonth = GetPeriodsPerMonth(frecuencia);
+            var totalPeriods = plazoMeses * periodsPerMonth;
+            var ratePerPeriod = tasaMensual / 100 / periodsPerMonth;
+            decimal cuota;
+
+            if (ratePerPeriod <= 0)
+            {
+                cuota = principal / totalPeriods;
+            }
+            else
+            {
+                var factor = Math.Pow(1 + (double)ratePerPeriod, totalPeriods);
+                cuota = principal * (ratePerPeriod * (decimal)factor) / ((decimal)factor - 1);
+            }
+
+            cuota = Math.Round(cuota, 2);
+            var total = Math.Round(cuota * totalPeriods, 2);
+            return (cuota, total, Math.Round(total - principal, 2));
         }
 
         private static DateTime CalculatePaymentDate(DateTime fechaInicio, int paymentNumber, FrecuenciaPago frecuencia)

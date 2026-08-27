@@ -55,6 +55,16 @@ export default function Prestamos() {
     }
   };
 
+  const handleMarkLegal = async (id) => {
+    try {
+      await prestamoService.updateEstado(id, 'Legal');
+      setPrestamos((prev) => prev.map((p) => (p.id === id ? { ...p, estado: 'legal' } : p)));
+      setSelectedLoan((current) => current?.id === id ? { ...current, estado: 'legal' } : current);
+    } catch (err) {
+      console.error('Error marking loan as legal:', err);
+    }
+  };
+
   const handleRowClick = async (row) => {
     try {
       const full = await prestamoService.getById(row.id);
@@ -93,6 +103,7 @@ export default function Prestamos() {
           <option value="mora">En mora</option>
           <option value="pagado">Pagados</option>
           <option value="cancelado">Cancelados</option>
+          <option value="legal">En legal</option>
         </select>
         <select
           value={filtroTipo}
@@ -112,7 +123,12 @@ export default function Prestamos() {
       )}
 
       {selectedLoan && (
-        <PrestamoDetailModal loan={selectedLoan} onClose={() => setSelectedLoan(null)} onCancel={handleCancel} />
+        <PrestamoDetailModal
+          loan={selectedLoan}
+          onClose={() => setSelectedLoan(null)}
+          onCancel={handleCancel}
+          onMarkLegal={handleMarkLegal}
+        />
       )}
     </div>
   );

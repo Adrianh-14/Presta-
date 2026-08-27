@@ -94,12 +94,23 @@ function calculateLoanPayment(amount, closingCostPercent, monthlyRate, term, ter
 export default function Solicitud() {
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get('tenant');
-  const [currentStep, setCurrentStep] = useState(1);
+  const draftStorageKey = `prestamoplus-form:${isClientMode ? 'client' : 'request'}:${tenantId || 'default'}`;
+  const readSavedDraft = () => {
+    try {
+      return JSON.parse(sessionStorage.getItem(draftStorageKey) || 'null');
+    } catch {
+      return null;
+    }
+  };
+  const [currentStep, setCurrentStep] = useState(() => {
+    const savedStep = Number(readSavedDraft()?.step);
+    return savedStep >= 1 && savedStep <= maxStep ? savedStep : 1;
+  });
   const [submitted, setSubmitted] = useState(false);
   const [videoBlob, setVideoBlob] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
+  const [videoPoster, setVideoPoster] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
   const [stream, setStream] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const videoPreviewRef = useRef(null);
@@ -107,8 +118,15 @@ export default function Solicitud() {
   const motionIntervalRef = useRef(null);
   const motionDataRef = useRef({ prevLeft: 0, prevRight: 0, movementCount: 0 });
   const recordingTimeRef = useRef(0);
+  const recordingStartedAtRef = useRef(0);
+  const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
+  const streamRef = useRef(null);
+  const videoUrlRef = useRef(null);
+  const idPhotoUrlRef = useRef(null);
+  const idPhotoInputRef = useRef(null);
+  const photoScrollPositionRef = useRef(0);
 
   const [videoValid, setVideoValid] = useState(false);
   const [videoError, setVideoError] = useState('');
@@ -127,44 +145,64 @@ export default function Solicitud() {
   const [calcFrequency, setCalcFrequency] = useState('biweekly');
   const [calcResults, setCalcResults] = useState(null);
 
-  const { register, handleSubmit, formState: { errors }, trigger } = useForm({
+  const { register, handleSubmit, formState: { errors }, trigger, watch, reset } = useForm({
     defaultValues: {
       // Datos Personales
-      nombre: 'Juan Carlos Pérez García',
-      cedula: '001-1234567-8',
-      email: 'juan.perez@email.com',
-      telefono: '809-555-1234',
-      fechaNacimiento: '1990-05-15',
-      estadoCivil: 'casado',
+      nombre: '',
+      cedula: '',
+      email: '',
+      telefono: '',
+      fechaNacimiento: '',
+      estadoCivil: '',
       // Información Laboral
-      empresa: 'Tecnologías del Caribe S.R.L.',
-      cargo: 'Desarrollador Senior',
-      salario: '85000',
-      antiguedad: '5',
-      direccionEmpresa: 'Av. Abraham Lincoln #45, Torre Empresarial, Piso 8',
-      telefonoEmpresa: '809-555-5678',
-      tipoEmpleo: 'formal',
+      empresa: '',
+      cargo: '',
+      salario: '',
+      antiguedad: '',
+      direccionEmpresa: '',
+      telefonoEmpresa: '',
+      tipoEmpleo: '',
       // Ubicación
-      direccion: 'Calle Las Flores #23, Apt. 5B, Residencial El Jardín',
-      ciudad: 'Santo Domingo',
-      provincia: 'DN',
-      sector: 'Piantini',
-      codigoPostal: '10101',
+      direccion: '',
+      ciudad: '',
+      provincia: '',
+      sector: '',
+      codigoPostal: '',
       // Referencias
-      ref1Nombre: 'María Elena Rodríguez',
-      ref1Relacion: 'familiar',
-      ref1Telefono: '809-555-9012',
-      ref1Email: 'maria.rodriguez@email.com',
-      ref2Nombre: 'Pedro Antonio Sánchez',
-      ref2Relacion: 'compañero',
-      ref2Telefono: '809-555-3456',
-      ref2Email: 'pedro.sanchez@email.com',
+      ref1Nombre: '',
+      ref1Relacion: '',
+      ref1Telefono: '',
+      ref1Email: '',
+      ref2Nombre: '',
+      ref2Relacion: '',
+      ref2Telefono: '',
+      ref2Email: '',
       // Datos Bancarios
-      banco: 'banco_popular',
-      tipoCuenta: 'ahorro',
-      numeroCuenta: '1234567890123456',
+      banco: '',
+      tipoCuenta: '',
+      numeroCuenta: '',
     }
   });
+
+  useEffect(() => {
+    const savedDraft = readSavedDraft();
+    if (savedDraft?.values) reset(savedDraft.values);
+  }, [draftStorageKey, reset]);
+
+  useEffect(() => {
+    const subscription = watch((values) => {
+      sessionStorage.setItem(draftStorageKey, JSON.stringify({ step: currentStep, values }));
+    });
+    return () => subscription.unsubscribe();
+  }, [currentStep, draftStorageKey, watch]);
+
+  useEffect(() => {
+    const savedDraft = readSavedDraft();
+    sessionStorage.setItem(draftStorageKey, JSON.stringify({
+      step: currentStep,
+      values: savedDraft?.values || {},
+    }));
+  }, [currentStep, draftStorageKey]);
 
   const doCalc = useCallback(() => {
     const amount = parseFloat(calcAmount.replace(/,/g, '')) || 0;
@@ -191,12 +229,13 @@ export default function Solicitud() {
 
   useEffect(() => {
     return () => {
-      if (stream) stream.getTracks().forEach(t => t.stop());
-      if (videoUrl) URL.revokeObjectURL(videoUrl);
-      if (idPhotoUrl) URL.revokeObjectURL(idPhotoUrl);
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
+      if (idPhotoUrlRef.current) URL.revokeObjectURL(idPhotoUrlRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
+      if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
     };
-  }, [stream, videoUrl, idPhotoUrl]);
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -205,14 +244,21 @@ export default function Solicitud() {
       setMovementProgress(0);
       motionDataRef.current = { prevLeft: 0, prevRight: 0, movementCount: 0 };
 
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        setVideoError('Este navegador no permite grabar video. Abre el enlace en Chrome o Safari actualizado.');
+        return;
+      }
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: 'user' },
         audio: false
       });
       setStream(mediaStream);
+      streamRef.current = mediaStream;
       chunksRef.current = [];
       setRecordingTime(0);
       recordingTimeRef.current = 0;
+      recordingStartedAtRef.current = performance.now();
 
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = mediaStream;
@@ -250,48 +296,74 @@ export default function Solicitud() {
         } catch { }
       }, 400);
 
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9'
-        : MediaRecorder.isTypeSupported('video/webm')
-          ? 'video/webm'
-          : MediaRecorder.isTypeSupported('video/mp4')
-            ? 'video/mp4'
-            : '';
+      const supportedTypes = [
+        'video/mp4;codecs=avc1',
+        'video/mp4',
+        'video/webm;codecs=vp8',
+        'video/webm',
+      ];
+      const mimeType = supportedTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
       const recorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : {});
-      const blobType = mimeType || 'video/webm';
+      const blobType = (recorder.mimeType || mimeType || 'video/webm').split(';')[0];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
+      recorder.onerror = (event) => {
+        console.error('Error durante la grabacion:', event.error);
+        setVideoError('La camara no pudo completar la grabacion. Intenta nuevamente.');
+      };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: blobType });
-        setVideoBlob(blob);
-        setVideoUrl(URL.createObjectURL(blob));
+        const elapsedSeconds = Math.max(
+          recordingTimeRef.current,
+          Math.floor((performance.now() - recordingStartedAtRef.current) / 1000)
+        );
+        setRecordingTime(elapsedSeconds);
+
         mediaStream.getTracks().forEach(t => t.stop());
         setStream(null);
+        streamRef.current = null;
+        setIsRecording(false);
+        mediaRecorderRef.current = null;
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         if (motionIntervalRef.current) { clearInterval(motionIntervalRef.current); motionIntervalRef.current = null; }
 
-        // Validate recording
-        const secs = recordingTimeRef.current;
         const moves = motionDataRef.current.movementCount;
-        if (moves >= 3 && secs >= 3) {
+        if (blob.size < 1024) {
+          setVideoBlob(null);
+          setVideoUrl(null);
+          setVideoValid(false);
+          setVideoError('No se pudo guardar el video. Verifica el permiso de la camara e intenta de nuevo.');
+          return;
+        }
+
+        const recordedVideoUrl = URL.createObjectURL(blob);
+        setVideoBlob(blob);
+        setVideoUrl(recordedVideoUrl);
+        videoUrlRef.current = recordedVideoUrl;
+
+        if (moves >= 3 && elapsedSeconds >= 4) {
           setVideoValid(true);
           setVideoError('');
-        } else if (secs < 3) {
+        } else if (elapsedSeconds < 4) {
+          setVideoValid(false);
           setVideoError('Video muy corto. Graba al menos 4 segundos girando la cabeza.');
         } else {
+          setVideoValid(false);
           setVideoError('No se detectó movimiento facial. Gira la cabeza de izquierda a derecha.');
         }
       };
 
+      // Un solo archivo conserva la duracion y los metadatos de reproduccion.
       recorder.start();
-      setMediaRecorder(recorder);
+      mediaRecorderRef.current = recorder;
       setIsRecording(true);
 
       timerRef.current = setInterval(() => {
-        recordingTimeRef.current++;
-        setRecordingTime(recordingTimeRef.current);
-      }, 1000);
+        const elapsedSeconds = Math.floor((performance.now() - recordingStartedAtRef.current) / 1000);
+        recordingTimeRef.current = elapsedSeconds;
+        setRecordingTime(elapsedSeconds);
+      }, 250);
     } catch (err) {
       console.error('Error accediendo a la cámara:', err);
       alert('No se pudo acceder a la cámara. Verifica los permisos.');
@@ -299,40 +371,72 @@ export default function Solicitud() {
   };
 
   const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop();
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      const preview = videoPreviewRef.current;
+      if (preview?.videoWidth && preview?.videoHeight) {
+        const posterCanvas = document.createElement('canvas');
+        posterCanvas.width = preview.videoWidth;
+        posterCanvas.height = preview.videoHeight;
+        posterCanvas.getContext('2d')?.drawImage(preview, 0, 0);
+        setVideoPoster(posterCanvas.toDataURL('image/jpeg', 0.82));
+      }
+      recorder.stop();
     }
     setIsRecording(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (motionIntervalRef.current) { clearInterval(motionIntervalRef.current); motionIntervalRef.current = null; }
   };
 
   const deleteVideo = () => {
     setVideoBlob(null);
+    if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
     setVideoUrl(null);
+    setVideoPoster(null);
+    videoUrlRef.current = null;
     setVideoValid(false);
     setVideoError('');
     setMovementProgress(0);
     setIsRecording(false);
     setRecordingTime(0);
     recordingTimeRef.current = 0;
+    recordingStartedAtRef.current = 0;
+    chunksRef.current = [];
+    mediaRecorderRef.current = null;
     if (stream) stream.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
     setStream(null);
     if (timerRef.current) clearInterval(timerRef.current);
     if (motionIntervalRef.current) clearInterval(motionIntervalRef.current);
   };
 
   const handleIdPhoto = (e) => {
-    const file = e.target.files[0];
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.target.files?.[0];
     if (!file) return;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: photoScrollPositionRef.current, behavior: 'auto' });
+    });
+    if (!file.type.startsWith('image/')) {
+      setIdPhotoError('Selecciona una imagen JPG, PNG o WEBP.');
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       setIdPhotoError('El archivo excede 5MB. Usa una imagen más pequeña.');
       return;
     }
     setIdPhoto(file);
-    setIdPhotoUrl(URL.createObjectURL(file));
-    setIdPhotoValid(false);
+    if (idPhotoUrlRef.current) URL.revokeObjectURL(idPhotoUrlRef.current);
+    const photoUrl = URL.createObjectURL(file);
+    setIdPhotoUrl(photoUrl);
+    idPhotoUrlRef.current = photoUrl;
+    setIdPhotoValid(true);
     setIdPhotoError('');
+
+    // La validacion visual queda desactivada temporalmente; solo se exige el archivo.
+    const shouldValidateIdentification = false;
+    if (!shouldValidateIdentification) return;
 
     const img = new Image();
     img.onload = () => {
@@ -441,15 +545,17 @@ export default function Solicitud() {
     img.onerror = () => {
       setIdPhotoError('No se pudo leer la imagen. Intenta con otro archivo.');
     };
-    img.src = URL.createObjectURL(file);
+    img.src = photoUrl;
   };
 
   const removeIdPhoto = () => {
     setIdPhoto(null);
-    if (idPhotoUrl) URL.revokeObjectURL(idPhotoUrl);
+    if (idPhotoUrlRef.current) URL.revokeObjectURL(idPhotoUrlRef.current);
     setIdPhotoUrl(null);
+    idPhotoUrlRef.current = null;
     setIdPhotoValid(false);
     setIdPhotoError('');
+    if (idPhotoInputRef.current) idPhotoInputRef.current.value = '';
   };
 
   const formatTime = (seconds) => {
@@ -622,6 +728,7 @@ export default function Solicitud() {
           numeroCuenta: data.numeroCuenta,
         },
         verificationMedia,
+        consentAccepted: Boolean(data.consentAccepted),
       };
 
       if (isClientMode) {
@@ -629,10 +736,20 @@ export default function Solicitud() {
       } else {
         await solicitudService.create(solicitud);
       }
+      sessionStorage.removeItem(draftStorageKey);
       setSubmitted(true);
     } catch (err) {
       console.error('Error enviando solicitud:', err);
-      alert('Error al enviar la solicitud. Intenta de nuevo.');
+      const validationErrors = err.response?.data?.errors;
+      const validationMessage = Array.isArray(validationErrors)
+        ? validationErrors.map((item) => item.message).filter(Boolean).join('\n')
+        : '';
+      const message = validationMessage
+        || err.response?.data?.message
+        || (err.code === 'ECONNABORTED'
+          ? 'El envío tardó demasiado. Verifica tu conexión e intenta nuevamente.'
+          : 'No fue posible conectar con el servidor. Verifica tu conexión e intenta nuevamente.');
+      alert(message);
     }
   };
 
@@ -967,16 +1084,16 @@ export default function Solicitud() {
                         )}
                       </>
                     ) : (
-                      <video src={videoUrl} controls className="w-full h-full object-cover" />
+                      <video src={videoUrl} poster={videoPoster || undefined} controls playsInline preload="metadata" className="w-full h-full object-cover" />
                     )}
                   </div>
 
                   {/* Status */}
-                  {videoUrl && (
+                  {(videoUrl || videoError) && (
                     <div className="mt-4">
                       {videoValid ? (
                         <div className="flex items-center gap-2 text-success-600 text-sm font-semibold bg-success-50 px-4 py-2 rounded-full">
-                          <Check size={16} /> Video válido — verificado
+                          <Check size={16} /> Video válido — {formatTime(recordingTime)} grabados
                         </div>
                       ) : videoError ? (
                         <div className="flex items-center gap-2 text-danger-500 text-sm bg-danger-50 px-4 py-2 rounded-full">
@@ -1011,9 +1128,9 @@ export default function Solicitud() {
                       </button>
                     )}
                     {isRecording && (
-                      <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-6 py-3 bg-navy-500 text-white rounded-8 hover:bg-navy-600 transition-colors font-semibold text-sm shadow-btn">
+                      <button type="button" onClick={stopRecording} disabled={recordingTime < 4} className="flex items-center gap-2 px-6 py-3 bg-navy-500 text-white rounded-8 hover:bg-navy-600 transition-colors font-semibold text-sm shadow-btn disabled:cursor-not-allowed disabled:opacity-50">
                         <Square size={18} />
-                        Detener ({formatTime(recordingTime)})
+                        {recordingTime < 4 ? `Espera ${4 - recordingTime}s` : `Detener (${formatTime(recordingTime)})`}
                       </button>
                     )}
                     {videoUrl && (
@@ -1039,12 +1156,18 @@ export default function Solicitud() {
                 </div>
 
                 {!idPhotoUrl ? (
-                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-surface-border rounded-12 cursor-pointer hover:border-accent-500 hover:bg-accent-50/30 transition-all group">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      photoScrollPositionRef.current = window.scrollY;
+                      idPhotoInputRef.current?.click();
+                    }}
+                    className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-surface-border rounded-12 cursor-pointer hover:border-accent-500 hover:bg-accent-50/30 transition-all group"
+                  >
                     <Upload className="w-10 h-10 mb-3 text-slate-300 group-hover:text-accent-500 transition-colors" />
                     <p className="text-sm font-medium text-slate-400 group-hover:text-accent-500 transition-colors">Haz clic para subir</p>
                     <p className="text-xs text-slate-300 mt-1">PNG, JPG — Máx. 5MB</p>
-                    <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleIdPhoto} />
-                  </label>
+                  </button>
                 ) : (
                   <div className="relative">
                     <img src={idPhotoUrl} alt="Identificación" className="w-full h-48 object-contain bg-surface-canvas rounded-12 border border-surface-border" />
@@ -1053,6 +1176,13 @@ export default function Solicitud() {
                     </button>
                   </div>
                 )}
+                <input
+                  ref={idPhotoInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleIdPhoto}
+                />
                 {idPhotoUrl && idPhotoValid && (
                   <div className="flex items-center gap-2 text-success-600 text-sm font-semibold bg-success-50 px-4 py-2 rounded-full mt-3 w-fit">
                     <Check size={16} /> Identificación válida
@@ -1233,6 +1363,13 @@ export default function Solicitud() {
             </div>
           )}
 
+          {currentStep === maxStep && isClientMode && (
+            <label className="mt-6 flex items-start gap-3 text-sm text-gray-700">
+              <input type="checkbox" {...register('consentAccepted', { required: 'Debes aceptar el consentimiento de datos' })} className="mt-1" />
+              <span>Acepto el tratamiento de mis datos, la evaluación crediticia y las comunicaciones relacionadas con mi solicitud.</span>
+            </label>
+          )}
+
           {/* Navigation */}
           <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
             {currentStep > 1 ? (
@@ -1242,7 +1379,7 @@ export default function Solicitud() {
               </button>
             ) : <div />}
 
-            {currentStep < 6 ? (
+            {currentStep < maxStep ? (
               <button type="button" onClick={(e) => nextStep(e)} className="flex items-center gap-2 px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors">
                 Siguiente
                 <ChevronRight size={20} />
@@ -1250,7 +1387,7 @@ export default function Solicitud() {
             ) : (
               <button type="submit" className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                 <Check size={20} />
-                Enviar Solicitud
+                {isClientMode ? 'Completar Registro' : 'Enviar Solicitud'}
               </button>
             )}
           </div>

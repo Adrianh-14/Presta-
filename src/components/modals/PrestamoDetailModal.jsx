@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, TrendingUp, CreditCard, AlertTriangle, Clock, ArrowUp, ArrowDown, Plus, Ban } from 'lucide-react';
+import { useCallback, useState, useEffect } from 'react';
+import { X, DollarSign, Calendar, TrendingUp, CreditCard, AlertTriangle, Clock, ArrowUp, ArrowDown, Plus, Ban, Scale, Printer } from 'lucide-react';
 import StatusBadge from '../StatusBadge';
 import CreatePaymentModal from './CreatePaymentModal';
 import { paymentService } from '../../services/paymentService';
 import { amortizationService } from '../../services/amortizationService';
+import { printAmortization } from '../../utils/printAmortization';
 
-export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
+export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLegal }) {
   const [activeTab, setActiveTab] = useState('resumen');
   const [payments, setPayments] = useState([]);
   const [paymentSummary, setPaymentSummary] = useState(null);
@@ -13,19 +14,18 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loadingPayments, setLoadingPayments] = useState(false);
 
-  if (!loan) return null;
-
   const tipoLabels = { personal: 'Personal', garantia: 'Garantía', 0: 'Personal', 1: 'Garantía' };
   const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
   const freqPeriodsPerMonth = { mensual: 1, quincenal: 2, semanal: 4, diaria: 30, Mensual: 1, Quincenal: 2, Semanal: 4, Diaria: 30, 0: 30, 1: 4, 2: 2, 3: 1 };
   const metodoLabels = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
 
-  const monto = Number(loan.monto || 0);
-  const tasa = Number(loan.tasa || 0);
-  const plazo = Number(loan.plazo || 0);
-  const saldo = paymentSummary?.saldoPendiente ?? Number(loan.saldoPendiente || 0);
-  const cuotaMensual = Number(loan.cuotaMensual || 0);
-  const freq = loan.frecuenciaPago;
+  const loanId = loan?.id;
+  const monto = Number(loan?.monto || 0);
+  const tasa = Number(loan?.tasa || 0);
+  const plazo = Number(loan?.plazo || 0);
+  const saldo = paymentSummary?.saldoPendiente ?? Number(loan?.saldoPendiente || 0);
+  const cuotaMensual = Number(loan?.cuotaMensual || 0);
+  const freq = loan?.frecuenciaPago;
   const freqLabel = freqLabels[freq] || String(freq);
   const periodsPerMonth = freqPeriodsPerMonth[freq] || 1;
   const cuotaPorPeriodo = cuotaMensual;
@@ -34,6 +34,11 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
   const porcentajeCapital = monto > 0 ? ((capitalPagado / monto) * 100).toFixed(1) : 0;
   const interesPagado = paymentSummary?.totalIntereses ?? 0;
   const moraPagada = paymentSummary?.totalMora ?? 0;
+  const moraPendiente = Number(paymentSummary?.moraPendiente || 0);
+  const cuotaBase = Number(paymentSummary?.cuotaBase ?? cuotaPorPeriodo);
+  const cuotaConMora = Number(paymentSummary?.cuotaConMora ?? cuotaBase);
+  const diasMora = Number(paymentSummary?.diasMora || 0);
+  const tieneMora = moraPendiente > 0;
   const totalPagado = paymentSummary?.totalPagado ?? 0;
 
   const tabs = [
@@ -42,12 +47,13 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
     { id: 'pagos', label: `Pagos (${payments.length})` },
   ];
 
-  const loadPayments = async () => {
+  const loadPayments = useCallback(async () => {
+    if (!loanId) return;
     setLoadingPayments(true);
     try {
       const [p, s] = await Promise.all([
-        paymentService.getByLoanId(loan.id),
-        paymentService.getSummary(loan.id),
+        paymentService.getByLoanId(loanId),
+        paymentService.getSummary(loanId),
       ]);
       setPayments(p);
       setPaymentSummary(s);
@@ -56,21 +62,25 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
     } finally {
       setLoadingPayments(false);
     }
-  };
+  }, [loanId]);
 
-  const loadAmortization = async () => {
+  const loadAmortization = useCallback(async () => {
+    if (!loanId) return;
     try {
-      const data = await amortizationService.getByLoanId(loan.id);
+      const data = await amortizationService.getByLoanId(loanId);
       setAmortization(data);
     } catch {
       setAmortization([]);
     }
-  };
+  }, [loanId]);
 
   useEffect(() => {
+    if (!loanId) return;
     loadPayments();
     if (activeTab === 'amortizacion') loadAmortization();
-  }, [activeTab, loan.id]);
+  }, [activeTab, loanId, loadAmortization, loadPayments]);
+
+  if (!loan) return null;
 
   const onPaymentCreated = () => {
     loadPayments();
@@ -130,9 +140,9 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                     <p className="text-2xl font-bold">${monto.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-navy-200 text-xs">Cuota {freqLabel}</p>
-                    <p className="text-2xl font-bold">${cuotaPorPeriodo.toLocaleString()}</p>
-                    <p className="text-navy-300 text-xs">${(cuotaPorPeriodo * periodsPerMonth).toLocaleString()}/mes</p>
+                    <p className="text-navy-200 text-xs">{tieneMora ? 'Cuota con mora' : `Cuota ${freqLabel}`}</p>
+                    <p className="text-2xl font-bold">${cuotaConMora.toLocaleString()}</p>
+                    <p className="text-navy-300 text-xs">{tieneMora ? `Base $${cuotaBase.toLocaleString()} + mora` : `$${(cuotaBase * periodsPerMonth).toLocaleString()}/mes`}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs">Saldo Pendiente</p>
@@ -149,6 +159,30 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                   </div>
                 </div>
               </div>
+
+              {tieneMora && (
+                <div className="border border-red-200 bg-red-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 shrink-0 text-red-600" size={20} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-red-900">Mora pendiente generada diariamente</p>
+                          <p className="text-sm text-red-700">{diasMora} {diasMora === 1 ? 'dia' : 'dias'} de atraso</p>
+                        </div>
+                        <p className="text-xl font-bold text-red-700">${moraPendiente.toLocaleString()}</p>
+                      </div>
+                      <div className="mt-3 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 border-t border-red-200 pt-3 text-center">
+                        <div><p className="text-xs text-red-600">Cuota base</p><p className="font-semibold text-red-900">${cuotaBase.toLocaleString()}</p></div>
+                        <span className="text-red-400">+</span>
+                        <div><p className="text-xs text-red-600">Mora</p><p className="font-semibold text-red-900">${moraPendiente.toLocaleString()}</p></div>
+                        <span className="text-red-400">=</span>
+                        <div><p className="text-xs text-red-600">Total a pagar</p><p className="font-bold text-red-900">${cuotaConMora.toLocaleString()}</p></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-gray-50 rounded-xl p-4">
                 <div className="flex justify-between text-sm mb-2">
@@ -199,6 +233,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                     <div className="flex justify-between"><span className="text-gray-600">Capital Pagado</span><span className="text-green-600">${capitalPagado.toLocaleString()}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Intereses Pagados</span><span className="text-amber-600">${interesPagado.toLocaleString()}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Mora Pagada</span><span className="text-red-600">${moraPagada.toLocaleString()}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Mora Pendiente</span><span className="font-semibold text-red-600">${moraPendiente.toLocaleString()}</span></div>
                     <div className="border-t border-gray-200 pt-2"><div className="flex justify-between font-semibold"><span>Total Pagado</span><span>${totalPagado.toLocaleString()}</span></div></div>
                     <div className="flex justify-between"><span className="text-gray-600">Saldo Capital</span><span className="font-bold text-red-600">${saldo.toLocaleString()}</span></div>
                   </div>
@@ -223,6 +258,18 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
                   >
                     <Plus size={20} /> Registrar Pago
                   </button>
+                  {loan.estado !== 'legal' && loan.estado !== 5 && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm('¿Enviar este préstamo al proceso legal? Se notificará al cliente por correo.')) {
+                          onMarkLegal?.(loan.id);
+                        }
+                      }}
+                      className="py-3 px-6 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors font-medium flex items-center justify-center gap-2"
+                    >
+                      <Scale size={20} /> Enviar a legal
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       if (window.confirm('¿Estás seguro de cancelar este préstamo? Esta acción no se puede deshacer.')) {
@@ -241,9 +288,32 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel }) {
           {/* TAB: Tabla Amortización */}
           {activeTab === 'amortizacion' && (
             <div>
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-gray-900">Tabla de Amortización</h3>
-                <p className="text-sm text-gray-500">${cuotaPorPeriodo.toLocaleString()}/{freqLabel.toLowerCase()}</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-500">${cuotaPorPeriodo.toLocaleString()}/{freqLabel.toLowerCase()}</p>
+                  <button
+                    type="button"
+                    disabled={amortization.length === 0}
+                    onClick={() => printAmortization({
+                      client: loan,
+                      loan: {
+                        ...loan,
+                        monto,
+                        tasa,
+                        plazo,
+                        frecuencia: freqLabel,
+                        cuota: cuotaPorPeriodo,
+                        totalPagar: amortization.reduce((sum, row) => sum + Number(row.cuota || 0), 0),
+                      },
+                      rows: amortization,
+                    })}
+                    className="inline-flex items-center gap-2 rounded-lg border border-accent-200 px-3 py-2 text-sm font-semibold text-accent-600 transition-colors hover:bg-accent-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Printer size={16} />
+                    Imprimir / PDF
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

@@ -14,10 +14,14 @@ namespace PréstamoPlus.Domain.Entities
         public EstadoCivil EstadoCivil { get; set; }
         public EstadoCliente Estado { get; set; } = EstadoCliente.Activo;
         public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
+        public DateTime? DataConsentAt { get; set; }
+        public DateTime? CreditEvaluationConsentAt { get; set; }
+        public DateTime? CommunicationsConsentAt { get; set; }
 
         public WorkInformation? WorkInformation { get; set; }
         public Address? Address { get; set; }
         public BankAccount? BankAccount { get; set; }
+        public VerificationMedia? VerificationMedia { get; set; }
         public ICollection<Reference> References { get; set; } = new List<Reference>();
         public ICollection<LoanApplication> LoanApplications { get; set; } = new List<LoanApplication>();
     }

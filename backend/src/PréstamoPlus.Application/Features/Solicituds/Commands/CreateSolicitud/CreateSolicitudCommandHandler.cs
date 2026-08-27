@@ -1,4 +1,5 @@
 using MediatR;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
 using PréstamoPlus.Domain.Interfaces;
@@ -8,10 +9,14 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
     public class CreateSolicitudCommandHandler : IRequestHandler<CreateSolicitudCommand, LoanApplicationDto>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
 
-        public CreateSolicitudCommandHandler(IUnitOfWork unitOfWork)
+        public CreateSolicitudCommandHandler(
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task<LoanApplicationDto> Handle(CreateSolicitudCommand request, CancellationToken cancellationToken)
@@ -22,44 +27,67 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
 
             try
             {
-                var client = new Client
+                var tenantId = req.TenantId ?? Guid.Empty;
+                var client = await _unitOfWork.Clients.GetByCedulaAsync(req.Client.Cedula, tenantId);
+                if (client is null)
                 {
-                    Id = Guid.NewGuid(),
-                    TenantId = req.TenantId ?? Guid.Empty,
-                    Nombre = req.Client.Nombre,
-                    Cedula = req.Client.Cedula,
-                    Email = req.Client.Email,
-                    Telefono = req.Client.Telefono,
-                    FechaNacimiento = DateTime.SpecifyKind(req.Client.FechaNacimiento, DateTimeKind.Utc),
-                    EstadoCivil = req.Client.EstadoCivil
-                };
-                await _unitOfWork.Clients.AddAsync(client);
+                    client = new Client
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenantId,
+                        Nombre = req.Client.Nombre,
+                        Cedula = req.Client.Cedula,
+                        Email = req.Client.Email,
+                        Telefono = req.Client.Telefono,
+                        FechaNacimiento = DateTime.SpecifyKind(req.Client.FechaNacimiento, DateTimeKind.Utc),
+                        EstadoCivil = req.Client.EstadoCivil
+                    };
+                    await _unitOfWork.Clients.AddAsync(client);
+                }
+                else
+                {
+                    client.Nombre = req.Client.Nombre;
+                    client.Email = req.Client.Email;
+                    client.Telefono = req.Client.Telefono;
+                    client.FechaNacimiento = DateTime.SpecifyKind(req.Client.FechaNacimiento, DateTimeKind.Utc);
+                    client.EstadoCivil = req.Client.EstadoCivil;
+                    await _unitOfWork.Clients.UpdateAsync(client, cancellationToken);
+                }
 
-                var workInfo = new WorkInformation
+                var workInfo = client.WorkInformation ?? new WorkInformation
                 {
                     Id = Guid.NewGuid(),
-                    ClientId = client.Id,
-                    Empresa = req.WorkInformation.Empresa,
-                    Cargo = req.WorkInformation.Cargo,
-                    Salario = req.WorkInformation.Salario,
-                    AntiguedadAnios = req.WorkInformation.AntiguedadAnios,
-                    DireccionEmpresa = req.WorkInformation.DireccionEmpresa,
-                    TelefonoEmpresa = req.WorkInformation.TelefonoEmpresa,
-                    TipoEmpleo = req.WorkInformation.TipoEmpleo
+                    ClientId = client.Id
                 };
-                await _unitOfWork.WorkInformation.AddAsync(workInfo);
+                workInfo.Empresa = req.WorkInformation.Empresa;
+                workInfo.Cargo = req.WorkInformation.Cargo;
+                workInfo.Salario = req.WorkInformation.Salario;
+                workInfo.AntiguedadAnios = req.WorkInformation.AntiguedadAnios;
+                workInfo.DireccionEmpresa = req.WorkInformation.DireccionEmpresa;
+                workInfo.TelefonoEmpresa = req.WorkInformation.TelefonoEmpresa;
+                workInfo.TipoEmpleo = req.WorkInformation.TipoEmpleo;
+                if (client.WorkInformation is null)
+                    await _unitOfWork.WorkInformation.AddAsync(workInfo);
+                else
+                    await _unitOfWork.WorkInformation.UpdateAsync(workInfo, cancellationToken);
 
-                var address = new Address
+                var address = client.Address ?? new Address
                 {
                     Id = Guid.NewGuid(),
-                    ClientId = client.Id,
-                    Direccion = req.Address.Direccion,
-                    Ciudad = req.Address.Ciudad,
-                    Provincia = req.Address.Provincia,
-                    Sector = req.Address.Sector,
-                    CodigoPostal = req.Address.CodigoPostal
+                    ClientId = client.Id
                 };
-                await _unitOfWork.Addresses.AddAsync(address);
+                address.Direccion = req.Address.Direccion;
+                address.Ciudad = req.Address.Ciudad;
+                address.Provincia = req.Address.Provincia;
+                address.Sector = req.Address.Sector;
+                address.CodigoPostal = req.Address.CodigoPostal;
+                if (client.Address is null)
+                    await _unitOfWork.Addresses.AddAsync(address);
+                else
+                    await _unitOfWork.Addresses.UpdateAsync(address, cancellationToken);
+
+                foreach (var existingReference in client.References.ToList())
+                    await _unitOfWork.References.DeleteAsync(existingReference, cancellationToken);
 
                 foreach (var refDto in req.References)
                 {
@@ -75,15 +103,18 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
                     await _unitOfWork.References.AddAsync(reference);
                 }
 
-                var bankAccount = new BankAccount
+                var bankAccount = client.BankAccount ?? new BankAccount
                 {
                     Id = Guid.NewGuid(),
-                    ClientId = client.Id,
-                    Banco = req.BankAccount.Banco,
-                    TipoCuenta = req.BankAccount.TipoCuenta,
-                    NumeroCuenta = req.BankAccount.NumeroCuenta
+                    ClientId = client.Id
                 };
-                await _unitOfWork.BankAccounts.AddAsync(bankAccount);
+                bankAccount.Banco = req.BankAccount.Banco;
+                bankAccount.TipoCuenta = req.BankAccount.TipoCuenta;
+                bankAccount.NumeroCuenta = req.BankAccount.NumeroCuenta;
+                if (client.BankAccount is null)
+                    await _unitOfWork.BankAccounts.AddAsync(bankAccount);
+                else
+                    await _unitOfWork.BankAccounts.UpdateAsync(bankAccount, cancellationToken);
 
                 var calcResult = CalculateLoan(
                     req.MontoSolicitado,
@@ -96,7 +127,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
                 var loanApplication = new LoanApplication
                 {
                     Id = Guid.NewGuid(),
-                    TenantId = req.TenantId ?? Guid.Empty,
+                    TenantId = tenantId,
                     ClientId = client.Id,
                     MontoSolicitado = req.MontoSolicitado,
                     TasaInteresMensual = req.TasaInteresMensual,
@@ -146,6 +177,16 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                var pendingEmail = SolicitudEmailBuilder.Build(
+                    loanApplication,
+                    client,
+                    Domain.Enums.EstadoSolicitud.Pendiente,
+                    clientPortalUrl: _notificationService.ClientPortalUrl);
+                await _notificationService.SendEmailAsync(
+                    client.Email,
+                    pendingEmail.Subject,
+                    pendingEmail.Html);
 
                 return new LoanApplicationDto
                 {

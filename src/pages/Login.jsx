@@ -17,8 +17,12 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate('/admin');
+      const data = await login(email, password);
+      if (data.user?.role === 'Cobrador') {
+        navigate('/cobrador');
+      } else {
+        navigate('/admin');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Credenciales inválidas');
     } finally {

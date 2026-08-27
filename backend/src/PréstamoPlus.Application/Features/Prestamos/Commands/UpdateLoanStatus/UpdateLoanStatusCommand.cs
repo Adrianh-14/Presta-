@@ -1,4 +1,5 @@
 using MediatR;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Enums;
 using PréstamoPlus.Domain.Interfaces;
@@ -10,10 +11,12 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.UpdateLoanStatus
     public class UpdateLoanStatusCommandHandler : IRequestHandler<UpdateLoanStatusCommand, LoanDto?>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
 
-        public UpdateLoanStatusCommandHandler(IUnitOfWork unitOfWork)
+        public UpdateLoanStatusCommandHandler(IUnitOfWork unitOfWork, INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task<LoanDto?> Handle(UpdateLoanStatusCommand request, CancellationToken cancellationToken)
@@ -21,6 +24,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.UpdateLoanStatus
             var loan = await _unitOfWork.Loans.GetByIdAsync(request.Id);
             if (loan is null) return null;
 
+            var previousStatus = loan.Estado;
             loan.Estado = request.Estado;
             if (request.Estado == Domain.Enums.EstadoPrestamo.Cancelado || request.Estado == Domain.Enums.EstadoPrestamo.Pagado)
             {
@@ -30,6 +34,16 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.UpdateLoanStatus
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             var client = await _unitOfWork.Clients.GetByIdAsync(loan.ClientId);
+
+            if (request.Estado == EstadoPrestamo.Legal && previousStatus != EstadoPrestamo.Legal &&
+                client is not null && !string.IsNullOrWhiteSpace(client.Email))
+            {
+                var email = LoanEmailBuilder.Legal(
+                    loan,
+                    client,
+                    _notificationService.ClientPortalUrl);
+                await _notificationService.SendEmailAsync(client.Email, email.Subject, email.Html);
+            }
 
             return new LoanDto
             {

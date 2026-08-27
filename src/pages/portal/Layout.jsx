@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, DollarSign, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, DollarSign, LogOut, User, QrCode } from 'lucide-react';
 
 export default function PortalLayout() {
   const navigate = useNavigate();
@@ -9,19 +9,28 @@ export default function PortalLayout() {
   const navItems = [
     { to: '/portal', icon: LayoutDashboard, label: 'Mis Préstamos', end: true },
     { to: '/portal/pagos', icon: DollarSign, label: 'Historial', end: false },
+    { to: '/portal/pago-qr', icon: QrCode, label: 'Pagar con QR', end: false },
   ];
 
-  const logout = () => {
-    localStorage.removeItem('clientToken');
-    localStorage.removeItem('clientId');
-    localStorage.removeItem('clientName');
-    localStorage.removeItem('clientEmail');
-    navigate('/portal/login');
+  const logout = async () => {
+    try {
+      await import('../../services/portalService').then(({ portalService }) =>
+        portalService.revokeSession());
+    } catch {
+      // La limpieza local siempre debe ocurrir, aunque la sesión ya haya expirado.
+    } finally {
+      localStorage.removeItem('clientToken');
+      localStorage.removeItem('clientId');
+      localStorage.removeItem('clientName');
+      localStorage.removeItem('clientEmail');
+      localStorage.removeItem('clientSessionExpiresAt');
+      navigate('/portal/login');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-surface-canvas flex">
-      <aside className="w-60 bg-white border-r border-surface-border flex flex-col">
+    <div className="min-h-screen bg-surface-canvas flex flex-col md:flex-row">
+      <aside className="w-full md:w-60 shrink-0 bg-white border-b md:border-b-0 md:border-r border-surface-border flex flex-col">
         <div className="p-5 border-b border-surface-border">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-navy-500 to-navy-600 rounded-8 flex items-center justify-center">
@@ -44,7 +53,7 @@ export default function PortalLayout() {
             </div>
           </div>
         </div>
-        <nav className="flex-1 px-4 space-y-1">
+        <nav aria-label="Navegación del portal" className="flex-1 px-3 md:px-4 flex md:block gap-1 overflow-x-auto md:space-y-1">
           {navItems.map((item) => {
             const active = item.end
               ? location.pathname === item.to
@@ -53,13 +62,14 @@ export default function PortalLayout() {
               <button
                 key={item.to}
                 onClick={() => navigate(item.to)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-8 text-sm font-medium transition-all ${
+                aria-current={active ? 'page' : undefined}
+                className={`w-auto md:w-full shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-8 text-sm font-medium transition-all ${
                   active
                     ? 'bg-navy-50 text-navy-500 shadow-sm'
                     : 'text-slate-500 hover:bg-surface-hover hover:text-navy-500'
                 }`}
               >
-                <item.icon size={18} />
+                <item.icon aria-hidden="true" size={18} />
                 {item.label}
               </button>
             );
@@ -75,7 +85,7 @@ export default function PortalLayout() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 min-w-0 w-full p-4 sm:p-6 md:p-8 overflow-auto">
         <Outlet />
       </main>
     </div>

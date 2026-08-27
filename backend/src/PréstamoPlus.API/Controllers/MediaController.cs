@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PréstamoPlus.Application.Common;
 
 namespace PréstamoPlus.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = AuthorizationPolicies.ReadPii)]
     public class MediaController : ControllerBase
     {
         private readonly IWebHostEnvironment _env;
@@ -16,7 +19,12 @@ namespace PréstamoPlus.API.Controllers
         [HttpGet("{fileName}")]
         public IActionResult GetFile(string fileName)
         {
-            var filePath = Path.Combine(_env.ContentRootPath, "..", "..", "uploads", fileName);
+            var uploadsRoot = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "..", "uploads"));
+            var safeName = Path.GetFileName(fileName);
+            if (string.IsNullOrWhiteSpace(fileName) || !string.Equals(fileName, safeName, StringComparison.Ordinal))
+                return BadRequest(new { message = "Nombre de archivo inválido." });
+
+            var filePath = Path.Combine(uploadsRoot, safeName);
             if (!System.IO.File.Exists(filePath))
                 return NotFound();
 
@@ -28,11 +36,13 @@ namespace PréstamoPlus.API.Controllers
                 ".jpg" or ".jpeg" => "image/jpeg",
                 ".png" => "image/png",
                 ".pdf" => "application/pdf",
-                _ => "application/octet-stream"
+                _ => null
             };
 
-            var fileBytes = System.IO.File.ReadAllBytes(filePath);
-            return File(fileBytes, contentType);
+            if (contentType is null)
+                return BadRequest(new { message = "Tipo de archivo no permitido." });
+
+            return PhysicalFile(filePath, contentType);
         }
     }
 }

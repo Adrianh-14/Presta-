@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const navItems = [
@@ -8,6 +8,8 @@ const navItems = [
   { to: '/admin/prestamos', icon: CreditCard, label: 'Préstamos' },
   { to: '/admin/nuevo-prestamo', icon: PlusSquare, label: 'Nuevo Préstamo' },
   { to: '/admin/solicitudes', icon: FileText, label: 'Solicitudes' },
+  { to: '/admin/cobradores', icon: UsersRound, label: 'Cobradores' },
+  { to: '/admin/gastos', icon: Receipt, label: 'Gastos' },
 ];
 
 export default function Sidebar() {
@@ -20,7 +22,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-surface-border flex flex-col">
+    <aside className="w-full md:w-64 shrink-0 bg-white border-b md:border-b-0 md:border-r border-surface-border flex flex-col">
       <div className="p-6 border-b border-surface-border">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-navy-500 to-navy-600 rounded-8 flex items-center justify-center">
@@ -33,21 +35,21 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav aria-label="Navegación principal" className="flex-1 p-3 md:p-4 flex md:block gap-1 overflow-x-auto md:space-y-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-2.5 rounded-8 text-sm font-medium transition-all ${
+              `flex shrink-0 items-center gap-3 px-3 md:px-4 py-2.5 rounded-8 text-sm font-medium transition-all ${
                 isActive
                   ? 'bg-navy-50 text-navy-500 shadow-sm'
                   : 'text-slate-500 hover:bg-surface-hover hover:text-navy-500'
               }`
             }
           >
-            <item.icon size={18} />
+            <item.icon aria-hidden="true" size={18} />
             {item.label}
           </NavLink>
         ))}
@@ -55,7 +57,7 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-surface-border">
         <div className="flex items-center gap-3 mb-3 px-2">
-          <div className="w-8 h-8 bg-navy-50 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-navy-50 rounded-full flex items-center justify-center" aria-hidden="true">
             <span className="text-navy-500 font-semibold text-sm">
               {user?.nombre?.charAt(0) || 'U'}
             </span>
@@ -69,7 +71,7 @@ export default function Sidebar() {
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2 text-slate-500 hover:bg-red-50 hover:text-danger-500 rounded-8 transition-colors text-sm font-medium"
         >
-          <LogOut size={18} />
+          <LogOut aria-hidden="true" size={18} />
           Cerrar Sesión
         </button>
       </div>

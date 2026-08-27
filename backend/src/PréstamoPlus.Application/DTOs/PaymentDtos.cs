@@ -15,6 +15,7 @@ namespace PréstamoPlus.Application.DTOs
         public MetodoPago MetodoPago { get; init; }
         public string? ReferenciaExterna { get; init; }
         public string? Notas { get; init; }
+        public string? IdempotencyKey { get; init; }
     }
 
     public record CreatePaymentRequest
@@ -24,6 +25,7 @@ namespace PréstamoPlus.Application.DTOs
         public string MetodoPago { get; init; } = "transferencia";
         public string? ReferenciaExterna { get; init; }
         public string? Notas { get; init; }
+        public string? IdempotencyKey { get; init; }
     }
 
     public record CreateMoraPaymentRequest
@@ -34,6 +36,7 @@ namespace PréstamoPlus.Application.DTOs
         public string MetodoPago { get; init; } = "transferencia";
         public string? ReferenciaExterna { get; init; }
         public string? Notas { get; init; }
+        public string? IdempotencyKey { get; init; }
     }
 
     public record PaymentSummaryDto
@@ -42,6 +45,10 @@ namespace PréstamoPlus.Application.DTOs
         public decimal TotalCapital { get; init; }
         public decimal TotalIntereses { get; init; }
         public decimal TotalMora { get; init; }
+        public decimal MoraPendiente { get; init; }
+        public decimal CuotaBase { get; init; }
+        public decimal CuotaConMora { get; init; }
+        public int DiasMora { get; init; }
         public decimal SaldoPendiente { get; init; }
         public int TotalPagos { get; init; }
         public DateTime? ProximoPago { get; init; }

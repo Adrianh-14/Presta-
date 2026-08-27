@@ -25,6 +25,11 @@ namespace PréstamoPlus.Infrastructure.Repositories
         private GenericRepository<BankAccount>? _bankAccounts;
         private GenericRepository<VerificationMedia>? _verificationMedia;
         private GenericRepository<RefreshToken>? _refreshTokens;
+        private GenericRepository<Collector>? _collectors;
+        private GenericRepository<CollectionAssignment>? _collectionAssignments;
+        private GenericRepository<CollectionVisit>? _collectionVisits;
+        private GenericRepository<Expense>? _expenses;
+        private GenericRepository<PaymentQR>? _paymentQRs;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -69,6 +74,21 @@ namespace PréstamoPlus.Infrastructure.Repositories
 
         public IRepositoryBase<RefreshToken> RefreshTokens =>
             _refreshTokens ??= new GenericRepository<RefreshToken>(_context);
+
+        public IRepositoryBase<Collector> Collectors =>
+            _collectors ??= new GenericRepository<Collector>(_context);
+
+        public IRepositoryBase<CollectionAssignment> CollectionAssignments =>
+            _collectionAssignments ??= new GenericRepository<CollectionAssignment>(_context);
+
+        public IRepositoryBase<CollectionVisit> CollectionVisits =>
+            _collectionVisits ??= new GenericRepository<CollectionVisit>(_context);
+
+        public IRepositoryBase<Expense> Expenses =>
+            _expenses ??= new GenericRepository<Expense>(_context);
+
+        public IRepositoryBase<PaymentQR> PaymentQRs =>
+            _paymentQRs ??= new GenericRepository<PaymentQR>(_context);
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

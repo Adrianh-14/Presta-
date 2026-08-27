@@ -62,6 +62,100 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.ToTable("Addresses", (string)null);
                 });
 
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.AnomalyAlert", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DetectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("RecommendedAction")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("Reviewed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Reviewed", "DetectedAt");
+
+                    b.ToTable("AnomalyAlerts", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("MetadataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PreviousHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.BankAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -94,6 +188,90 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.ToTable("BankAccounts", (string)null);
                 });
 
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.BankMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CashAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
+                    b.Property<string>("ExternalReference")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<bool>("IsCredit")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsReconciled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashAccountId");
+
+                    b.HasIndex("TenantId", "ExternalReference")
+                        .IsUnique();
+
+                    b.ToTable("BankMovements", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.CashAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsBank")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("CashAccounts", (string)null);
+                });
+
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Client", b =>
                 {
                     b.Property<Guid>("Id")
@@ -104,6 +282,15 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("CommunicationsConsentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CreditEvaluationConsentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DataConsentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -147,6 +334,381 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Clients", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientAuthenticationEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("IdentifierHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("RemoteAddressHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("TenantId", "ClientId", "CreatedAt");
+
+                    b.ToTable("ClientAuthenticationEvents", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientOtpChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IdentifierHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestAddressHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TenantId", "ClientId", "CreatedAt");
+
+                    b.ToTable("ClientOtpChallenges", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CreatedAddressHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("RevokedAt");
+
+                    b.HasIndex("TenantId", "ClientId", "ExpiresAt");
+
+                    b.ToTable("ClientSessions", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.CollectionAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("AssignedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CollectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("IsQRAuthorized")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid>("LoanId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedBy");
+
+                    b.HasIndex("LoanId");
+
+                    b.HasIndex("CollectorId", "LoanId");
+
+                    b.ToTable("CollectionAssignments", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.CollectionVisit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CollectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<double?>("Latitud")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("LoanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("Longitud")
+                        .HasColumnType("double precision");
+
+                    b.Property<decimal>("MontoRecibido")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notas")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("TipoVisita")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId");
+
+                    b.HasIndex("CollectorId");
+
+                    b.HasIndex("LoanId");
+
+                    b.ToTable("CollectionVisits", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.Collector", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Cedula")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Telefono")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Zona")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TenantId", "Cedula")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("Collectors", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.DailyCashClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ClosedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CountedBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Difference")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ExpectedBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsReopened")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ReopenReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReopenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReopenedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BusinessDate")
+                        .IsUnique();
+
+                    b.ToTable("DailyCashClosures", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ReceiptUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordedBy");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Date");
+
+                    b.ToTable("Expenses", (string)null);
                 });
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Installment", b =>
@@ -245,6 +807,97 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.ToTable("Invoices", (string)null);
                 });
 
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.JobLock", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Owner")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("JobLocks", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.JournalEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("PostedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "PostedAt");
+
+                    b.ToTable("JournalEntries", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.JournalLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Credit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Debit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LedgerAccountId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("LedgerAccountId");
+
+                    b.ToTable("JournalLines", (string)null);
+                });
+
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.LateFee", b =>
                 {
                     b.Property<Guid>("Id")
@@ -274,6 +927,44 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.HasIndex("LoanId");
 
                     b.ToTable("LateFees", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.LedgerAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("LedgerAccounts", (string)null);
                 });
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Loan", b =>
@@ -360,6 +1051,12 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.Property<DateTime>("FechaSolicitud")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FirstApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("FirstApprovedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("FrecuenciaPago")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -373,6 +1070,12 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
                     b.Property<int>("Plazo")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SecondApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SecondApprovedBy")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("TasaInteresMensual")
                         .HasColumnType("decimal(5,2)");
@@ -449,6 +1152,47 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.ToTable("MessageLogs", (string)null);
                 });
 
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessedAt", "NextAttemptAt");
+
+                    b.ToTable("OutboxMessages", (string)null);
+                });
+
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -460,6 +1204,10 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
                     b.Property<DateTime>("FechaPago")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<decimal>("Interes")
                         .HasColumnType("decimal(18,2)");
@@ -491,9 +1239,73 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LoanId");
+                    b.HasIndex("LoanId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
 
                     b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.PaymentQR", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CollectorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("Latitud")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("LoanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("Longitud")
+                        .HasColumnType("double precision");
+
+                    b.Property<decimal>("Monto")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("CollectorId");
+
+                    b.HasIndex("LoanId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("PaymentQRs", (string)null);
                 });
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Reference", b =>
@@ -753,11 +1565,14 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("FotoCedulaPath")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("LoanApplicationId")
+                    b.Property<Guid?>("LoanApplicationId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("VideoPath")
@@ -766,10 +1581,51 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClientId")
+                        .IsUnique();
+
                     b.HasIndex("LoanApplicationId")
                         .IsUnique();
 
-                    b.ToTable("VerificationMedia", (string)null);
+                    b.ToTable("VerificationMedia", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_VerificationMedia_Owner", "(\"LoanApplicationId\" IS NOT NULL AND \"ClientId\" IS NULL) OR (\"LoanApplicationId\" IS NULL AND \"ClientId\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.WebhookEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Provider", "EventId")
+                        .IsUnique();
+
+                    b.ToTable("WebhookEvents", (string)null);
                 });
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.WorkInformation", b =>
@@ -840,6 +1696,127 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.Navigation("Client");
                 });
 
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.BankMovement", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.CashAccount", "CashAccount")
+                        .WithMany("Movements")
+                        .HasForeignKey("CashAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CashAccount");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientOtpChallenge", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.Client", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientSession", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.Client", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.CollectionAssignment", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.User", "AssignedByUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Collector", "Collector")
+                        .WithMany("Assignments")
+                        .HasForeignKey("CollectorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Loan", "Loan")
+                        .WithMany()
+                        .HasForeignKey("LoanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AssignedByUser");
+
+                    b.Navigation("Collector");
+
+                    b.Navigation("Loan");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.CollectionVisit", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.CollectionAssignment", "Assignment")
+                        .WithMany("Visits")
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Collector", "Collector")
+                        .WithMany("Visits")
+                        .HasForeignKey("CollectorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Loan", "Loan")
+                        .WithMany()
+                        .HasForeignKey("LoanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Assignment");
+
+                    b.Navigation("Collector");
+
+                    b.Navigation("Loan");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.Collector", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.Tenancy.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.Expense", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.User", "RecordedByUser")
+                        .WithMany()
+                        .HasForeignKey("RecordedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Tenancy.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("RecordedByUser");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Installment", b =>
                 {
                     b.HasOne("PréstamoPlus.Domain.Entities.Loan", "Loan")
@@ -860,6 +1837,25 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Loan");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.JournalLine", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany("Lines")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.LedgerAccount", "LedgerAccount")
+                        .WithMany("Lines")
+                        .HasForeignKey("LedgerAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("LedgerAccount");
                 });
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.LateFee", b =>
@@ -910,6 +1906,41 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .HasForeignKey("LoanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Loan");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.PaymentQR", b =>
+                {
+                    b.HasOne("PréstamoPlus.Domain.Entities.CollectionAssignment", "Assignment")
+                        .WithMany()
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Collector", "Collector")
+                        .WithMany()
+                        .HasForeignKey("CollectorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PréstamoPlus.Domain.Entities.Loan", "Loan")
+                        .WithMany()
+                        .HasForeignKey("LoanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Assignment");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Collector");
 
                     b.Navigation("Loan");
                 });
@@ -971,11 +2002,17 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.VerificationMedia", b =>
                 {
+                    b.HasOne("PréstamoPlus.Domain.Entities.Client", "Client")
+                        .WithOne("VerificationMedia")
+                        .HasForeignKey("PréstamoPlus.Domain.Entities.VerificationMedia", "ClientId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("PréstamoPlus.Domain.Entities.LoanApplication", "LoanApplication")
                         .WithOne("VerificationMedia")
                         .HasForeignKey("PréstamoPlus.Domain.Entities.VerificationMedia", "LoanApplicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Client");
 
                     b.Navigation("LoanApplication");
                 });
@@ -991,6 +2028,11 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.Navigation("Client");
                 });
 
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.CashAccount", b =>
+                {
+                    b.Navigation("Movements");
+                });
+
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Client", b =>
                 {
                     b.Navigation("Address");
@@ -1001,7 +2043,31 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
                     b.Navigation("References");
 
+                    b.Navigation("VerificationMedia");
+
                     b.Navigation("WorkInformation");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.CollectionAssignment", b =>
+                {
+                    b.Navigation("Visits");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.Collector", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("Visits");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.JournalEntry", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.LedgerAccount", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.Loan", b =>

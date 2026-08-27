@@ -71,15 +71,21 @@ namespace PréstamoPlus.Application.Features.Clients.Queries.GetClientById
                     Telefono = r.Telefono,
                     Email = r.Email
                 }).ToList() ?? new(),
-                VerificationMedia = client.LoanApplications
-                    ?.Where(la => la.VerificationMedia != null)
-                    .OrderByDescending(la => la.FechaSolicitud)
-                    .Select(la => new VerificationMediaDto
+                VerificationMedia = client.VerificationMedia is not null
+                    ? new VerificationMediaDto
                     {
-                        VideoPath = la.VerificationMedia!.VideoPath,
-                        FotoCedulaPath = la.VerificationMedia!.FotoCedulaPath
-                    })
-                    .FirstOrDefault()
+                        VideoPath = client.VerificationMedia.VideoPath,
+                        FotoCedulaPath = client.VerificationMedia.FotoCedulaPath
+                    }
+                    : client.LoanApplications
+                        ?.Where(la => la.VerificationMedia != null)
+                        .OrderByDescending(la => la.FechaSolicitud)
+                        .Select(la => new VerificationMediaDto
+                        {
+                            VideoPath = la.VerificationMedia!.VideoPath,
+                            FotoCedulaPath = la.VerificationMedia!.FotoCedulaPath
+                        })
+                        .FirstOrDefault()
             };
         }
     }

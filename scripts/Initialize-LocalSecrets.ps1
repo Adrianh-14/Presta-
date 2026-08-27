@@ -19,6 +19,8 @@ $postgresPassword = [Convert]::ToBase64String(
     [Security.Cryptography.RandomNumberGenerator]::GetBytes(36))
 $jwtSecret = [Convert]::ToBase64String(
     [Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+$otpPepper = [Convert]::ToBase64String(
+    [Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 
 $preservedLines = if (Test-Path -LiteralPath $envPath) {
     Get-Content -LiteralPath $envPath | Where-Object {
@@ -39,6 +41,7 @@ $newEnvironment | Set-Content -LiteralPath $envPath -Encoding utf8
 $connectionString = "Host=localhost;Port=5433;Database=$PostgresDatabase;Username=$PostgresUser;Password=$postgresPassword"
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" $connectionString --project $apiProject | Out-Null
 dotnet user-secrets set "JwtSettings:SecretKey" $jwtSecret --project $apiProject | Out-Null
+dotnet user-secrets set "ClientAuthentication:OtpPepper" $otpPepper --project $apiProject | Out-Null
 dotnet user-secrets set "DemoData:Enabled" "false" --project $apiProject | Out-Null
 
 $runningDatabase = docker compose --project-directory $repositoryRoot ps --status running --services 2>$null

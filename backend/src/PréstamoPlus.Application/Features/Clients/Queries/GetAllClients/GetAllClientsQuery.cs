@@ -6,7 +6,7 @@ using PréstamoPlus.Domain.Interfaces;
 
 namespace PréstamoPlus.Application.Features.Clients.Queries.GetAllClients
 {
-    public record GetAllClientsQuery(string? Search = null, string? Estado = null) : IRequest<IReadOnlyList<ClientDto>>;
+    public record GetAllClientsQuery(string? Search = null, string? Estado = null, Guid? TenantId = null) : IRequest<IReadOnlyList<ClientDto>>;
 
     public class GetAllClientsQueryHandler : IRequestHandler<GetAllClientsQuery, IReadOnlyList<ClientDto>>
     {
@@ -26,7 +26,7 @@ namespace PréstamoPlus.Application.Features.Clients.Queries.GetAllClients
                 _ => null
             };
 
-            var spec = new AllClientsSpec(request.Search, estado);
+            var spec = new AllClientsSpec(request.Search, estado, request.TenantId);
             var clients = await _repository.ListAsync(spec, cancellationToken);
 
             return clients.Select(c => new ClientDto

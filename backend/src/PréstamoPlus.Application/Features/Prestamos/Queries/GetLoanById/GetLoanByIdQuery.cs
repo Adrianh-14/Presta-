@@ -25,6 +25,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetLoanById
             return new LoanDto
             {
                 Id = loan.Id,
+                TenantId = loan.TenantId,
                 ClientId = loan.ClientId,
                 Cliente = loan.Client.Nombre,
                 Cedula = loan.Client.Cedula,

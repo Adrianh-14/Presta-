@@ -12,12 +12,12 @@ export const solicitudService = {
   },
 
   create: async (solicitudData) => {
-    const { data } = await api.post('/api/solicituds', solicitudData);
+    const { data } = await api.post('/api/solicituds', solicitudData, { timeout: 120000 });
     return data;
   },
 
-  updateEstado: async (id, estado, fechaInicio = null) => {
-    const { data } = await api.patch(`/api/solicituds/${id}/estado`, JSON.stringify({ estado, fechaInicio }), {
+  updateEstado: async (id, estado, options = {}) => {
+    const { data } = await api.patch(`/api/solicituds/${id}/estado`, { estado, ...options }, {
       headers: { 'Content-Type': 'application/json' },
     });
     return data;

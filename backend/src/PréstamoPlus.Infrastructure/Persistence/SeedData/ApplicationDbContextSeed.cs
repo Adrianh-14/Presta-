@@ -254,6 +254,107 @@ namespace PréstamoPlus.Infrastructure.Persistence.SeedData
                 CreateLoanApplication(tenantEnterprise.Id, clientsEnterprise[7].Id, 35000, 2.8m, 6, UnidadPlazo.Meses, FrecuenciaPago.Quincenal, 2.5m, TipoPrestamo.Personal, EstadoSolicitud.Pendiente)
             );
             await context.SaveChangesAsync();
+
+            // ── Collector User + Collector Entity (Enterprise) ──────
+            var collectorUser = new User
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantEnterprise.Id,
+                Email = "cobrador@prestamoplus.com",
+                PasswordHash = HashPassword(demoPassword),
+                Nombre = "Roberto Morales",
+                Role = "Cobrador",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(collectorUser);
+            await context.SaveChangesAsync();
+
+            var collector = new Collector
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantEnterprise.Id,
+                UserId = collectorUser.Id,
+                Cedula = "050-1234567-8",
+                Telefono = "809-555-4001",
+                Zona = "Santo Domingo Norte",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Collectors.Add(collector);
+            await context.SaveChangesAsync();
+
+            // ── Collection Assignments ──────────────────────────────
+            var enterpriseLoans = context.Loans
+                .Where(l => l.TenantId == tenantEnterprise.Id && l.Estado != EstadoPrestamo.Pagado)
+                .Take(3)
+                .ToList();
+
+            var assignments = new List<CollectionAssignment>();
+            foreach (var loan in enterpriseLoans)
+            {
+                var assignment = new CollectionAssignment
+                {
+                    Id = Guid.NewGuid(),
+                    CollectorId = collector.Id,
+                    LoanId = loan.Id,
+                    AssignedAt = DateTime.UtcNow.AddDays(-5),
+                    AssignedBy = userEnterprise.Id,
+                    Estado = EstadoAsignacion.EnProgreso,
+                    IsQRAuthorized = loan == enterpriseLoans.First()
+                };
+                assignments.Add(assignment);
+            }
+            context.CollectionAssignments.AddRange(assignments);
+            await context.SaveChangesAsync();
+
+            // ── Collection Visit ────────────────────────────────────
+            if (assignments.Any())
+            {
+                var visit = new CollectionVisit
+                {
+                    Id = Guid.NewGuid(),
+                    AssignmentId = assignments[0].Id,
+                    CollectorId = collector.Id,
+                    LoanId = assignments[0].LoanId,
+                    TipoVisita = TipoVisita.CobroExitoso,
+                    MontoRecibido = 5000m,
+                    Notas = "Pago cuota completa en efectivo",
+                    Latitud = 18.4861,
+                    Longitud = -69.9312,
+                    CreatedAt = DateTime.UtcNow.AddDays(-3)
+                };
+                context.CollectionVisits.Add(visit);
+
+                var visit2 = new CollectionVisit
+                {
+                    Id = Guid.NewGuid(),
+                    AssignmentId = assignments[1].Id,
+                    CollectorId = collector.Id,
+                    LoanId = assignments[1].LoanId,
+                    TipoVisita = TipoVisita.NoEncontrado,
+                    MontoRecibido = 0m,
+                    Notas = "Cliente no se encontró en domicilio",
+                    Latitud = 18.5000,
+                    Longitud = -69.9500,
+                    CreatedAt = DateTime.UtcNow.AddDays(-2)
+                };
+                context.CollectionVisits.Add(visit2);
+                await context.SaveChangesAsync();
+            }
+
+            // ── Expenses ────────────────────────────────────────────
+            var expenses = new List<Expense>
+            {
+                new Expense { Id = Guid.NewGuid(), TenantId = tenantEnterprise.Id, Category = ExpenseCategory.SalarioCobrador, Description = "Pago mensual cobrador Roberto", Amount = 25000m, Date = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), RecordedBy = userEnterprise.Id, CreatedAt = DateTime.UtcNow },
+                new Expense { Id = Guid.NewGuid(), TenantId = tenantEnterprise.Id, Category = ExpenseCategory.ServiciosBasicos, Description = "Electricidad oficina", Amount = 4500m, Date = new DateTime(now.Year, now.Month, 5, 0, 0, 0, DateTimeKind.Utc), RecordedBy = userEnterprise.Id, CreatedAt = DateTime.UtcNow },
+                new Expense { Id = Guid.NewGuid(), TenantId = tenantEnterprise.Id, Category = ExpenseCategory.ServiciosBasicos, Description = "Internet y teléfono", Amount = 2800m, Date = new DateTime(now.Year, now.Month, 5, 0, 0, 0, DateTimeKind.Utc), RecordedBy = userEnterprise.Id, CreatedAt = DateTime.UtcNow },
+                new Expense { Id = Guid.NewGuid(), TenantId = tenantEnterprise.Id, Category = ExpenseCategory.Oficina, Description = "Alquiler oficina mensual", Amount = 18000m, Date = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), RecordedBy = userEnterprise.Id, CreatedAt = DateTime.UtcNow },
+                new Expense { Id = Guid.NewGuid(), TenantId = tenantEnterprise.Id, Category = ExpenseCategory.Marketing, Description = "Facebook Ads campaña préstamos", Amount = 5000m, Date = new DateTime(now.Year, now.Month, 10, 0, 0, 0, DateTimeKind.Utc), RecordedBy = userEnterprise.Id, CreatedAt = DateTime.UtcNow },
+                new Expense { Id = Guid.NewGuid(), TenantId = tenantEnterprise.Id, Category = ExpenseCategory.Transporte, Description = "Gasolina vehicle cobrador", Amount = 3500m, Date = new DateTime(now.Year, now.Month, 8, 0, 0, 0, DateTimeKind.Utc), RecordedBy = userEnterprise.Id, CreatedAt = DateTime.UtcNow },
+            };
+            context.Expenses.AddRange(expenses);
+            await context.SaveChangesAsync();
         }
 
         private static Client CreateClient(Guid tenantId, string nombre, string cedula, string email, string telefono, DateTime fechaNac, EstadoCivil ec)

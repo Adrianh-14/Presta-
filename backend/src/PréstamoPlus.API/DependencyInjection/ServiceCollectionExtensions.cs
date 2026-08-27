@@ -25,9 +25,14 @@ namespace PréstamoPlus.API.DependencyInjection
             {
                 options.AddDefaultPolicy(policy =>
                 {
-                    policy.AllowAnyOrigin()
+                    policy.WithOrigins(
+                              "https://adrianhendrixdev.lat",
+                              "https://www.adrianhendrixdev.lat",
+                              "http://localhost:5173",
+                              "http://localhost:5174")
                           .AllowAnyMethod()
-                          .AllowAnyHeader();
+                          .AllowAnyHeader()
+                          .AllowCredentials();
                 });
             });
 

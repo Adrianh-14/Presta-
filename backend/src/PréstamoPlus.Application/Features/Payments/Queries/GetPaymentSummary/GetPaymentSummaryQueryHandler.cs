@@ -30,6 +30,8 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
             decimal totalCapital = payments.Sum(p => p.Capital);
             decimal totalIntereses = payments.Sum(p => p.Interes);
             decimal totalMora = payments.Sum(p => p.MoraPagada);
+            decimal moraPendiente = unpaidLateFees.Sum(lf => lf.Monto);
+            int diasMora = unpaidLateFees.Count == 0 ? 0 : unpaidLateFees.Max(lf => lf.DiasAtraso);
 
             DateTime? proximoPago = null;
             if (loan.Estado != EstadoPrestamo.Pagado)
@@ -50,6 +52,10 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
                 TotalCapital = totalCapital,
                 TotalIntereses = totalIntereses,
                 TotalMora = totalMora,
+                MoraPendiente = moraPendiente,
+                CuotaBase = loan.CuotaMensual,
+                CuotaConMora = loan.CuotaMensual + moraPendiente,
+                DiasMora = diasMora,
                 SaldoPendiente = loan.SaldoPendiente,
                 TotalPagos = payments.Count,
                 ProximoPago = proximoPago

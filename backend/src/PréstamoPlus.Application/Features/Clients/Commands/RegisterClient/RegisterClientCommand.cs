@@ -1,4 +1,5 @@
 using MediatR;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
 using PréstamoPlus.Domain.Enums;
@@ -15,6 +16,7 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
         public List<ReferenceDto> References { get; init; } = new();
         public BankAccountDto BankAccount { get; init; } = null!;
         public VerificationMediaDto? VerificationMedia { get; init; }
+        public bool ConsentAccepted { get; init; }
     }
 
     public record RegisterClientCommand(RegisterClientRequest Request) : IRequest<ClientDto>;
@@ -22,15 +24,24 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
     public class RegisterClientCommandHandler : IRequestHandler<RegisterClientCommand, ClientDto>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
 
-        public RegisterClientCommandHandler(IUnitOfWork unitOfWork)
+        public RegisterClientCommandHandler(
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task<ClientDto> Handle(RegisterClientCommand command, CancellationToken cancellationToken)
         {
             var req = command.Request;
+            if (!req.ConsentAccepted)
+                throw new InvalidOperationException("Se requiere aceptar el consentimiento de datos para registrarse.");
+            if (!req.TenantId.HasValue || req.TenantId.Value == Guid.Empty)
+                throw new InvalidOperationException("El registro requiere un tenant válido.");
+
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             try
@@ -38,7 +49,10 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
                 var client = new Client
                 {
                     Id = Guid.NewGuid(),
-                    TenantId = req.TenantId ?? Guid.Empty,
+                    TenantId = req.TenantId.Value,
+                    DataConsentAt = DateTime.UtcNow,
+                    CreditEvaluationConsentAt = DateTime.UtcNow,
+                    CommunicationsConsentAt = DateTime.UtcNow,
                     Nombre = req.Client.Nombre,
                     Cedula = req.Client.Cedula,
                     Email = req.Client.Email,
@@ -117,7 +131,7 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
                     await _unitOfWork.VerificationMedia.AddAsync(new VerificationMedia
                     {
                         Id = Guid.NewGuid(),
-                        LoanApplicationId = client.Id,
+                        ClientId = client.Id,
                         VideoPath = videoPath,
                         FotoCedulaPath = fotoPath
                     });
@@ -125,6 +139,9 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                var email = ClientEmailBuilder.Registered(client, _notificationService.ClientPortalUrl);
+                await _notificationService.SendEmailAsync(client.Email, email.Subject, email.Html);
 
                 return new ClientDto
                 {

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, CreditCard, TrendingUp } from 'lucide-react';
-import { prestamoService } from '../../services/prestamoService';
-import { amortizationService } from '../../services/amortizationService';
-import { paymentService } from '../../services/paymentService';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { portalService } from '../../services/portalService';
 import StatusBadge from '../../components/StatusBadge';
 
 const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
@@ -22,10 +20,10 @@ export default function PortalLoanDetail() {
     const load = async () => {
       try {
         const [l, a, p, s] = await Promise.all([
-          prestamoService.getById(id),
-          amortizationService.getByLoanId(id),
-          paymentService.getByLoanId(id),
-          paymentService.getSummary(id),
+          portalService.getLoan(id),
+          portalService.getAmortization(id),
+          portalService.getPayments(id),
+          portalService.getPaymentSummary(id),
         ]);
         setLoan(l);
         setAmortization(a);
@@ -43,13 +41,14 @@ export default function PortalLoanDetail() {
   const monto = Number(loan.monto || 0);
   const plazo = Number(loan.plazo || 0);
   const saldo = summary?.saldoPendiente ?? Number(loan.saldoPendiente || 0);
-  const cuota = Number(loan.cuotaMensual || 0);
+  const cuotaBase = Number(summary?.cuotaBase ?? loan.cuotaMensual ?? 0);
+  const moraPendiente = Number(summary?.moraPendiente || 0);
+  const cuota = Number(summary?.cuotaConMora ?? (cuotaBase + moraPendiente));
+  const diasMora = Number(summary?.diasMora || 0);
   const freq = loan.frecuenciaPago;
   const freqLabel = freqLabels[freq] || String(freq);
   const pp = freqPeriodsPerMonth[freq] || 1;
   const totalPagado = summary?.totalPagado ?? 0;
-  const capitalPagado = summary?.totalCapital ?? 0;
-  const interesPagado = summary?.totalIntereses ?? 0;
   const today = new Date().toISOString().split('T')[0];
 
   return (
@@ -58,41 +57,40 @@ export default function PortalLoanDetail() {
         <ArrowLeft size={16} /> Volver a mis préstamos
       </button>
 
-      <div className="gradient-hero rounded-16 p-8 text-white mb-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="gradient-hero rounded-16 p-5 sm:p-8 text-white mb-6 sm:mb-8">
+        <div className="flex flex-wrap items-start gap-3 justify-between mb-6">
           <div>
             <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Préstamo {freqLabel}</p>
-            <p className="text-4xl font-bold">${monto.toLocaleString()}</p>
+            <p className="text-3xl sm:text-4xl font-bold">${monto.toLocaleString()}</p>
           </div>
           <StatusBadge status={loan.estado} />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div><p className="text-navy-200 text-xs font-medium mb-1">Cuota {freqLabel}</p><p className="text-xl font-bold">${cuota.toLocaleString()}</p><p className="text-navy-300 text-xs mt-0.5">${(cuota * pp).toLocaleString()}/mes</p></div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+          <div><p className="text-navy-200 text-xs font-medium mb-1">{moraPendiente > 0 ? 'Cuota con mora' : `Cuota ${freqLabel}`}</p><p className="text-xl font-bold">${cuota.toLocaleString()}</p><p className="text-navy-300 text-xs mt-0.5">{moraPendiente > 0 ? `Base $${cuotaBase.toLocaleString()} + mora` : `$${(cuotaBase * pp).toLocaleString()}/mes`}</p></div>
           <div><p className="text-navy-200 text-xs font-medium mb-1">Saldo pendiente</p><p className="text-xl font-bold">${saldo.toLocaleString()}</p></div>
           <div><p className="text-navy-200 text-xs font-medium mb-1">Total pagado</p><p className="text-xl font-bold">${totalPagado.toLocaleString()}</p></div>
           <div><p className="text-navy-200 text-xs font-medium mb-1">Plazo</p><p className="text-xl font-bold">{plazo} meses</p></div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-5 mb-8">
-        <div className="bg-white rounded-12 p-5 border border-surface-border shadow-card">
-          <CreditCard size={16} className="text-accent-500 mb-2" />
-          <p className="text-xs text-slate-400 mb-1">Capital pagado</p>
-          <p className="text-xl font-bold text-navy-500">${capitalPagado.toLocaleString()}</p>
+      {moraPendiente > 0 && (
+        <div className="mb-8 border border-red-200 bg-danger-50 p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 shrink-0 text-danger-600" size={20} />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div><p className="font-semibold text-red-700">Mora pendiente</p><p className="text-sm text-danger-600">Se genera diariamente. {diasMora} {diasMora === 1 ? 'dia' : 'dias'} de atraso.</p></div>
+                <p className="text-xl font-bold text-red-700">${moraPendiente.toLocaleString()}</p>
+              </div>
+              <p className="mt-3 border-t border-red-200 pt-3 text-sm text-red-700">
+                Para poner esta cuota al dia debe pagar <strong>${cuota.toLocaleString()}</strong>: ${cuotaBase.toLocaleString()} de cuota + ${moraPendiente.toLocaleString()} de mora.
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-12 p-5 border border-surface-border shadow-card">
-          <TrendingUp size={16} className="text-warning-500 mb-2" />
-          <p className="text-xs text-slate-400 mb-1">Intereses pagados</p>
-          <p className="text-xl font-bold text-navy-500">${interesPagado.toLocaleString()}</p>
-        </div>
-        <div className="bg-white rounded-12 p-5 border border-surface-border shadow-card">
-          <Calendar size={16} className="text-success-500 mb-2" />
-          <p className="text-xs text-slate-400 mb-1">Vencimiento</p>
-          <p className="text-xl font-bold text-navy-500">{loan.fechaVencimiento ? new Date(loan.fechaVencimiento).toLocaleDateString() : '-'}</p>
-        </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8">
         <div className="bg-white rounded-12 border border-surface-border shadow-card p-6">
           <h3 className="text-base font-bold text-navy-500 mb-4">Tabla de Amortización</h3>
           <div className="overflow-x-auto max-h-[420px] scrollbar-thin">

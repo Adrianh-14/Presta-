@@ -18,6 +18,11 @@ namespace PréstamoPlus.Domain.Interfaces
         IRepositoryBase<BankAccount> BankAccounts { get; }
         IRepositoryBase<VerificationMedia> VerificationMedia { get; }
         IRepositoryBase<RefreshToken> RefreshTokens { get; }
+        IRepositoryBase<Collector> Collectors { get; }
+        IRepositoryBase<CollectionAssignment> CollectionAssignments { get; }
+        IRepositoryBase<CollectionVisit> CollectionVisits { get; }
+        IRepositoryBase<Expense> Expenses { get; }
+        IRepositoryBase<PaymentQR> PaymentQRs { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
         Task BeginTransactionAsync(CancellationToken cancellationToken = default);
         Task CommitTransactionAsync(CancellationToken cancellationToken = default);

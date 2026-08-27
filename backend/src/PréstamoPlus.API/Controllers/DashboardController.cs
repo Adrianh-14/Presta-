@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PréstamoPlus.Application.DTOs;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.Features.Dashboard.Queries.GetDashboardStats;
 using PréstamoPlus.Application.Features.Dashboard.Queries.GetLoansByMonth;
 using PréstamoPlus.Application.Features.Dashboard.Queries.GetLoansByType;
@@ -11,7 +12,7 @@ namespace PréstamoPlus.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize(Policy = AuthorizationPolicies.StaffRead)]
     public class DashboardController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -25,7 +26,8 @@ namespace PréstamoPlus.API.Controllers
         [ProducesResponseType(typeof(DashboardStatsDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStats()
         {
-            var result = await _mediator.Send(new GetDashboardStatsQuery());
+            if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId)) return Forbid();
+            var result = await _mediator.Send(new GetDashboardStatsQuery(tenantId));
             return Ok(result);
         }
 
@@ -33,7 +35,8 @@ namespace PréstamoPlus.API.Controllers
         [ProducesResponseType(typeof(IReadOnlyList<LoansByMonthDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetLoansByMonth()
         {
-            var result = await _mediator.Send(new GetLoansByMonthQuery());
+            if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId)) return Forbid();
+            var result = await _mediator.Send(new GetLoansByMonthQuery(tenantId));
             return Ok(result);
         }
 
@@ -41,7 +44,8 @@ namespace PréstamoPlus.API.Controllers
         [ProducesResponseType(typeof(IReadOnlyList<LoansByTypeDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetLoansByType()
         {
-            var result = await _mediator.Send(new GetLoansByTypeQuery());
+            if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId)) return Forbid();
+            var result = await _mediator.Send(new GetLoansByTypeQuery(tenantId));
             return Ok(result);
         }
 
@@ -49,7 +53,8 @@ namespace PréstamoPlus.API.Controllers
         [ProducesResponseType(typeof(CollectionsDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCollections()
         {
-            var result = await _mediator.Send(new GetCollectionsQuery());
+            if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId)) return Forbid();
+            var result = await _mediator.Send(new GetCollectionsQuery(tenantId));
             return Ok(result);
         }
     }

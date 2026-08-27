@@ -28,6 +28,35 @@ internal static class SecurityConfigurationValidator
             minimumBytes: 32,
             errors);
 
+        if (configuration.GetValue("ClientAuthentication:Enabled", true))
+        {
+            var otpPepper = configuration["ClientAuthentication:OtpPepper"];
+            if (!environment.IsDevelopment() || !string.IsNullOrWhiteSpace(otpPepper))
+            {
+                ValidateSecret(
+                    otpPepper,
+                    "ClientAuthentication:OtpPepper",
+                    minimumBytes: 32,
+                    errors);
+            }
+            ValidateSecret(
+                configuration["Resend:ApiKey"],
+                "Resend:ApiKey",
+                minimumBytes: 20,
+                errors);
+
+            if (!environment.IsDevelopment() &&
+                string.IsNullOrWhiteSpace(configuration["Resend:FromEmail"]))
+            {
+                errors.Add("Resend:FromEmail debe usar un remitente verificado fuera de Development.");
+            }
+
+            ValidatePositiveSetting(configuration, "ClientAuthentication:OtpLifetimeMinutes", 1, 30, errors);
+            ValidatePositiveSetting(configuration, "ClientAuthentication:MaximumVerificationAttempts", 1, 10, errors);
+            ValidatePositiveSetting(configuration, "ClientAuthentication:RequestLimitPerWindow", 1, 20, errors);
+            ValidatePositiveSetting(configuration, "ClientAuthentication:SessionLifetimeMinutes", 5, 1440, errors);
+        }
+
         var demoDataEnabled = configuration.GetValue<bool>("DemoData:Enabled");
         if (demoDataEnabled)
         {
@@ -121,5 +150,19 @@ internal static class SecurityConfigurationValidator
     {
         var normalized = value.Trim().ToLowerInvariant();
         return InsecureSecretMarkers.Any(normalized.Contains);
+    }
+
+    private static void ValidatePositiveSetting(
+        IConfiguration configuration,
+        string key,
+        int minimum,
+        int maximum,
+        ICollection<string> errors)
+    {
+        var value = configuration.GetValue<int?>(key);
+        if (value.HasValue && (value < minimum || value > maximum))
+        {
+            errors.Add($"{key} debe estar entre {minimum} y {maximum}.");
+        }
     }
 }

@@ -1,0 +1,287 @@
+Title,Description,Priority,Status,Assignee,Created,Completed,Labels,Estimate
+"[P0] Congelar salida con datos reales y rotar secretos","## Objetivo
+Evitar exposición mientras se corrigen los controles críticos.
+
+## Alcance
+- Desactivar credenciales demo y seeds fuera de desarrollo.
+- Rotar JWT, contraseña de PostgreSQL y cualquier credencial versionada.
+- Mover secretos a variables protegidas o un secret manager.
+- Retirar documentos reales del repositorio y revisar su historial.
+
+## Criterios de aceptación
+- Producción falla al iniciar si usa secretos de ejemplo.
+- Ningún secreto o documento de identidad aparece en Git.
+- Existe checklist firmado para habilitar datos reales.
+
+## Dependencias
+Bloquea todo lanzamiento productivo.",Urgent,Backlog,,2026-08-23,,"security,release,p0",3
+"[P0] Reemplazar acceso por cédula con autenticación segura del cliente","## Objetivo
+Impedir la suplantación de clientes en el portal.
+
+## Alcance
+- Eliminar emisión de JWT usando solo la cédula.
+- Implementar OTP de un solo uso o passkey con expiración, reintentos y bloqueo.
+- Evitar enumeración de cédulas mediante respuestas uniformes.
+- Registrar altas, intentos fallidos, recuperación y revocación de sesiones.
+
+## Criterios de aceptación
+- Conocer una cédula no permite acceder al portal.
+- OTP/passkey está asociado al cliente y tenant correctos.
+- Hay rate limit y pruebas de abuso.
+
+## Dependencias
+Bloqueado por: rotación de secretos. Bloquea: portal financiero seguro.",Urgent,Backlog,,2026-08-23,,"security,authentication,portal,p0",8
+"[P0] Implementar RBAC y autorización por políticas","## Objetivo
+Separar claramente quién puede consultar, aprobar o mover dinero.
+
+## Alcance
+- Definir roles: Admin, Analista, Aprobador, Cajero, Cobrador, Auditor y Cliente.
+- Crear políticas para pagos, desembolsos, aprobación, reversos, configuración y lectura de PII.
+- Prohibir que el registro público acepte roles privilegiados.
+- Aplicar step-up authentication en acciones sensibles.
+
+## Criterios de aceptación
+- Cada endpoint tiene política explícita.
+- Cliente y Viewer no pueden mutar datos financieros.
+- Matriz rol/acción cubierta por pruebas de integración.",Urgent,Backlog,,2026-08-23,,"security,authorization,backend,p0",8
+"[P0] Garantizar aislamiento multi-tenant en aplicación y PostgreSQL","## Objetivo
+Evitar lectura o modificación cruzada entre instituciones.
+
+## Alcance
+- Derivar TenantId exclusivamente del principal autenticado.
+- Aplicar filtros globales de EF Core a todas las entidades de negocio.
+- Añadir PostgreSQL Row-Level Security y claves/índices compuestos cuando aplique.
+- Validar tenant en relaciones, comandos, queries y archivos.
+
+## Criterios de aceptación
+- IDs válidos de otro tenant devuelven 404/forbidden sin revelar existencia.
+- Pruebas automatizadas intentan cruzar todos los recursos críticos.
+- Jobs y reportes conservan aislamiento.
+
+## Dependencias
+Bloquea pagos, dashboard, archivos y portal productivos.",Urgent,Backlog,,2026-08-23,,"security,multi-tenant,database,p0",13
+"[P0] Privatizar documentos KYC y endurecer carga/descarga de archivos","## Objetivo
+Proteger fotos de cédula, videos y contratos.
+
+## Alcance
+- Reemplazar rutas locales públicas por almacenamiento privado cifrado.
+- Autorizar cada descarga por tenant, rol y propietario.
+- Usar identificadores opacos y URLs firmadas de corta duración.
+- Validar tipo real, tamaño y extensión; escanear malware.
+- Definir retención y eliminación verificable.
+
+## Criterios de aceptación
+- No existe descarga por nombre de archivo suministrado por el usuario.
+- Un tenant no puede descubrir documentos de otro.
+- Archivos maliciosos o fuera de política se rechazan.
+
+## Dependencias
+Bloqueado por: aislamiento multi-tenant y RBAC.",Urgent,Backlog,,2026-08-23,,"security,privacy,files,kyc,p0",8
+"[P0] Endurecer superficie HTTP de la API","## Objetivo
+Reducir abuso y filtración de información interna.
+
+## Alcance
+- CORS por allowlist y ambiente.
+- ProblemDetails sin stack traces, mensajes SQL ni detalles internos.
+- Rate limiting por IP, usuario y operación.
+- Límite de payload por endpoint, security headers y HTTPS estricto.
+- Validación uniforme de todos los DTOs.
+
+## Criterios de aceptación
+- Producción nunca devuelve excepciones internas.
+- Login, OTP, solicitudes y pagos tienen límites diferenciados.
+- Pruebas verifican orígenes, tamaños y entradas inválidas.",Urgent,Backlog,,2026-08-23,,"security,api,backend,p0",5
+"[P0] Corregir cálculo de mora, zona horaria y ejecución única","## Objetivo
+Evitar cargos financieros incorrectos o duplicados.
+
+## Alcance
+- Definir tasas como porcentaje o fracción sin ambigüedad.
+- Corregir el posible 0.05 = 5% diario y migrar datos afectados.
+- Versionar reglas de mora por contrato.
+- Ejecutar cálculos según America/Santo_Domingo.
+- Añadir restricción única e idempotencia por préstamo, cuota y fecha.
+
+## Criterios de aceptación
+- Casos de 0.05%, días de gracia y redondeo tienen pruebas doradas.
+- Dos workers simultáneos no duplican mora.
+- Existe reporte para detectar/revertir cargos históricos incorrectos.",Urgent,Backlog,,2026-08-23,,"finance,correctness,background-jobs,p0",8
+"[P1] Crear libro mayor inmutable de doble entrada","## Objetivo
+Convertir cada movimiento de dinero en evidencia contable trazable.
+
+## Alcance
+- Modelar cuentas, asientos y líneas débito/crédito.
+- Registrar desembolso, pago, capital, interés, mora, comisión, reverso y castigo.
+- Prohibir edición o borrado de asientos posteados.
+- Derivar saldos del ledger con snapshots verificables.
+
+## Criterios de aceptación
+- Todo asiento está balanceado.
+- Cada saldo se reconstruye desde eventos contables.
+- Correcciones se realizan con contra-asientos.
+- Auditor puede seguir un peso de origen a destino.
+
+## Dependencias
+Bloqueado por: aislamiento multi-tenant. Bloquea conciliación y Guardia de Capital.",High,Backlog,,2026-08-23,,"finance,ledger,database,p1",13
+"[P1] Hacer pagos idempotentes y seguros ante concurrencia","## Objetivo
+Evitar pagos duplicados, saldos negativos y asignaciones inconsistentes.
+
+## Alcance
+- Exigir Idempotency-Key y referencia externa única por tenant/proveedor.
+- Añadir control optimista o bloqueo transaccional.
+- Rechazar montos no positivos y definir sobrepagos explícitamente.
+- Validar monto = capital + interés + mora + crédito no aplicado.
+- Diseñar reversos en vez de editar pagos.
+
+## Criterios de aceptación
+- Repetir la misma petición devuelve el mismo resultado.
+- Pruebas paralelas no duplican ni pierden dinero.
+- Ningún pago queda parcialmente aplicado sin cuenta compensatoria.
+
+## Dependencias
+Bloqueado por: libro mayor y RBAC.",High,Backlog,,2026-08-23,,"finance,payments,concurrency,p1",8
+"[P1] Implementar doble aprobación y límites operativos","## Objetivo
+Reducir fraude interno y errores humanos.
+
+## Alcance
+- Flujo maker-checker para desembolsos, reversos, castigos, condonaciones y cambios de tasa.
+- Límites por usuario, rol, monto, día y canal.
+- Motivo y evidencia obligatorios para excepciones.
+- Step-up authentication para aprobación final.
+
+## Criterios de aceptación
+- El creador no puede aprobar su propia operación.
+- Operaciones fuera de límite quedan pendientes y alertadas.
+- Toda decisión conserva actor, fecha, motivo y contexto.",High,Backlog,,2026-08-23,,"finance,fraud,workflow,p1",8
+"[P1] Modelar caja, bancos, desembolsos y conciliación diaria","## Objetivo
+Sustituir el saldo Disponible fijo por dinero comprobable.
+
+## Alcance
+- Crear cuentas de caja/banco por tenant y moneda.
+- Registrar fuente y evidencia de cada desembolso.
+- Importar movimientos bancarios y conciliarlos con pagos.
+- Implementar cierre diario con diferencias, responsable y firma.
+
+## Criterios de aceptación
+- Disponible proviene del ledger y cuentas reales.
+- Movimientos no conciliados aparecen en una cola de excepciones.
+- El cierre no puede modificarse sin reapertura auditada.
+
+## Dependencias
+Bloqueado por: libro mayor.",High,Backlog,,2026-08-23,,"finance,reconciliation,cash-management,p1",13
+"[P1] Implementar bitácora de auditoría inmutable","## Objetivo
+Responder quién hizo qué, cuándo, desde dónde y sobre qué valor.
+
+## Alcance
+- Registrar login, lectura de PII, aprobación, pago, reverso y cambios de configuración.
+- Guardar valores antes/después con redacción de secretos.
+- Firmar o encadenar registros para detectar alteraciones.
+- Crear búsqueda y exportación para auditoría.
+
+## Criterios de aceptación
+- Eventos críticos no pueden borrarse desde la aplicación.
+- Cada operación financiera enlaza actor, request y asiento.
+- Accesos a documentos KYC quedan registrados.",High,Backlog,,2026-08-23,,"security,audit,compliance,p1",8
+"[P1] Crear suite de pruebas financieras y de aislamiento","## Objetivo
+Evitar regresiones que cambien saldos o expongan datos.
+
+## Alcance
+- Unit tests de amortización, mora, redondeo y pagos parciales.
+- Integration tests con PostgreSQL para tenants, RBAC y concurrencia.
+- Property tests de invariantes contables.
+- Escenarios de reverso, sobrepago, reintento y múltiples workers.
+
+## Criterios de aceptación
+- CI bloquea merges con pruebas fallidas.
+- Cobertura prioriza rutas de dinero y autorización.
+- Se validan explícitamente invariantes y no solo respuestas HTTP.",High,Backlog,,2026-08-23,,"testing,finance,security,p1",13
+"[P1] Añadir backups, recuperación, observabilidad y jobs resilientes","## Objetivo
+Mantener operación y recuperar datos sin improvisación.
+
+## Alcance
+- Backups cifrados y point-in-time recovery.
+- Ensayos periódicos de restauración con RPO/RTO definidos.
+- Health/readiness checks, métricas, trazas y alertas.
+- Outbox para notificaciones y cola durable con reintentos.
+- Lock distribuido o scheduler que garantice ejecución única.
+
+## Criterios de aceptación
+- Restauración demostrada y documentada.
+- Alertas cubren caída de DB, mora fallida, pagos inconsistentes y cola detenida.
+- Reiniciar la API no pierde trabajos ni duplica cargos.",High,Backlog,,2026-08-23,,"reliability,observability,backup,p1",13
+"[P1] Definir privacidad, consentimiento, retención y expediente contractual","## Objetivo
+Tratar datos y contratos con reglas verificables.
+
+## Alcance
+- Inventario y clasificación de PII.
+- Consentimientos versionados y finalidad de tratamiento.
+- Política de retención/eliminación y acceso del titular.
+- Contratos versionados, hash, sello de tiempo y firma digital aplicable.
+- Revisión de KYC/AML y obligaciones dominicanas con asesor legal.
+
+## Criterios de aceptación
+- Cada dato sensible tiene finalidad, acceso y retención definidos.
+- Se preserva la versión exacta aceptada por el cliente.
+- Existen flujos de exportación, corrección y eliminación cuando proceda.",High,Backlog,,2026-08-23,,"privacy,compliance,contracts,p1",8
+"[P2] Modernizar sesiones, accesibilidad y experiencia móvil","## Objetivo
+Ofrecer una experiencia segura y usable en móvil y escritorio.
+
+## Alcance
+- Migrar refresh tokens a cookies HttpOnly/Secure con rotación y detección de reutilización.
+- Rediseñar sidebars fijos para navegación móvil.
+- Añadir focus visible, diálogos accesibles, labels ARIA y navegación por teclado.
+- Crear skeletons, estados vacíos y errores accionables.
+- Dividir el bundle principal y cargar módulos bajo demanda.
+
+## Criterios de aceptación
+- Flujos principales cumplen WCAG 2.2 AA.
+- Portal y panel funcionan desde 320px.
+- Tokens persistentes no son legibles por JavaScript.
+- Bundle inicial respeta presupuesto acordado.",Medium,Backlog,,2026-08-23,,"frontend,accessibility,performance,p2",8
+"[P2] Construir Guardia de Capital y el hilo del dinero","## Objetivo
+Crear el diferenciador central de PréstamoPlus.
+
+## Alcance
+- Línea de tiempo visual desde fondeo hasta cobranza.
+- Panel de capital disponible, comprometido, vencido y no conciliado.
+- Evidencia y recibos verificables enlazados a cada movimiento.
+- Drill-down desde KPI hasta asiento, pago, préstamo y documento autorizado.
+
+## Criterios de aceptación
+- Un operador puede explicar cualquier saldo sin hoja externa.
+- Cada cifra del panel enlaza su fuente contable.
+- Diferencias y operaciones sin evidencia son visibles inmediatamente.
+
+## Dependencias
+Bloqueado por: ledger, conciliación y auditoría.",Medium,Backlog,,2026-08-23,,"product,finance,frontend,differentiation,p2",13
+"[P2] Crear radar de anomalías y riesgo explicable","## Objetivo
+Detectar pérdidas potenciales sin decisiones opacas.
+
+## Alcance
+- Alertas por pagos duplicados, descuentos inusuales, cambios de tasa y diferencias de caja.
+- Riesgo por cliente, ruta, producto y cobrador.
+- Scorecards configurables con razones de decisión y revisión humana.
+- Consentimiento y monitoreo de sesgo para datos alternativos.
+
+## Criterios de aceptación
+- Cada alerta muestra evidencia y acción recomendada.
+- Toda decisión crediticia conserva factores, versión de modelo y revisor.
+- Falsos positivos pueden etiquetarse para mejora continua.
+
+## Dependencias
+Bloqueado por: auditoría, ledger y datos reconciliados.",Medium,Backlog,,2026-08-23,,"risk,fraud,analytics,differentiation,p2",13
+"[P2] Completar SaaS: planes, límites, onboarding e integraciones","## Objetivo
+Convertir definiciones existentes en un SaaS operable.
+
+## Alcance
+- Aplicar entitlements y límites por plan en backend.
+- Onboarding verificable de institución, equipo, banco y primer producto.
+- Portal de configuración por tenant y marca blanca.
+- API versionada, webhooks firmados e integraciones con bancos, WhatsApp y proveedores KYC.
+
+## Criterios de aceptación
+- Cambiar de plan altera permisos y límites de forma consistente.
+- Webhooks son firmados, idempotentes y reintentables.
+- Ninguna configuración de tenant afecta a otro.
+
+## Dependencias
+Bloqueado por: aislamiento multi-tenant, RBAC y jobs resilientes.",Medium,Backlog,,2026-08-23,,"saas,integrations,onboarding,p2",13

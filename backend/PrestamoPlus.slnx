@@ -5,4 +5,7 @@
     <Project Path="src/PréstamoPlus.Domain/PréstamoPlus.Domain.csproj" />
     <Project Path="src/PréstamoPlus.Infrastructure/PréstamoPlus.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PréstamoPlus.Infrastructure.Tests/PréstamoPlus.Infrastructure.Tests.csproj" />
+  </Folder>
 </Solution>

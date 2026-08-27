@@ -62,8 +62,9 @@ export default function Solicitudes() {
   };
 
   const estadoToLabel = (estado) => {
-    const map = { 0: 'pendiente', 1: 'aprobada', 2: 'rechazada' };
-    return map[estado] || String(estado || '').toLowerCase();
+    const map = { 0: 'pendiente', 1: 'procesando', 2: 'aprobada', 3: 'negada' };
+    const value = map[estado] || String(estado || '').toLowerCase();
+    return value === 'enrevision' || value === 'en_revision' ? 'procesando' : value;
   };
 
   const filtered = solicitudes.filter((s) => {
@@ -71,9 +72,9 @@ export default function Solicitudes() {
     return estadoToLabel(s.estado) === filtro;
   });
 
-  const handleAprobar = async (id, fechaInicio) => {
+  const handleAprobar = async (id, approvalTerms) => {
     try {
-      await solicitudService.updateEstado(id, 'Aprobada', fechaInicio);
+      await solicitudService.updateEstado(id, 'Aprobada', approvalTerms);
       setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'aprobada' } : s)));
       setSelectedSolicitud(null);
     } catch (err) {
@@ -81,10 +82,20 @@ export default function Solicitudes() {
     }
   };
 
+  const handleProcesar = async (id, instrucciones) => {
+    try {
+      await solicitudService.updateEstado(id, 'Procesando', { instrucciones });
+      setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'procesando' } : s)));
+      setSelectedSolicitud((prev) => prev ? { ...prev, estado: 'procesando' } : null);
+    } catch (err) {
+      console.error('Error processing:', err);
+    }
+  };
+
   const handleRechazar = async (id) => {
     try {
-      await solicitudService.updateEstado(id, 'Rechazada');
-      setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'rechazada' } : s)));
+      await solicitudService.updateEstado(id, 'Negada');
+      setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'negada' } : s)));
       setSelectedSolicitud(null);
     } catch (err) {
       console.error('Error rejecting:', err);
@@ -111,8 +122,9 @@ export default function Solicitudes() {
           >
             <option value="todos">Todos</option>
             <option value="pendiente">Pendientes</option>
+            <option value="procesando">Procesando</option>
             <option value="aprobada">Aprobadas</option>
-            <option value="rechazada">Rechazadas</option>
+            <option value="negada">Negadas</option>
           </select>
         </div>
 
@@ -171,6 +183,7 @@ export default function Solicitudes() {
           solicitud={selectedSolicitud}
           onClose={() => setSelectedSolicitud(null)}
           onApprove={handleAprobar}
+          onProcess={handleProcesar}
           onReject={handleRechazar}
         />
       )}

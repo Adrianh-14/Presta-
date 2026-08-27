@@ -13,6 +13,7 @@ namespace PréstamoPlus.Infrastructure.Services
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<LoanReminderService> _logger;
+        private readonly string _owner = $"reminder-{Environment.MachineName}-{Guid.NewGuid():N}";
 
         public LoanReminderService(
             IServiceScopeFactory scopeFactory,
@@ -38,13 +39,29 @@ namespace PréstamoPlus.Infrastructure.Services
 
                 if (stoppingToken.IsCancellationRequested) break;
 
+                var lockAcquired = false;
+                IServiceScope? lockScope = null;
                 try
                 {
+                    lockScope = _scopeFactory.CreateScope();
+                    var distributedLock = lockScope.ServiceProvider.GetRequiredService<IDistributedJobLock>();
+                    lockAcquired = await distributedLock.TryAcquireAsync("loan-reminders", _owner, TimeSpan.FromMinutes(10), stoppingToken);
+                    if (!lockAcquired)
+                    {
+                        _logger.LogWarning("LoanReminderService omitió una ejecución solapada.");
+                        continue;
+                    }
                     await ProcessRemindersAsync(stoppingToken);
+                    await distributedLock.ReleaseAsync("loan-reminders", _owner, stoppingToken);
                 }
                 catch (Exception ex)
                 {
+                    if (ex is OperationCanceledException && stoppingToken.IsCancellationRequested) break;
                     _logger.LogError(ex, "Error al procesar recordatorios de préstamos.");
+                }
+                finally
+                {
+                    lockScope?.Dispose();
                 }
             }
         }
@@ -58,19 +75,24 @@ namespace PréstamoPlus.Infrastructure.Services
             var today = DateTime.UtcNow.Date;
             var reminderWindow = today.AddDays(3);
 
-            var loansDueSoon = await context.Loans
-                .Where(l => l.Estado == EstadoPrestamo.Activo
-                    && l.FechaVencimiento.Date == reminderWindow)
-                .Include(l => l.Client)
+            var installmentsDueSoon = await context.Installments
+                .Where(i => i.Estado != EstadoInstallment.Pagado
+                    && i.FechaPago.Date == reminderWindow
+                    && (i.Loan.Estado == EstadoPrestamo.Activo ||
+                        i.Loan.Estado == EstadoPrestamo.Mora ||
+                        i.Loan.Estado == EstadoPrestamo.Vencido))
+                .Include(i => i.Loan)
+                    .ThenInclude(l => l.Client)
                 .ToListAsync(cancellationToken);
 
             _logger.LogInformation(
-                "Encontrados {Count} préstamos venciendo el {Date}.",
-                loansDueSoon.Count,
+                "Encontradas {Count} cuotas con vencimiento el {Date}.",
+                installmentsDueSoon.Count,
                 reminderWindow.ToString("dd/MM/yyyy"));
 
-            foreach (var loan in loansDueSoon)
+            foreach (var installment in installmentsDueSoon)
             {
+                var loan = installment.Loan;
                 var client = loan.Client;
                 if (client == null || string.IsNullOrWhiteSpace(client.Email))
                 {
@@ -80,26 +102,38 @@ namespace PréstamoPlus.Infrastructure.Services
                     continue;
                 }
 
-                var clientName = client.Nombre;
-                var dueDate = loan.FechaVencimiento.ToString("dd/MM/yyyy");
-                var amount = loan.SaldoPendiente.ToString("C");
+                var notificationKey = $"loan-payment-reminder:{loan.Id:N}:{installment.Numero}";
+                var alreadySent = await context.MessageLogs.AnyAsync(log =>
+                    log.Tipo == TipoNotificacion.Email &&
+                    log.Estado == EstadoMensaje.Enviado &&
+                    log.Mensaje.Contains(notificationKey), cancellationToken);
+                if (alreadySent) continue;
 
-                var emailBody = $"Estimado/a {clientName}, le recordamos que su préstamo con saldo pendiente " +
-                    $"de {amount} vence el {dueDate}. Por favor realice su pago a tiempo para evitar cargos por mora.";
-                var whatsappMessage = $"Recordatorio: Su préstamo vence el {dueDate}. Saldo: {amount}. " +
+                var email = LoanEmailBuilder.UpcomingPayment(
+                    loan,
+                    client,
+                    installment,
+                    notificationService.ClientPortalUrl);
+                var loggedEmailBody = $"<!-- {notificationKey} -->{email.Html}";
+                var dueDate = installment.FechaPago.ToString("dd/MM/yyyy");
+                var amount = installment.Cuota.ToString("N2");
+                var whatsappMessage = $"Recordatorio: Su cuota vence el {dueDate}. Monto: RD$ {amount}. " +
                     $"Evite cargos por mora pagando a tiempo.";
 
-                try
+                if (notificationService.EmailEnabled)
                 {
-                    await notificationService.SendEmailAsync(client.Email, "Recordatorio de vencimiento de préstamo", emailBody);
-                    await LogMessageAsync(context, loan.TenantId, TipoNotificacion.Email, client.Email,
-                        "Recordatorio de vencimiento de préstamo", emailBody, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error al enviar email de recordatorio a {Email}.", client.Email);
-                    await LogMessageAsync(context, loan.TenantId, TipoNotificacion.Email, client.Email,
-                        "Recordatorio de vencimiento de préstamo", emailBody, cancellationToken, EstadoMensaje.Fallido);
+                    try
+                    {
+                        await notificationService.SendEmailAsync(client.Email, email.Subject, email.Html);
+                        await LogMessageAsync(context, loan.TenantId, TipoNotificacion.Email, client.Email,
+                            email.Subject, loggedEmailBody, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error al enviar email de recordatorio a {Email}.", client.Email);
+                        await LogMessageAsync(context, loan.TenantId, TipoNotificacion.Email, client.Email,
+                            email.Subject, loggedEmailBody, cancellationToken, EstadoMensaje.Fallido);
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(client.Telefono))

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Wallet, Users, TrendingUp, CalendarClock, X, ArrowRight, Phone, Mail, Calendar } from 'lucide-react';
+import { DollarSign, Wallet, Users, TrendingUp, TrendingDown, CalendarClock, X, ArrowRight, Phone, Mail, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import KPICard from '../../components/KPICard';
 import StatusBadge from '../../components/StatusBadge';
 import { dashboardService } from '../../services/dashboardService';
 import { prestamoService } from '../../services/prestamoService';
+import { expenseService } from '../../services/expenseService';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [loansByMonth, setLoansByMonth] = useState([]);
   const [loansByType, setLoansByType] = useState([]);
   const [collections, setCollections] = useState(null);
+  const [financial, setFinancial] = useState(null);
   const [allLoans, setAllLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
@@ -22,18 +24,20 @@ export default function Dashboard() {
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const [statsData, monthData, typeData, collectionsData, loansData] = await Promise.all([
+        const [statsData, monthData, typeData, collectionsData, loansData, financialData] = await Promise.all([
           dashboardService.getStats(),
           dashboardService.getLoansByMonth(),
           dashboardService.getLoansByType(),
           dashboardService.getCollections(),
           prestamoService.getAll(),
+          expenseService.getSummary(),
         ]);
         setStats(statsData);
         setLoansByMonth(monthData);
         setLoansByType(typeData);
         setCollections(collectionsData);
         setAllLoans(loansData);
+        setFinancial(financialData);
       } catch (err) {
         console.error('Error loading dashboard:', err);
       } finally {
@@ -76,10 +80,19 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KPICard title="Total Prestado" value={`$${(stats?.totalPrestado || 0).toLocaleString()}`} icon={DollarSign} color="navy" />
-        <KPICard title="Disponible" value={`$${(stats?.disponible || 0).toLocaleString()}`} icon={Wallet} color="success" />
+        <KPICard title="Capital disponible" value={`$${(stats?.capitalDisponible ?? stats?.disponible ?? 0).toLocaleString()}`} icon={Wallet} color="success" />
         <KPICard title="En Cartera" value={stats?.enCartera || 0} icon={Users} color="warning" />
         <KPICard title="Por Cobrar" value={`$${(stats?.porCobrar || 0).toLocaleString()}`} icon={TrendingUp} color="danger" />
       </div>
+
+      {financial && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <KPICard title="Ingresos Intereses" value={`$${(financial.totalIngresos || 0).toLocaleString()}`} icon={DollarSign} color="success" />
+          <KPICard title="Gastos Totales" value={`$${(financial.totalGastos || 0).toLocaleString()}`} icon={TrendingDown} color="danger" />
+          <KPICard title="Utilidad Neta" value={`$${(financial.utilidadNeta || 0).toLocaleString()}`} icon={Wallet} color="accent" />
+          <KPICard title="Margen" value={`${financial.margenPorcentaje || 0}%`} icon={TrendingUp} color="navy" />
+        </div>
+      )}
 
       {collections?.periodos && collections.periodos.length > 0 && (
         <div className="mb-8">

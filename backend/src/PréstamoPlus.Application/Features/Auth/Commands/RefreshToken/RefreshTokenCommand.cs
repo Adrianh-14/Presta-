@@ -38,7 +38,9 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.RefreshToken
             storedToken.RevokedAt = DateTime.UtcNow;
             await _unitOfWork.RefreshTokens.UpdateAsync(storedToken, cancellationToken);
 
-            var newAccessToken = _jwtService.GenerateAccessToken(user);
+            var newAccessToken = _jwtService.GenerateAccessToken(
+                user,
+                passwordAuthenticatedAt: user.LastLoginAt);
             var newRefreshToken = _jwtService.GenerateRefreshToken();
 
             var refresh = new Domain.Entities.RefreshToken

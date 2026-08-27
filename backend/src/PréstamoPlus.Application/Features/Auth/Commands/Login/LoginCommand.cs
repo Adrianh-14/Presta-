@@ -35,7 +35,15 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Login
             user.LastLoginAt = DateTime.UtcNow;
             await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
 
-            var accessToken = _jwtService.GenerateAccessToken(user);
+            Guid? collectorId = null;
+            if (user.Role == "Cobrador")
+            {
+                var collectors = await _unitOfWork.Collectors.ListAsync(cancellationToken);
+                var collector = collectors.FirstOrDefault(c => c.UserId == user.Id);
+                collectorId = collector?.Id;
+            }
+
+            var accessToken = _jwtService.GenerateAccessToken(user, collectorId, user.LastLoginAt);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
             var refresh = new Domain.Entities.RefreshToken

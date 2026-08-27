@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace PréstamoPlus.Application.Features.Auth.Commands.Register
 {
-    public record RegisterCommand(RegisterRequest Request) : IRequest<AuthResponseDto>;
+    public record RegisterCommand(RegisterRequest Request, Guid TenantId) : IRequest<AuthResponseDto>;
 
     public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthResponseDto>
     {
@@ -25,17 +25,30 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Register
 
         public async Task<AuthResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
         {
-            var existing = await _unitOfWork.Users.GetByEmailAsync(request.Request.Email);
+            if (request.TenantId == Guid.Empty)
+                throw new InvalidOperationException("No se pudo identificar la institución.");
+
+            var role = SystemRoles.AssignableStaff.FirstOrDefault(candidate =>
+                candidate.Equals(request.Request.Role?.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (role is null)
+                throw new InvalidOperationException("El rol solicitado no está permitido.");
+
+            if (string.IsNullOrWhiteSpace(request.Request.Password) || request.Request.Password.Length < 12)
+                throw new InvalidOperationException("La contraseña debe tener al menos 12 caracteres.");
+
+            var email = request.Request.Email.Trim().ToLowerInvariant();
+            var existing = await _unitOfWork.Users.GetByEmailAsync(email);
             if (existing is not null)
                 throw new InvalidOperationException("El email ya está registrado");
 
             var user = new User
             {
                 Id = Guid.NewGuid(),
-                Email = request.Request.Email,
+                TenantId = request.TenantId,
+                Email = email,
                 PasswordHash = HashPassword(request.Request.Password),
                 Nombre = request.Request.Nombre,
-                Role = request.Request.Role,
+                Role = role,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
@@ -43,7 +56,9 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Register
             await _unitOfWork.Users.AddAsync(user, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            var accessToken = _jwtService.GenerateAccessToken(user);
+            var accessToken = _jwtService.GenerateAccessToken(
+                user,
+                passwordAuthenticatedAt: user.CreatedAt);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
             var refresh = new Domain.Entities.RefreshToken

@@ -7,6 +7,7 @@ namespace PréstamoPlus.Application.DTOs
     {
         public decimal TotalPrestado { get; init; }
         public decimal Disponible { get; init; }
+        public decimal CapitalDisponible { get; init; }
         public int EnCartera { get; init; }
         public decimal PorCobrar { get; init; }
         public int SolicitudesPendientes { get; init; }
@@ -143,6 +144,7 @@ namespace PréstamoPlus.Application.DTOs
     public record LoanDto
     {
         public Guid Id { get; init; }
+        public Guid TenantId { get; init; }
         public Guid ClientId { get; init; }
         public string Cliente { get; init; } = string.Empty;
         public string Cedula { get; init; } = string.Empty;
@@ -164,6 +166,14 @@ namespace PréstamoPlus.Application.DTOs
     {
         public EstadoSolicitud Estado { get; init; }
         public DateTime? FechaInicio { get; init; }
+        public DateTime? FechaPrimerPago { get; init; }
+        public string? Instrucciones { get; init; }
+        public decimal? MontoAprobado { get; init; }
+        public decimal? TasaInteresMensual { get; init; }
+        public decimal? GastoCierrePorcentaje { get; init; }
+        public int? Plazo { get; init; }
+        public UnidadPlazo? UnidadPlazo { get; init; }
+        public FrecuenciaPago? FrecuenciaPago { get; init; }
     }
 
     public record AmortizationRowDto

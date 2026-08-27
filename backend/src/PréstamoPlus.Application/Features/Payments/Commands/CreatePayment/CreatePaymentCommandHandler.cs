@@ -1,4 +1,5 @@
 using MediatR;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Features.Payments.Specifications;
 using PréstamoPlus.Domain.Entities;
@@ -10,10 +11,16 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
     public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand, PaymentDto>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
+        private readonly IAuditLogService _auditLog;
+        private readonly IJournalService _journal;
 
-        public CreatePaymentCommandHandler(IUnitOfWork unitOfWork)
+        public CreatePaymentCommandHandler(IUnitOfWork unitOfWork, INotificationService notificationService, IAuditLogService auditLog, IJournalService journal)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
+            _auditLog = auditLog;
+            _journal = journal;
         }
 
         public async Task<PaymentDto> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
@@ -22,6 +29,35 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
             var loan = await _unitOfWork.Loans.GetByIdAsync(req.LoanId);
             if (loan is null)
                 throw new InvalidOperationException("Préstamo no encontrado.");
+            if (!string.IsNullOrWhiteSpace(req.IdempotencyKey) &&
+                (await _unitOfWork.Payments.ListAsync(cancellationToken)).Any(p => p.LoanId == req.LoanId && p.IdempotencyKey == req.IdempotencyKey))
+                throw new InvalidOperationException("Este pago ya fue procesado.");
+
+            if (req.Monto <= 0 || req.Monto != decimal.Round(req.Monto, 2))
+                throw new InvalidOperationException("El monto del pago debe ser positivo y tener máximo dos decimales.");
+
+            var validationInstallments = (await _unitOfWork.Installments.ListAsync(
+                    new InstallmentsByLoanIdSpec(req.LoanId), cancellationToken))
+                .Where(i => i.Estado != EstadoInstallment.Pagado);
+            var validationLateFees = await _unitOfWork.LateFees.ListAsync(
+                new UnpaidLateFeesByLoanIdSpec(req.LoanId), cancellationToken);
+            var validationOutstanding = validationInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado) + Math.Max(0, i.Interes - i.InteresPagado))
+                + validationLateFees.Sum(i => Math.Max(0, i.Monto));
+            if (req.Monto > validationOutstanding)
+                throw new InvalidOperationException("El monto excede el saldo pendiente.");
+
+            if (req.Monto <= 0 || req.Monto != decimal.Round(req.Monto, 2))
+                throw new InvalidOperationException("El monto del pago debe ser positivo y tener máximo dos decimales.");
+
+            var pendingInstallments = (await _unitOfWork.Installments.ListAsync(
+                    new InstallmentsByLoanIdSpec(req.LoanId), cancellationToken))
+                .Where(i => i.Estado != EstadoInstallment.Pagado);
+            var pendingLateFees = await _unitOfWork.LateFees.ListAsync(
+                new UnpaidLateFeesByLoanIdSpec(req.LoanId), cancellationToken);
+            var outstanding = pendingInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado) + Math.Max(0, i.Interes - i.InteresPagado))
+                + pendingLateFees.Sum(i => Math.Max(0, i.Monto));
+            if (req.Monto > outstanding)
+                throw new InvalidOperationException("El monto excede el saldo pendiente.");
 
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
@@ -39,6 +75,31 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 decimal remaining = req.Monto;
                 decimal totalCapital = 0;
                 decimal totalInteres = 0;
+                decimal totalMora = 0;
+
+                var unpaidLateFees = await _unitOfWork.LateFees.ListAsync(
+                    new UnpaidLateFeesByLoanIdSpec(req.LoanId),
+                    cancellationToken);
+
+                foreach (var lateFee in unpaidLateFees.OrderBy(lf => lf.FechaCalculo))
+                {
+                    if (remaining <= 0) break;
+
+                    var moraAplicada = Math.Min(remaining, lateFee.Monto);
+                    remaining -= moraAplicada;
+                    totalMora += moraAplicada;
+
+                    if (moraAplicada >= lateFee.Monto)
+                    {
+                        lateFee.Pagado = true;
+                    }
+                    else
+                    {
+                        lateFee.Monto -= moraAplicada;
+                    }
+
+                    await _unitOfWork.LateFees.UpdateAsync(lateFee, cancellationToken);
+                }
 
                 foreach (var inst in installments)
                 {
@@ -78,9 +139,15 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 decimal nuevoSaldo = installments.Sum(i => i.Capital - i.CapitalPagado);
                 loan.SaldoPendiente = nuevoSaldo;
 
-                if (nuevoSaldo <= 0)
+                var quedanMoras = unpaidLateFees.Any(lf => !lf.Pagado && lf.Monto > 0);
+                var quedanCuotasVencidas = installments.Any(i =>
+                    i.Estado != EstadoInstallment.Pagado && i.FechaPago.Date < DateTime.UtcNow.Date);
+
+                if (nuevoSaldo <= 0 && !quedanMoras)
                     loan.Estado = EstadoPrestamo.Pagado;
-                else if (loan.Estado == EstadoPrestamo.Pagado)
+                else if (quedanMoras || quedanCuotasVencidas)
+                    loan.Estado = EstadoPrestamo.Mora;
+                else if (loan.Estado == EstadoPrestamo.Pagado || loan.Estado == EstadoPrestamo.Mora)
                     loan.Estado = EstadoPrestamo.Activo;
 
                 MetodoPago metodo = req.MetodoPago?.ToLower() switch
@@ -97,18 +164,24 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                     Monto = req.Monto,
                     Capital = totalCapital,
                     Interes = totalInteres,
-                    MoraPagada = 0,
+                    MoraPagada = totalMora,
                     SaldoRestante = nuevoSaldo,
                     FechaPago = DateTime.UtcNow,
                     MetodoPago = metodo,
                     ReferenciaExterna = req.ReferenciaExterna,
                     Notas = req.Notas
+                    ,IdempotencyKey = req.IdempotencyKey
                 };
 
                 await _unitOfWork.Payments.AddAsync(payment);
                 await _unitOfWork.Loans.UpdateAsync(loan, cancellationToken);
+                await _journal.PostAsync(loan.TenantId, "payment", payment.Id, BuildPaymentLines(payment), cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                await _auditLog.AppendAsync(loan.TenantId, null, "payment.created", "Loan", loan.Id,
+                    new { payment.Id, payment.Monto, payment.MetodoPago }, cancellationToken);
+
+                await NotifyPaymentAsync(loan, payment);
 
                 return new PaymentDto
                 {
@@ -190,6 +263,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 MetodoPago = metodo,
                 ReferenciaExterna = req.ReferenciaExterna,
                 Notas = req.Notas
+                ,IdempotencyKey = req.IdempotencyKey
             };
 
             await _unitOfWork.Payments.AddAsync(payment);
@@ -199,8 +273,13 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 loan.Estado = EstadoPrestamo.Pagado;
 
             await _unitOfWork.Loans.UpdateAsync(loan, cancellationToken);
+            await _journal.PostAsync(loan.TenantId, "payment", payment.Id, BuildPaymentLines(payment), cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            await _auditLog.AppendAsync(loan.TenantId, null, "payment.created", "Loan", loan.Id,
+                new { payment.Id, payment.Monto, payment.MetodoPago }, cancellationToken);
+
+            await NotifyPaymentAsync(loan, payment);
 
             return new PaymentDto
             {
@@ -216,6 +295,28 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 ReferenciaExterna = payment.ReferenciaExterna,
                 Notas = payment.Notas
             };
+        }
+
+        private async Task NotifyPaymentAsync(Loan loan, Payment payment)
+        {
+            var client = await _unitOfWork.Clients.GetByIdAsync(loan.ClientId);
+            if (client is null || string.IsNullOrWhiteSpace(client.Email)) return;
+
+            var email = LoanEmailBuilder.PaymentReceived(
+                loan,
+                client,
+                payment,
+                _notificationService.ClientPortalUrl);
+            await _notificationService.SendEmailAsync(client.Email, email.Subject, email.Html);
+        }
+
+        private static IReadOnlyCollection<JournalLineInput> BuildPaymentLines(Payment payment)
+        {
+            var lines = new List<JournalLineInput> { new("CASH", payment.Monto, 0, "Cobro de pago") };
+            if (payment.Capital > 0) lines.Add(new JournalLineInput("LOAN_RECEIVABLE", 0, payment.Capital, "Aplicación a capital"));
+            if (payment.Interes > 0) lines.Add(new JournalLineInput("INTEREST_INCOME", 0, payment.Interes, "Aplicación a interés"));
+            if (payment.MoraPagada > 0) lines.Add(new JournalLineInput("LATE_FEE_INCOME", 0, payment.MoraPagada, "Aplicación a mora"));
+            return lines;
         }
     }
 }

@@ -18,17 +18,48 @@ namespace PréstamoPlus.Infrastructure.Services
             _settings = settings.Value;
         }
 
-        public string GenerateAccessToken(User user)
+        public string GenerateAccessToken(
+            User user,
+            Guid? collectorId = null,
+            DateTime? passwordAuthenticatedAt = null)
         {
-            return GenerateToken(user.Id, user.Email, user.Nombre, user.Role, user.TenantId, null);
+            return GenerateToken(
+                user.Id,
+                user.Email,
+                user.Nombre,
+                user.Role,
+                user.TenantId,
+                null,
+                null,
+                DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpirationMinutes),
+                collectorId,
+                passwordAuthenticatedAt);
         }
 
-        public string GenerateClientAccessToken(Client client)
+        public string GenerateClientAccessToken(Client client, Guid sessionId, DateTime expiresAt)
         {
-            return GenerateToken(Guid.NewGuid(), client.Email, client.Nombre, "Cliente", client.TenantId, client.Id);
+            return GenerateToken(
+                client.Id,
+                client.Email,
+                client.Nombre,
+                "Cliente",
+                client.TenantId,
+                client.Id,
+                sessionId,
+                expiresAt);
         }
 
-        private string GenerateToken(Guid userId, string email, string nombre, string role, Guid tenantId, Guid? clientId)
+        private string GenerateToken(
+            Guid userId,
+            string email,
+            string nombre,
+            string role,
+            Guid tenantId,
+            Guid? clientId,
+            Guid? sessionId,
+            DateTime expiresAt,
+            Guid? collectorId = null,
+            DateTime? passwordAuthenticatedAt = null)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -48,11 +79,30 @@ namespace PréstamoPlus.Infrastructure.Services
                 claims.Add(new Claim("clientId", clientId.Value.ToString()));
             }
 
+            if (sessionId.HasValue)
+            {
+                claims.Add(new Claim("sessionId", sessionId.Value.ToString()));
+            }
+
+            if (collectorId.HasValue)
+            {
+                claims.Add(new Claim("collectorId", collectorId.Value.ToString()));
+            }
+
+            if (passwordAuthenticatedAt.HasValue)
+            {
+                var authenticatedAt = new DateTimeOffset(
+                    DateTime.SpecifyKind(passwordAuthenticatedAt.Value, DateTimeKind.Utc));
+                claims.Add(new Claim(
+                    "auth_time",
+                    authenticatedAt.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            }
+
             var token = new JwtSecurityToken(
                 issuer: _settings.Issuer,
                 audience: _settings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpirationMinutes),
+                expires: expiresAt,
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

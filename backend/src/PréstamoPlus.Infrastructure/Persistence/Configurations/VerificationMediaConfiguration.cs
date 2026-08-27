@@ -22,6 +22,15 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
                 .WithOne(l => l.VerificationMedia)
                 .HasForeignKey<VerificationMedia>(v => v.LoanApplicationId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(v => v.Client)
+                .WithOne(c => c.VerificationMedia)
+                .HasForeignKey<VerificationMedia>(v => v.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.ToTable(t => t.HasCheckConstraint(
+                "CK_VerificationMedia_Owner",
+                "(\"LoanApplicationId\" IS NOT NULL AND \"ClientId\" IS NULL) OR (\"LoanApplicationId\" IS NULL AND \"ClientId\" IS NOT NULL)"));
         }
     }
 }

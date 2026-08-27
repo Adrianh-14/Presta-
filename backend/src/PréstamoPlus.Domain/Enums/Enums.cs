@@ -27,9 +27,11 @@ namespace PréstamoPlus.Domain.Enums
     public enum EstadoSolicitud
     {
         Pendiente = 0,
-        EnRevision = 1,
+        Procesando = 1,
+        EnRevision = Procesando,
         Aprobada = 2,
-        Rechazada = 3,
+        Negada = 3,
+        Rechazada = Negada,
         Cancelada = 4
     }
 
@@ -45,7 +47,8 @@ namespace PréstamoPlus.Domain.Enums
         Vencido = 1,
         Mora = 2,
         Pagado = 3,
-        Cancelado = 4
+        Cancelado = 4,
+        Legal = 5
     }
 
     public enum TipoPrestamo
@@ -101,5 +104,40 @@ namespace PréstamoPlus.Domain.Enums
         Parcial = 1,
         Pagado = 2,
         Vencido = 3
+    }
+
+    public enum EstadoAsignacion
+    {
+        Asignado = 0,
+        EnProgreso = 1,
+        Completado = 2,
+        Cancelado = 3
+    }
+
+    public enum TipoVisita
+    {
+        CobroExitoso = 0,
+        CobroParcial = 1,
+        NoEncontrado = 2,
+        Rechazado = 3,
+        ClienteAusente = 4
+    }
+
+    public enum ExpenseCategory
+    {
+        SalarioCobrador = 0,
+        ServiciosBasicos = 1,
+        Oficina = 2,
+        Marketing = 3,
+        ImpuestosLegales = 4,
+        Transporte = 5
+    }
+
+    public enum PaymentQRStatus
+    {
+        Pending = 0,
+        Used = 1,
+        Expired = 2,
+        Cancelled = 3
     }
 }

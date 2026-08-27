@@ -12,7 +12,9 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const cuota = summary?.proximoPago?.cuota || loan?.cuotaMensual || 0;
+  const cuotaBase = Number(summary?.cuotaBase ?? loan?.cuotaMensual ?? 0);
+  const moraPendiente = Number(summary?.moraPendiente || 0);
+  const cuota = Number(summary?.cuotaConMora ?? (cuotaBase + moraPendiente));
   const saldo = summary?.saldoPendiente || loan?.saldoPendiente || 0;
 
   const handleSubmit = async (e) => {
@@ -89,10 +91,11 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
           )}
 
           {/* Resumen del préstamo */}
-          <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 gap-4">
+          <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-gray-500">Cuota Esperada</p>
+              <p className="text-xs text-gray-500">{moraPendiente > 0 ? 'Cuota con mora' : 'Cuota esperada'}</p>
               <p className="font-semibold text-gray-900">${Number(cuota).toLocaleString()}</p>
+              {moraPendiente > 0 && <p className="mt-1 text-xs text-red-600">${cuotaBase.toLocaleString()} + ${moraPendiente.toLocaleString()} de mora</p>}
             </div>
             <div>
               <p className="text-xs text-gray-500">Saldo Pendiente</p>
@@ -116,10 +119,10 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
             </div>
             <div className="flex gap-2 mt-2">
               <button type="button" onClick={() => handleQuickPay(Math.round(cuota))} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
-                Cuota ${Math.round(cuota).toLocaleString()}
+                {moraPendiente > 0 ? 'Cuota + mora' : 'Cuota'} ${Math.round(cuota).toLocaleString()}
               </button>
-              <button type="button" onClick={() => handleQuickPay(Math.round(saldo))} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
-                Total ${Math.round(saldo).toLocaleString()}
+              <button type="button" onClick={() => handleQuickPay(Math.round(Number(saldo) + moraPendiente))} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
+                Saldo + mora ${Math.round(Number(saldo) + moraPendiente).toLocaleString()}
               </button>
             </div>
           </div>

@@ -17,10 +17,13 @@ namespace PréstamoPlus.Application.Features.Prestamos.Specifications
 
     public class AllLoansWithClientSpec : Specification<Loan>
     {
-        public AllLoansWithClientSpec(string? search = null)
+        public AllLoansWithClientSpec(string? search = null, Guid? tenantId = null)
         {
             Query
                 .Include(l => l.Client);
+
+            if (tenantId.HasValue && tenantId.Value != Guid.Empty)
+                Query.Where(l => l.TenantId == tenantId.Value);
 
             if (!string.IsNullOrWhiteSpace(search))
                 Query.Where(l => l.Client.Nombre.Contains(search));

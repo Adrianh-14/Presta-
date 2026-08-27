@@ -6,7 +6,7 @@ using PréstamoPlus.Domain.Interfaces;
 
 namespace PréstamoPlus.Application.Features.Dashboard.Queries.GetCollections
 {
-    public record GetCollectionsQuery() : IRequest<CollectionsDto>;
+    public record GetCollectionsQuery(Guid? TenantId = null) : IRequest<CollectionsDto>;
 
     public class GetCollectionsQueryHandler : IRequestHandler<GetCollectionsQuery, CollectionsDto>
     {
@@ -32,6 +32,8 @@ namespace PréstamoPlus.Application.Features.Dashboard.Queries.GetCollections
             var endOfMonth = startOfMonth.AddMonths(1);
 
             var activeLoans = await _unitOfWork.Loans.ListAsync(cancellationToken);
+            if (request.TenantId.HasValue && request.TenantId.Value != Guid.Empty)
+                activeLoans = activeLoans.Where(l => l.TenantId == request.TenantId.Value).ToList();
 
             var loanIds = activeLoans
                 .Where(l => l.Estado != EstadoPrestamo.Pagado && l.Estado != EstadoPrestamo.Cancelado)

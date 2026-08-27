@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PréstamoPlus.Application.DTOs;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.Features.Clients.Commands.UpdateClient;
 using PréstamoPlus.Application.Features.Clients.Commands.RegisterClient;
 using PréstamoPlus.Application.Features.Clients.Queries.GetAllClients;
@@ -13,7 +14,6 @@ namespace PréstamoPlus.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class ClientsController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -24,24 +24,29 @@ namespace PréstamoPlus.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = AuthorizationPolicies.ReadPii)]
         [ProducesResponseType(typeof(IReadOnlyList<ClientDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] string? estado)
         {
-            var result = await _mediator.Send(new GetAllClientsQuery(search, estado));
+            if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId)) return Forbid();
+            var result = await _mediator.Send(new GetAllClientsQuery(search, estado, tenantId));
             return Ok(result);
         }
 
         [HttpGet("{id:guid}")]
+        [Authorize(Policy = AuthorizationPolicies.ReadPii)]
         [ProducesResponseType(typeof(ClientDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _mediator.Send(new GetClientByIdQuery(id));
             if (result is null) return NotFound();
+            if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId) || result.TenantId != tenantId) return NotFound();
             return Ok(result);
         }
 
         [HttpGet("me")]
+        [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
         [ProducesResponseType(typeof(ClientDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMe()
@@ -51,11 +56,12 @@ namespace PréstamoPlus.API.Controllers
                 return Unauthorized(new { message = "Token de cliente inválido" });
 
             var result = await _mediator.Send(new GetClientByIdQuery(clientId));
-            if (result is null) return NotFound();
+            if (result is null || !Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId) || result.TenantId != tenantId) return NotFound();
             return Ok(result);
         }
 
         [HttpGet("me/loans")]
+        [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
         [ProducesResponseType(typeof(IReadOnlyList<LoanDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMyLoans()
@@ -79,6 +85,7 @@ namespace PréstamoPlus.API.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [Authorize(Policy = AuthorizationPolicies.ManageClients)]
         [ProducesResponseType(typeof(ClientDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(Guid id, [FromBody] ClientDto data)
