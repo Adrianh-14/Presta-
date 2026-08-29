@@ -35,7 +35,7 @@ SecurityConfigurationValidator.Validate(builder.Configuration, builder.Environme
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
+    options.Limits.MaxRequestBodySize = 25 * 1024 * 1024;
     options.ConfigureEndpointDefaults(o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2);
 });
 
@@ -85,6 +85,28 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+    options.AddPolicy("tenant-registration", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetRemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+    options.AddPolicy("public-form", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetRemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromHours(1),
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 AutoReplenishment = true
@@ -170,7 +192,16 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
-    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)";
+    context.Response.Headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=(self)";
+    if (!app.Environment.IsDevelopment())
+    {
+        context.Response.Headers["Content-Security-Policy"] =
+            "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; " +
+            "script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; " +
+            "media-src 'self' blob:; connect-src 'self'; form-action 'self'";
+        context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
+    }
     using (logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId, ["Path"] = context.Request.Path.ToString() }))
     {
         await next();
@@ -189,8 +220,19 @@ app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" })).AllowAn
 
 app.Run();
 
-static string GetRemoteAddress(HttpContext context) =>
-    context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+static string GetRemoteAddress(HttpContext context)
+{
+    // Nginx/ngrok forward the original client address. Use the first hop so
+    // anonymous rate limits remain per client when the API sits behind a proxy.
+    var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+    var originalAddress = forwardedFor?
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .FirstOrDefault();
+
+    return !string.IsNullOrWhiteSpace(originalAddress)
+        ? originalAddress
+        : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+}
 
 static string[] FindAvailableDevelopmentUrls()
 {

@@ -14,6 +14,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
         public string Telefono { get; init; } = string.Empty;
         public string Email { get; init; } = string.Empty;
         public decimal Monto { get; init; }
+        public string Moneda { get; init; } = "DOP";
         public decimal TasaMensual { get; init; }
         public int Plazo { get; init; }
         public FrecuenciaPago FrecuenciaPago { get; init; }
@@ -42,6 +43,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
         public async Task<LoanDto> Handle(CreateDirectLoanCommand command, CancellationToken cancellationToken)
         {
             var req = command.Request;
+            var moneda = NormalizeCurrency(req.Moneda);
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             try
@@ -106,6 +108,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     TenantId = tenantId,
                     ClientId = client.Id,
                     MontoSolicitado = req.Monto,
+                    Moneda = moneda,
                     TasaInteresMensual = req.TasaMensual,
                     Plazo = plazoMeses,
                     UnidadPlazo = UnidadPlazo.Meses,
@@ -127,6 +130,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     ClientId = client.Id,
                     LoanApplicationId = loanApplication.Id,
                     MontoOriginal = principal,
+                    Moneda = moneda,
                     TasaInteresAnual = req.TasaMensual * 12,
                     PlazoMeses = plazoMeses,
                     CuotaMensual = cuota,
@@ -173,6 +177,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     Email = client.Email,
                     Telefono = client.Telefono,
                     Monto = loan.MontoOriginal,
+                    Moneda = loan.Moneda,
                     Tasa = loan.TasaInteresAnual,
                     Plazo = loan.PlazoMeses,
                     CuotaMensual = loan.CuotaMensual,
@@ -190,6 +195,9 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                 throw;
             }
         }
+
+        private static string NormalizeCurrency(string? value) =>
+            value?.Trim().ToUpperInvariant() is "USD" or "EUR" ? value.Trim().ToUpperInvariant() : "DOP";
 
         private static void GenerateInstallments(Loan loan, decimal principal, decimal tasaMensual, decimal cuotaPeriodo)
         {

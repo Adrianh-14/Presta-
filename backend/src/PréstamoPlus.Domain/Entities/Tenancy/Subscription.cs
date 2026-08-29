@@ -5,12 +5,16 @@ namespace PréstamoPlus.Domain.Entities.Tenancy
         public Guid Id { get; set; }
         public Guid TenantId { get; set; }
         public string PlanId { get; set; } = "basic";
+        public decimal? CustomPrice { get; set; }
         public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Active;
         public DateTime CurrentPeriodStart { get; set; }
         public DateTime CurrentPeriodEnd { get; set; }
         public string? StripeCustomerId { get; set; }
         public string? StripeSubscriptionId { get; set; }
         public DateTime? TrialEndsAt { get; set; }
+        public bool IsComplimentary { get; set; }
+        public DateTime? ComplimentaryUntil { get; set; }
+        public string? ComplimentaryNote { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Tenant Tenant { get; set; } = null!;

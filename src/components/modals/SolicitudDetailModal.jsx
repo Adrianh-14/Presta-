@@ -7,6 +7,8 @@ const frecuenciaLabels = { 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensua
 const tipoEmpleoLabels = { 0: 'Formal', 1: 'Informal', 2: 'Independiente', 3: 'Jubilado' };
 const relacionLabels = { 0: 'Familiar', 1: 'Amigo', 2: 'Compañero', 3: 'Otro' };
 const tipoCuentaLabels = { 0: 'Corriente', 1: 'Ahorro', 2: 'Nómina' };
+const currencyMeta = { DOP: { flag: '🇩🇴', name: 'Pesos dominicanos' }, USD: { flag: '🇺🇸', name: 'Dólares estadounidenses' }, EUR: { flag: '🇪🇺', name: 'Euros' } };
+const money = (value, currency = 'DOP') => new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(Number(value || 0));
 
 export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject, onProcess }) {
   const [instrucciones, setInstrucciones] = useState('');
@@ -37,6 +39,8 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   const isPending = solicitud.estado === 0 || estadoRaw === 'pendiente';
   const isProcessing = solicitud.estado === 1 || estadoRaw === 'procesando' || estadoRaw === 'enrevision' || estadoRaw === 'en_revision';
   const montoNumero = Number(montoAprobado) || 0;
+  const moneda = String(solicitud.moneda || 'DOP').toUpperCase();
+  const currency = currencyMeta[moneda] || currencyMeta.DOP;
   const tasaNumero = Number(tasaAprobada) || 0;
   const cierreNumero = Number(gastoCierreAprobado) || 0;
   const plazoNumero = Number(plazoAprobado) || 0;
@@ -85,7 +89,8 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           {/* Resumen Préstamo */}
           <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-6 text-white text-center">
             <p className="text-yellow-100 text-sm mb-1">Monto Solicitado</p>
-            <p className="text-3xl font-bold mb-3">${Number(solicitud.montoSolicitado || 0).toLocaleString()}</p>
+            <p className="text-3xl font-bold mb-1">{money(solicitud.montoSolicitado, moneda)}</p>
+            <p className="text-yellow-100 text-xs">{currency.flag} {currency.name} ({moneda})</p>
             <p className="text-yellow-200 text-sm">{tipoLabels[solicitud.tipoPrestamo] || solicitud.tipoPrestamo} — {solicitud.plazo} meses</p>
           </div>
 
@@ -131,7 +136,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Salario Mensual</p>
-                  <p className="font-medium text-gray-900">${Number(wi.salario || 0).toLocaleString()}</p>
+                  <p className="font-medium text-gray-900">{money(wi.salario, moneda)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Tipo Empleo</p>
@@ -267,15 +272,15 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               </div>
               <div>
                 <p className="text-xs text-gray-500">Cuota Estimada</p>
-                <p className="font-medium text-green-600">${Number(solicitud.cuotaEstimada || 0).toLocaleString()}</p>
+                <p className="font-medium text-green-600">{money(solicitud.cuotaEstimada, moneda)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Total a Pagar</p>
-                <p className="font-medium text-gray-900">${Number(solicitud.totalPagar || 0).toLocaleString()}</p>
+                <p className="font-medium text-gray-900">{money(solicitud.totalPagar, moneda)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Total Intereses</p>
-                <p className="font-medium text-gray-900">${Number(solicitud.totalIntereses || 0).toLocaleString()}</p>
+                <p className="font-medium text-gray-900">{money(solicitud.totalIntereses, moneda)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Frecuencia de Pago</p>
@@ -293,7 +298,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           </div>
 
           {/* Verificación - Foto y Video */}
-          {solicitud.verificationMedia && (solicitud.verificationMedia.fotoCedulaPath || solicitud.verificationMedia.videoPath) && (
+          {solicitud.verificationMedia && (solicitud.verificationMedia.fotoCedulaPath || solicitud.verificationMedia.videoPath || solicitud.verificationMedia.garantiaPath) && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <Camera size={16} className="text-accent-500" /> Verificación de Identidad
@@ -317,6 +322,12 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                       type="video"
                       className="h-48 bg-black"
                     />
+                  </div>
+                )}
+                {solicitud.verificationMedia.garantiaPath && (
+                  <div className="bg-gray-50 rounded-xl p-4 sm:col-span-2">
+                    <p className="text-xs text-gray-500 mb-2 flex items-center gap-1"><Camera size={12} /> Foto de garantía</p>
+                    <MediaViewer src={`/api/media/${solicitud.verificationMedia.garantiaPath}`} type="image" className="h-56" />
                   </div>
                 )}
               </div>
@@ -343,6 +354,12 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               >
                 <Clock size={20} /> Marcar como procesando
               </button>
+              <button
+                onClick={() => onReject(solicitud.id, true)}
+                className="w-full flex items-center justify-center gap-2 px-6 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
+              >
+                <XIcon size={18} /> Desestimar solicitud
+              </button>
             </div>
           )}
 
@@ -360,7 +377,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                 <label className="text-sm font-medium text-gray-700">
                   Monto a facilitar
                   <input type="number" min="0.01" step="0.01" value={montoAprobado} onChange={(e) => setMontoAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
-                  <span className="mt-1 block text-xs font-normal text-gray-500">Solicitó RD$ {Number(solicitud.montoSolicitado || 0).toLocaleString('es-DO')}</span>
+                  <span className="mt-1 block text-xs font-normal text-gray-500">Solicitó {money(solicitud.montoSolicitado, moneda)}</span>
                 </label>
                 <label className="text-sm font-medium text-gray-700">
                   Tasa mensual (%)
@@ -406,15 +423,15 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
                 <div className="p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Cuota</p>
-                  <p className="mt-1 font-bold text-accent-700">RD$ {cuotaAprobada.toLocaleString('es-DO', { maximumFractionDigits: 2 })}</p>
+                  <p className="mt-1 font-bold text-accent-700">{money(cuotaAprobada, moneda)}</p>
                 </div>
                 <div className="border-x border-gray-200 p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Total</p>
-                  <p className="mt-1 font-bold text-gray-900">RD$ {totalAprobado.toLocaleString('es-DO', { maximumFractionDigits: 2 })}</p>
+                  <p className="mt-1 font-bold text-gray-900">{money(totalAprobado, moneda)}</p>
                 </div>
                 <div className="p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Intereses</p>
-                  <p className="mt-1 font-bold text-amber-600">RD$ {Math.max(0, totalAprobado - principalAprobado).toLocaleString('es-DO', { maximumFractionDigits: 2 })}</p>
+                  <p className="mt-1 font-bold text-amber-600">{money(Math.max(0, totalAprobado - principalAprobado), moneda)}</p>
                 </div>
               </div>
 

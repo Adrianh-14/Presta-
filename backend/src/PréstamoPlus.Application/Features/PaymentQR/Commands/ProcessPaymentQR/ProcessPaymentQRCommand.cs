@@ -150,6 +150,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                     Id = Guid.NewGuid(),
                     LoanId = paymentQR.LoanId,
                     Monto = paymentQR.Monto,
+                    Moneda = loan.Moneda,
                     Capital = totalCapital,
                     Interes = totalInteres,
                     MoraPagada = totalMora,
@@ -190,6 +191,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                     PaymentId = payment.Id,
                     Message = "Pago procesado exitosamente.",
                     Monto = payment.Monto,
+                    Moneda = payment.Moneda,
                     Fecha = payment.FechaPago,
                     ClienteNombre = client.Nombre,
                     SaldoRestante = nuevoSaldo

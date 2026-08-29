@@ -28,22 +28,16 @@ export default function Prestamos() {
   const [selectedLoan, setSelectedLoan] = useState(null);
 
   useEffect(() => {
-    loadPrestamos();
-  }, [search, filtroEstado, filtroTipo]);
-
-  const loadPrestamos = async () => {
+    let active = true;
     setLoading(true);
-    try {
-      const estado = filtroEstado === 'todos' ? '' : filtroEstado;
-      const tipo = filtroTipo === 'todos' ? '' : filtroTipo;
-      const data = await prestamoService.getAll(search, estado, tipo);
-      setPrestamos(data);
-    } catch (err) {
-      console.error('Error loading loans:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const estado = filtroEstado === 'todos' ? '' : filtroEstado;
+    const tipo = filtroTipo === 'todos' ? '' : filtroTipo;
+    prestamoService.getAll(search, estado, tipo)
+      .then((data) => { if (active) setPrestamos(data); })
+      .catch((err) => console.error('Error loading loans:', err))
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [search, filtroEstado, filtroTipo]);
 
   const handleCancel = async (id) => {
     try {

@@ -14,12 +14,14 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.RefreshToken
         private readonly IUnitOfWork _unitOfWork;
         private readonly IJwtService _jwtService;
         private readonly JwtSettings _jwtSettings;
+        private readonly ITenantAccessService _tenantAccess;
 
-        public RefreshTokenCommandHandler(IUnitOfWork unitOfWork, IJwtService jwtService, IOptions<JwtSettings> jwtSettings)
+        public RefreshTokenCommandHandler(IUnitOfWork unitOfWork, IJwtService jwtService, IOptions<JwtSettings> jwtSettings, ITenantAccessService tenantAccess)
         {
             _unitOfWork = unitOfWork;
             _jwtService = jwtService;
             _jwtSettings = jwtSettings.Value;
+            _tenantAccess = tenantAccess;
         }
 
         public async Task<AuthResponseDto> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
@@ -34,6 +36,8 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.RefreshToken
             var user = await _unitOfWork.Users.GetByIdAsync(storedToken.UserId);
             if (user is null || !user.IsActive)
                 throw new UnauthorizedAccessException("Usuario no válido");
+            if (!await _tenantAccess.CanAccessAsync(user.TenantId, cancellationToken))
+                throw new UnauthorizedAccessException("La cuenta de la empresa está inactiva o su suscripción no está vigente.");
 
             storedToken.RevokedAt = DateTime.UtcNow;
             await _unitOfWork.RefreshTokens.UpdateAsync(storedToken, cancellationToken);
@@ -62,6 +66,7 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.RefreshToken
                 User = new UserDto
                 {
                     Id = user.Id,
+                    TenantId = user.TenantId,
                     Email = user.Email,
                     Nombre = user.Nombre,
                     Role = user.Role

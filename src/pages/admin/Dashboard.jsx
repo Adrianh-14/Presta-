@@ -10,6 +10,8 @@ import { expenseService } from '../../services/expenseService';
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 const freqLabel = { diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual' };
+const currencyMeta = { DOP: { flag: '🇩🇴', label: 'Pesos dominicanos' }, USD: { flag: '🇺🇸', label: 'Dólares estadounidenses' }, EUR: { flag: '🇪🇺', label: 'Euros' } };
+const formatMoney = (value, currency = 'DOP') => new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(Number(value || 0));
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -20,6 +22,7 @@ export default function Dashboard() {
   const [allLoans, setAllLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
+  const [selectedCurrency, setSelectedCurrency] = useState(null);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -73,17 +76,30 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-navy-500">Dashboard</h1>
-        <p className="text-slate-400 text-sm">Resumen general del sistema de préstamos</p>
+      <div className="mb-8 flex flex-col gap-3 border-b border-surface-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-600">Vista ejecutiva</p><h1 className="mt-1 font-display text-3xl font-extrabold text-navy-800">Estado de cartera</h1><p className="mt-1 text-sm text-slate-500">Capital, colocación y cobranza en una sola lectura.</p></div>
+        <div className="w-fit rounded-full border border-success-500/20 bg-success-50 px-3 py-1.5 text-xs font-semibold text-success-700">Operación sincronizada</div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <KPICard title="Total Prestado" value={`$${(stats?.totalPrestado || 0).toLocaleString()}`} icon={DollarSign} color="navy" />
-        <KPICard title="Capital disponible" value={`$${(stats?.capitalDisponible ?? stats?.disponible ?? 0).toLocaleString()}`} icon={Wallet} color="success" />
-        <KPICard title="En Cartera" value={stats?.enCartera || 0} icon={Users} color="warning" />
-        <KPICard title="Por Cobrar" value={`$${(stats?.porCobrar || 0).toLocaleString()}`} icon={TrendingUp} color="danger" />
+      <div className="mb-8 grid grid-cols-1 gap-6 sm:max-w-sm">
+        <KPICard title="Total en cartera" value={stats?.enCartera || 0} icon={Users} color="warning" />
       </div>
+
+      <section className="mb-8 rounded-12 border border-surface-border bg-white p-6 shadow-card">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent-600">Liquidez</p><h2 className="text-lg font-bold text-navy-500">Capital disponible por moneda</h2></div>
+          <p className="text-xs text-slate-400">Los saldos se mantienen separados; nunca se mezclan entre divisas.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {['DOP', 'USD', 'EUR'].map((currency) => {
+            const meta = currencyMeta[currency];
+            const value = stats?.capitalDisponiblePorMoneda?.[currency] ?? (currency === 'DOP' ? (stats?.capitalDisponible ?? stats?.disponible ?? 0) : 0);
+            return <button type="button" key={currency} onClick={() => setSelectedCurrency(currency)} className="rounded-12 border border-surface-border bg-surface-canvas p-4 text-left transition hover:-translate-y-0.5 hover:border-accent-300 hover:shadow-card"><div className="flex items-center gap-2"><span className="text-xl" role="img" aria-label={meta.label}>{meta.flag}</span><div><p className="text-xs font-semibold text-slate-500">{currency}</p><p className="text-[11px] text-slate-400">{meta.label}</p></div></div><p className="mt-3 text-xl font-bold text-navy-500">{formatMoney(value, currency)}</p><p className="mt-1 text-[11px] text-slate-400">Ver resumen en {currency} →</p></button>;
+          })}
+        </div>
+      </section>
+
+      {selectedCurrency && (() => { const loans = allLoans.filter((loan) => (loan.moneda || 'DOP') === selectedCurrency); const total = loans.reduce((sum, loan) => sum + Number(loan.monto || 0), 0); const cobrar = loans.reduce((sum, loan) => sum + Number(loan.saldoPendiente || 0), 0); const intereses = loans.reduce((sum, loan) => sum + Math.max(0, Number(loan.saldoPendiente || 0) - Number(loan.monto || 0)), 0); const meta = currencyMeta[selectedCurrency]; return <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/50 p-4" onClick={() => setSelectedCurrency(null)}><div className="w-full max-w-xl rounded-16 bg-white p-6 shadow-card-lg" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between"><div><p className="text-2xl" role="img" aria-label={meta.label}>{meta.flag}</p><h3 className="mt-2 text-xl font-bold text-navy-800">Resumen en {selectedCurrency}</h3><p className="text-sm text-slate-500">{meta.label} · {loans.length} préstamo{loans.length === 1 ? '' : 's'}</p></div><button type="button" onClick={() => setSelectedCurrency(null)} className="rounded-8 p-2 text-slate-400 hover:bg-slate-100" aria-label="Cerrar"><X size={20} /></button></div><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-12 bg-surface-canvas p-4"><p className="text-xs text-slate-400">Total prestado</p><p className="mt-2 text-lg font-bold text-navy-500">{formatMoney(total, selectedCurrency)}</p></div><div className="rounded-12 bg-success-50 p-4"><p className="text-xs text-success-700">Total por cobrar</p><p className="mt-2 text-lg font-bold text-success-700">{formatMoney(cobrar, selectedCurrency)}</p></div><div className="rounded-12 bg-accent-50 p-4"><p className="text-xs text-accent-700">Interés estimado</p><p className="mt-2 text-lg font-bold text-accent-700">{formatMoney(intereses, selectedCurrency)}</p></div></div><p className="mt-5 text-xs text-slate-400">Los préstamos se contabilizan únicamente dentro de su propia divisa.</p></div></div>; })()}
 
       {financial && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

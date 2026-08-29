@@ -11,6 +11,11 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  h1, h2, h3 {
+    font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.025em;
+  }
+
   :focus-visible {
     outline: 3px solid #006bff;
     outline-offset: 2px;
@@ -28,7 +33,26 @@
 
 @layer components {
   .gradient-hero {
-    background: linear-gradient(135deg, #0b3558 0%, #072139 50%, #0b3558 100%);
+    background-color: #071b2e;
+  }
+  .financial-grid {
+    background-color: #071b2e;
+    background-image:
+      linear-gradient(rgba(110, 180, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(110, 180, 255, 0.07) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+
+  .auth-input {
+    @apply w-full rounded-8 border border-surface-border bg-white px-4 py-3 text-sm text-navy-800 outline-none transition placeholder:text-slate-300 focus:border-accent-500 focus:ring-4 focus:ring-accent-100;
+  }
+
+  .field-invalid .auth-input {
+    @apply border-danger-500 bg-danger-50 focus:border-danger-500 focus:ring-danger-50;
+  }
+
+  .financial-card {
+    @apply rounded-16 border border-surface-border bg-white shadow-card;
   }
   .gradient-accent {
     background: linear-gradient(135deg, #006bff 0%, #0044a8 100%);

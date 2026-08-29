@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.mimocode
+backend
+dist
+docs
+node_modules
+*.log
+.env*

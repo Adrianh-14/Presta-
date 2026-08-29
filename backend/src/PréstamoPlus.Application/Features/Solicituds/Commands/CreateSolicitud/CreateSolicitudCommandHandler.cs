@@ -10,49 +10,49 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
+        private readonly ITenantAccessService _tenantAccess;
 
         public CreateSolicitudCommandHandler(
             IUnitOfWork unitOfWork,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ITenantAccessService tenantAccess)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
+            _tenantAccess = tenantAccess;
         }
 
         public async Task<LoanApplicationDto> Handle(CreateSolicitudCommand request, CancellationToken cancellationToken)
         {
             var req = request.Request;
+            var moneda = req.Moneda?.Trim().ToUpperInvariant() is "USD" or "EUR" ? req.Moneda.Trim().ToUpperInvariant() : "DOP";
+            var tenantId = req.TenantId ?? Guid.Empty;
+            if (tenantId == Guid.Empty || !await _tenantAccess.CanAccessAsync(tenantId, cancellationToken))
+                throw new InvalidOperationException("La empresa no está disponible para recibir solicitudes.");
+
+            // Las solicitudes creadas desde oficina deben incluir la garantía antes de entrar a revisión.
+            if (string.IsNullOrWhiteSpace(req.VerificationMedia?.GarantiaPath))
+                throw new InvalidOperationException("La foto de la garantía es obligatoria para registrar una solicitud desde oficina.");
 
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             try
             {
-                var tenantId = req.TenantId ?? Guid.Empty;
                 var client = await _unitOfWork.Clients.GetByCedulaAsync(req.Client.Cedula, tenantId);
-                if (client is null)
+                if (client is not null)
+                    throw new InvalidOperationException("Ya existe un cliente con esa cédula. Utiliza el portal del cliente para continuar.");
+                client = new Client
                 {
-                    client = new Client
-                    {
-                        Id = Guid.NewGuid(),
-                        TenantId = tenantId,
-                        Nombre = req.Client.Nombre,
-                        Cedula = req.Client.Cedula,
-                        Email = req.Client.Email,
-                        Telefono = req.Client.Telefono,
-                        FechaNacimiento = DateTime.SpecifyKind(req.Client.FechaNacimiento, DateTimeKind.Utc),
-                        EstadoCivil = req.Client.EstadoCivil
-                    };
-                    await _unitOfWork.Clients.AddAsync(client);
-                }
-                else
-                {
-                    client.Nombre = req.Client.Nombre;
-                    client.Email = req.Client.Email;
-                    client.Telefono = req.Client.Telefono;
-                    client.FechaNacimiento = DateTime.SpecifyKind(req.Client.FechaNacimiento, DateTimeKind.Utc);
-                    client.EstadoCivil = req.Client.EstadoCivil;
-                    await _unitOfWork.Clients.UpdateAsync(client, cancellationToken);
-                }
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Nombre = req.Client.Nombre,
+                    Cedula = req.Client.Cedula,
+                    Email = req.Client.Email,
+                    Telefono = req.Client.Telefono,
+                    FechaNacimiento = DateTime.SpecifyKind(req.Client.FechaNacimiento, DateTimeKind.Utc),
+                    EstadoCivil = req.Client.EstadoCivil
+                };
+                await _unitOfWork.Clients.AddAsync(client);
 
                 var workInfo = client.WorkInformation ?? new WorkInformation
                 {
@@ -130,6 +130,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
                     TenantId = tenantId,
                     ClientId = client.Id,
                     MontoSolicitado = req.MontoSolicitado,
+                    Moneda = moneda,
                     TasaInteresMensual = req.TasaInteresMensual,
                     Plazo = req.Plazo,
                     UnidadPlazo = req.UnidadPlazo,
@@ -152,6 +153,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
 
                     string? videoPath = null;
                     string? fotoPath = null;
+                    string? garantiaPath = null;
 
                     if (!string.IsNullOrEmpty(req.VerificationMedia.VideoPath))
                     {
@@ -165,12 +167,19 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
                         fotoPath = SaveBase64File(req.VerificationMedia.FotoCedulaPath, uploadsDir, fotoFileName);
                     }
 
+                    if (!string.IsNullOrEmpty(req.VerificationMedia.GarantiaPath))
+                    {
+                        var garantiaFileName = $"{loanApplication.Id}_garantia.jpg";
+                        garantiaPath = SaveBase64File(req.VerificationMedia.GarantiaPath, uploadsDir, garantiaFileName);
+                    }
+
                     var verification = new VerificationMedia
                     {
                         Id = Guid.NewGuid(),
                         LoanApplicationId = loanApplication.Id,
                         VideoPath = videoPath,
-                        FotoCedulaPath = fotoPath
+                        FotoCedulaPath = fotoPath,
+                        GarantiaPath = garantiaPath
                     };
                     await _unitOfWork.VerificationMedia.AddAsync(verification);
                 }

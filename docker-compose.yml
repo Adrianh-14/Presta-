@@ -17,5 +17,50 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: prestamoplus_api
+    restart: unless-stopped
+    ports:
+      - "5002:5001"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DatabaseProvider: PostgreSQL
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-prestamoplus};Username=${POSTGRES_USER:-prestamoplus};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in the ignored .env file}
+      ClientAuthentication__Enabled: "false"
+      DemoData__Enabled: "false"
+      JwtSettings__SecretKey: ${JWT_SECRET:-dev-only-change-this-secret-key-please-rotate-in-production-2026}
+    volumes:
+      - uploads:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:5001/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prestamoplus_web
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
+  uploads:

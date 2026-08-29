@@ -40,6 +40,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAllLoans
                 Telefono = l.Client.Telefono,
                 Email = l.Client.Email,
                 Monto = l.MontoOriginal,
+                Moneda = l.Moneda,
                 Tasa = l.TasaInteresAnual,
                 Plazo = l.PlazoMeses,
                 CuotaMensual = l.CuotaMensual,

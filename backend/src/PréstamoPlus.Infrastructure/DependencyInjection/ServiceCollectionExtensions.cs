@@ -58,6 +58,9 @@ namespace PréstamoPlus.Infrastructure.DependencyInjection
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IJwtService, JwtService>();
+            services.AddSingleton<IPasswordService, PasswordService>();
+            services.AddScoped<ITenantRegistrationService, TenantRegistrationService>();
+            services.AddScoped<ITenantAccessService, TenantAccessService>();
             services.AddScoped<IClientAuthenticationService, ClientAuthenticationService>();
             services.AddScoped<IAuditLogService, AuditLogService>();
             services.AddScoped<IJournalService, JournalService>();
@@ -78,6 +81,7 @@ namespace PréstamoPlus.Infrastructure.DependencyInjection
             services.AddScoped<IInvoiceService, InvoiceService>();
             services.AddHostedService<LoanReminderService>();
             services.AddHostedService<DataRetentionService>();
+            services.AddHostedService<SubscriptionLifecycleService>();
 
             return services;
         }

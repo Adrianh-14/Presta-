@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MapPin, CheckCircle, Clock, Loader2, Shield, QrCode } from 'lucide-react';
+import { MapPin, CheckCircle, Loader2, Shield, QrCode, Camera, LockKeyhole, TriangleAlert } from 'lucide-react';
 import { portalService } from '../../services/portalService';
 import jsQR from 'jsqr';
 
@@ -28,6 +28,76 @@ export default function PagoQR() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const scanFrameRef = useRef(null);
+  const lastScanRef = useRef(0);
+
+  const stopScanner = () => {
+    if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
+    scanFrameRef.current = null;
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setScannerActive(false);
+  };
+
+  const getSafeQrDestination = (rawValue) => {
+    const value = rawValue?.trim();
+    if (!value) throw new Error('invalid-qr');
+
+    let scannedToken = value;
+    try {
+      const scannedUrl = new URL(value, window.location.origin);
+      scannedToken = scannedUrl.searchParams.get('token') || '';
+    } catch {
+      // También aceptamos el token crudo que muestra el portal del cobrador.
+    }
+
+    if (!/^[a-f0-9]{64}$/i.test(scannedToken)) throw new Error('invalid-qr');
+    return `${window.location.origin}/portal/pago-qr?token=${encodeURIComponent(scannedToken.toLowerCase())}`;
+  };
+
+  const openScannedQr = (value) => {
+    try {
+      const destination = getSafeQrDestination(value);
+      stopScanner();
+      window.location.assign(destination);
+    } catch {
+      setScannerError('Ese código no pertenece a un cobro válido de PréstamoPlus. Solicita al cobrador que genere uno nuevo.');
+    }
+  };
+
+  const getCameraErrorMessage = (cameraError) => {
+    if (!window.isSecureContext) {
+      return 'La cámara requiere una conexión segura. Abre esta página con HTTPS; localhost solo funciona en el mismo dispositivo.';
+    }
+    if (cameraError?.name === 'NotAllowedError' || cameraError?.name === 'SecurityError') {
+      return 'El navegador bloqueó la cámara. Permítela en la configuración de este sitio y vuelve a intentarlo.';
+    }
+    if (cameraError?.name === 'NotFoundError' || cameraError?.name === 'OverconstrainedError') {
+      return 'No se encontró una cámara compatible. Puedes pegar el enlace o token del QR debajo.';
+    }
+    if (cameraError?.name === 'NotReadableError' || cameraError?.name === 'AbortError') {
+      return 'La cámara está ocupada por otra aplicación. Ciérrala y vuelve a intentarlo.';
+    }
+    return 'No pudimos iniciar la cámara. Revisa el permiso del navegador o pega el enlace del QR debajo.';
+  };
+
+  const requestCameraStream = async () => {
+    const constraints = [
+      { video: { facingMode: { exact: 'environment' } }, audio: false },
+      { video: { facingMode: { ideal: 'environment' } }, audio: false },
+      { video: true, audio: false },
+    ];
+    let lastError;
+    for (const constraint of constraints) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraint);
+      } catch (cameraError) {
+        lastError = cameraError;
+        if (cameraError?.name === 'NotAllowedError' || cameraError?.name === 'SecurityError') throw cameraError;
+      }
+    }
+    throw lastError;
+  };
 
   useEffect(() => {
     if (!token) {
@@ -49,18 +119,34 @@ export default function PagoQR() {
   const startScanner = async () => {
     setScannerError('');
     try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('camera-unavailable');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      if (!window.isSecureContext) throw new DOMException('Secure context required', 'SecurityError');
+      if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('Camera API unavailable', 'NotFoundError');
+      if (!videoRef.current) throw new Error('camera-view-unavailable');
+
+      stopScanner();
+      const stream = await requestCameraStream();
       streamRef.current = stream;
-      setScannerActive(true);
-      const detector = 'BarcodeDetector' in window ? new window.BarcodeDetector({ formats: ['qr_code'] }) : null;
+      let detector = null;
+      if ('BarcodeDetector' in window) {
+        try {
+          const formats = await window.BarcodeDetector.getSupportedFormats?.();
+          if (!formats || formats.includes('qr_code')) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        } catch {
+          detector = null;
+        }
+      }
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d', { willReadFrequently: true });
-      const scan = async () => {
+      const scan = async (timestamp = 0) => {
         if (!videoRef.current || videoRef.current.readyState < 2) {
           scanFrameRef.current = requestAnimationFrame(scan);
           return;
         }
+        if (timestamp - lastScanRef.current < 120) {
+          scanFrameRef.current = requestAnimationFrame(scan);
+          return;
+        }
+        lastScanRef.current = timestamp;
         try {
           let value;
           if (detector) {
@@ -73,27 +159,26 @@ export default function PagoQR() {
             value = jsQR(context.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height)?.data;
           }
           if (value) {
-            stream.getTracks().forEach(track => track.stop());
-            window.location.assign(value);
+            const destination = getSafeQrDestination(value);
+            stopScanner();
+            window.location.assign(destination);
             return;
           }
-        } catch { /* continúa intentando mientras la cámara esté activa */ }
+        } catch (scanError) {
+          if (scanError?.message === 'invalid-qr') {
+            setScannerError('El QR detectado no corresponde a un cobro de PréstamoPlus.');
+          }
+        }
         scanFrameRef.current = requestAnimationFrame(scan);
       };
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
+      setScannerActive(true);
       scan();
-    } catch {
-      setScannerError('No se pudo acceder a una cámara disponible en este dispositivo. Comprueba que el sitio use HTTPS/localhost y que exista una cámara; también puedes pegar el enlace QR abajo.');
-      setScannerActive(false);
+    } catch (cameraError) {
+      stopScanner();
+      setScannerError(getCameraErrorMessage(cameraError));
     }
-  };
-
-  const stopScanner = () => {
-    if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
-    streamRef.current?.getTracks().forEach(track => track.stop());
-    streamRef.current = null;
-    setScannerActive(false);
   };
 
   useEffect(() => {
@@ -157,14 +242,19 @@ export default function PagoQR() {
     return (
       <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
         <div className="bg-white rounded-16 shadow-2xl p-5 sm:p-8 max-w-md w-full">
-          <div className="text-center mb-6"><QrCodeIcon /><h2 className="text-lg font-bold text-navy-500 mt-3">Pagar con QR</h2><p className="text-slate-400 text-sm mt-1">Escanea el QR que te muestra el cobrador o pega aquí su enlace.</p></div>
-          <div className="rounded-12 border-2 border-dashed border-surface-border p-3 sm:p-5 text-center mb-4">
-            {scannerActive ? <video ref={videoRef} className="w-full aspect-square max-h-72 object-cover rounded-8 bg-black" playsInline muted /> : <><QrCodeIcon large /><p className="text-xs text-slate-400 mt-2">Apunta la cámara al QR generado por el cobrador.</p></>}
-            <button type="button" onClick={scannerActive ? stopScanner : startScanner} className="mt-3 px-4 py-2 rounded-8 bg-navy-500 text-white text-sm font-semibold">{scannerActive ? 'Cerrar cámara' : 'Activar cámara'}</button>
+          <div className="text-center mb-6"><QrCodeIcon /><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent-600 mt-4">Pago presencial seguro</p><h2 className="text-2xl font-bold text-navy-700 mt-1">Escanear cobro</h2><p className="text-slate-500 text-sm mt-2">Apunta al QR temporal generado por tu cobrador.</p></div>
+          <div className="rounded-16 border border-surface-border bg-navy-900 p-2.5 text-center mb-4 shadow-card overflow-hidden">
+            <div className="relative aspect-square max-h-72 mx-auto rounded-12 overflow-hidden bg-navy-800">
+              <video ref={videoRef} className={`absolute inset-0 w-full h-full object-cover transition-opacity ${scannerActive ? 'opacity-100' : 'opacity-0'}`} playsInline muted autoPlay />
+              {!scannerActive && <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-white"><Camera size={36} className="text-accent-300" /><p className="text-sm font-semibold mt-3">Cámara trasera</p><p className="text-xs text-slate-300 mt-1">El permiso se usa solo para leer este QR.</p></div>}
+              <div className="absolute inset-[14%] border-2 border-white/80 rounded-12 pointer-events-none"><span className="absolute -top-0.5 -left-0.5 w-8 h-8 border-t-4 border-l-4 border-accent-400 rounded-tl-8" /><span className="absolute -bottom-0.5 -right-0.5 w-8 h-8 border-b-4 border-r-4 border-accent-400 rounded-br-8" /></div>
+            </div>
+            <button type="button" onClick={scannerActive ? stopScanner : startScanner} className="mt-2.5 w-full px-4 py-3 rounded-12 bg-white text-navy-800 text-sm font-bold hover:bg-slate-50 transition-colors">{scannerActive ? 'Cerrar cámara' : 'Activar cámara'}</button>
           </div>
-          {scannerError && <p className="text-xs text-danger-500 mb-3 text-center">{scannerError}</p>}
+          {scannerError && <div role="alert" aria-live="polite" className="flex gap-2.5 rounded-12 border border-red-200 bg-danger-50 p-3 text-xs text-danger-600 mb-4"><TriangleAlert size={16} className="shrink-0" /><p>{scannerError}</p></div>}
           <input value={qrInput} onChange={(e) => setQrInput(e.target.value)} placeholder="https://.../portal/pago-qr?token=..." className="w-full px-4 py-3 bg-surface-fill rounded-8 text-sm border border-surface-border focus:border-accent-500 outline-none" />
-          <button onClick={() => { const value = qrInput.trim(); if (value) window.location.assign(value.includes('token=') ? value : `${window.location.origin}/portal/pago-qr?token=${encodeURIComponent(value)}`); }} disabled={!qrInput.trim()} className="w-full mt-3 py-3 bg-gradient-to-r from-accent-500 to-accent-600 text-white font-semibold rounded-8 disabled:opacity-50">Abrir QR</button>
+          <button onClick={() => openScannedQr(qrInput)} disabled={!qrInput.trim()} className="w-full mt-3 py-3 bg-accent-600 hover:bg-accent-700 text-white font-semibold rounded-8 disabled:opacity-50">Validar cobro</button>
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-slate-400"><LockKeyhole size={12} /> QR válido por 5 minutos · navegación protegida</p>
         </div>
       </div>
     );

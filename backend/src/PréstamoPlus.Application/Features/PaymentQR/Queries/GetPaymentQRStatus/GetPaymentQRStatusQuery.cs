@@ -49,6 +49,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Queries.GetPaymentQRStatu
                 ClienteTelefono = MaskValue(client?.Telefono),
                 CollectorNombre = collectorUser?.Nombre ?? "",
                 Monto = paymentQR.Monto,
+                Moneda = paymentQR.Moneda,
                 SaldoPendiente = loan?.SaldoPendiente ?? 0,
                 ExpiresAt = paymentQR.ExpiresAt,
                 Status = status,

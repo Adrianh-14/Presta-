@@ -24,6 +24,7 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentsByLoanI
                 Id = p.Id,
                 LoanId = p.LoanId,
                 Monto = p.Monto,
+                Moneda = p.Moneda,
                 Capital = p.Capital,
                 Interes = p.Interes,
                 MoraPagada = p.MoraPagada,

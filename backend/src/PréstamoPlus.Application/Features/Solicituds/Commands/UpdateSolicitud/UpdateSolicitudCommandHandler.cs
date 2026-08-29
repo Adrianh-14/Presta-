@@ -32,7 +32,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
 
             var validTransition = loanApp.Estado switch
             {
-                EstadoSolicitud.Pendiente => request.Estado == EstadoSolicitud.Procesando,
+                EstadoSolicitud.Pendiente => request.Estado is EstadoSolicitud.Procesando or EstadoSolicitud.Cancelada or EstadoSolicitud.Rechazada,
                 EstadoSolicitud.Procesando => request.Estado is EstadoSolicitud.Aprobada or EstadoSolicitud.Rechazada,
                 _ => false
             };
@@ -40,6 +40,9 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
             if (!validTransition)
                 throw new InvalidOperationException(
                     $"No se puede cambiar una solicitud de {loanApp.Estado} a {request.Estado}.");
+
+            if (request.Estado == EstadoSolicitud.Procesando && string.IsNullOrWhiteSpace(loanApp.VerificationMedia?.GarantiaPath))
+                throw new InvalidOperationException("No se puede procesar la solicitud hasta que el cliente suba la garantía.");
 
             if (request.Estado == EstadoSolicitud.Aprobada)
             {
@@ -104,6 +107,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                     ClientId = loanApp.ClientId,
                     LoanApplicationId = loanApp.Id,
                     MontoOriginal = principal,
+                    Moneda = loanApp.Moneda,
                     TasaInteresAnual = tasaMensual * 12,
                     PlazoMeses = plazoMeses,
                     CuotaMensual = cuota,
@@ -166,6 +170,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
             {
                 Id = loanApp.Id,
                 MontoSolicitado = loanApp.MontoSolicitado,
+                Moneda = loanApp.Moneda,
                 TasaInteresMensual = loanApp.TasaInteresMensual,
                 Plazo = loanApp.Plazo,
                 UnidadPlazo = loanApp.UnidadPlazo,

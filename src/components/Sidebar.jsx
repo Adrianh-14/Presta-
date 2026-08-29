@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const navItems = [
@@ -10,11 +11,23 @@ const navItems = [
   { to: '/admin/solicitudes', icon: FileText, label: 'Solicitudes' },
   { to: '/admin/cobradores', icon: UsersRound, label: 'Cobradores' },
   { to: '/admin/gastos', icon: Receipt, label: 'Gastos' },
+  { to: '/admin/garantias', icon: FolderLock, label: 'Documentos y garantías' },
+];
+
+const platformNavItems = [
+  { to: '/plataforma', icon: LayoutDashboard, label: 'Centro de plataforma', end: true },
+  { to: '/plataforma/empresas', icon: Building2, label: 'Empresas' },
+  { to: '/plataforma/planes', icon: CreditCard, label: 'Planes y precios' },
+  { to: '/plataforma/suscripciones', icon: Receipt, label: 'Suscripciones' },
+  { to: '/plataforma/promociones', icon: Zap, label: 'Promociones' },
+  { to: '/plataforma/auditoria', icon: ShieldCheck, label: 'Auditoría' },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const isPlatformAdmin = ['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role);
 
   const handleLogout = () => {
     logout();
@@ -22,30 +35,37 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-full md:w-64 shrink-0 bg-white border-b md:border-b-0 md:border-r border-surface-border flex flex-col">
-      <div className="p-6 border-b border-surface-border">
+    <>
+      <header className="fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-navy-900 px-4 text-white md:hidden">
+        <div className="flex items-center gap-3"><BrandMark /><div><p className="font-display text-sm font-bold">PréstamoPlus</p><p className="text-[9px] uppercase tracking-[0.18em] text-accent-200">Control de cartera</p></div></div>
+        <button type="button" onClick={() => setOpen(true)} aria-label="Abrir navegación" className="rounded-8 border border-white/15 p-2"><Menu size={20} /></button>
+      </header>
+      {open && <button type="button" aria-label="Cerrar navegación" onClick={() => setOpen(false)} className="fixed inset-0 z-30 bg-navy-950/60 backdrop-blur-sm md:hidden" />}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[82vw] max-w-72 shrink-0 flex-col border-r border-navy-700 bg-navy-900 text-white transition-transform duration-200 md:sticky md:top-0 md:h-screen md:w-64 md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="border-b border-white/10 p-5">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-navy-500 to-navy-600 rounded-8 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">P+</span>
-          </div>
+          <BrandMark />
           <div>
-            <h1 className="text-lg font-bold text-navy-500 leading-tight">PréstamoPlus</h1>
-            <p className="text-xs text-slate-400">{user?.role} Panel</p>
+            <h1 className="font-display text-base font-bold leading-tight text-white">PréstamoPlus</h1>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-accent-200">{user?.role} · Operación</p>
           </div>
+          <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar navegación" className="ml-auto rounded-8 p-2 text-slate-300 hover:bg-white/10 md:hidden"><X size={18} /></button>
         </div>
       </div>
 
-      <nav aria-label="Navegación principal" className="flex-1 p-3 md:p-4 flex md:block gap-1 overflow-x-auto md:space-y-1">
-        {navItems.map((item) => (
+      <div className="mx-4 mt-4 flex items-center gap-2 rounded-8 border border-success-500/20 bg-success-500/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-200"><ShieldCheck size={14} /> Sesión protegida</div>
+      <nav aria-label="Navegación principal" className="flex-1 space-y-1 overflow-y-auto p-4">
+        {(isPlatformAdmin ? platformNavItems : navItems).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={() => setOpen(false)}
             className={({ isActive }) =>
-              `flex shrink-0 items-center gap-3 px-3 md:px-4 py-2.5 rounded-8 text-sm font-medium transition-all ${
+              `relative flex items-center gap-3 rounded-8 px-3 py-2.5 text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-navy-50 text-navy-500 shadow-sm'
-                  : 'text-slate-500 hover:bg-surface-hover hover:text-navy-500'
+                  ? 'bg-white/10 text-white before:absolute before:-left-4 before:h-6 before:w-1 before:rounded-r-full before:bg-accent-400'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
               }`
             }
           >
@@ -55,26 +75,31 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-surface-border">
+      <div className="border-t border-white/10 p-4">
         <div className="flex items-center gap-3 mb-3 px-2">
-          <div className="w-8 h-8 bg-navy-50 rounded-full flex items-center justify-center" aria-hidden="true">
-            <span className="text-navy-500 font-semibold text-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10" aria-hidden="true">
+            <span className="font-semibold text-white">
               {user?.nombre?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-navy-500 truncate">{user?.nombre}</p>
-            <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+            <p className="truncate text-sm font-medium text-white">{user?.nombre}</p>
+            <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-2 text-slate-500 hover:bg-red-50 hover:text-danger-500 rounded-8 transition-colors text-sm font-medium"
+          className="flex w-full items-center gap-3 rounded-8 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-danger-500/10 hover:text-red-200"
         >
           <LogOut aria-hidden="true" size={18} />
           Cerrar Sesión
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
+}
+
+function BrandMark() {
+  return <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-8 border border-white/15 bg-white/10 font-display text-sm font-extrabold text-white">P+</div>;
 }

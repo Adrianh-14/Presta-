@@ -5,6 +5,7 @@ namespace PréstamoPlus.Domain.Entities
         public Guid Id { get; set; }
         public Guid LoanId { get; set; }
         public decimal Monto { get; set; }
+        public string Moneda { get; set; } = "DOP";
         public decimal Capital { get; set; }
         public decimal Interes { get; set; }
         public decimal MoraPagada { get; set; }

@@ -1,5 +1,6 @@
 using Ardalis.Specification;
 using PréstamoPlus.Domain.Entities;
+using PréstamoPlus.Domain.Entities.Tenancy;
 
 namespace PréstamoPlus.Domain.Interfaces
 {
@@ -23,6 +24,7 @@ namespace PréstamoPlus.Domain.Interfaces
         IRepositoryBase<CollectionVisit> CollectionVisits { get; }
         IRepositoryBase<Expense> Expenses { get; }
         IRepositoryBase<PaymentQR> PaymentQRs { get; }
+        IRepositoryBase<Tenant> Tenants { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
         Task BeginTransactionAsync(CancellationToken cancellationToken = default);
         Task CommitTransactionAsync(CancellationToken cancellationToken = default);

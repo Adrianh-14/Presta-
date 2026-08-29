@@ -26,8 +26,8 @@ const steps = isClientMode
       { id: 6, title: 'Préstamo', icon: Calculator },
     ];
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
+function formatCurrency(value, currency = 'DOP') {
+  return new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(value);
 }
 
 function formatNumber(value) {
@@ -95,13 +95,13 @@ export default function Solicitud() {
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get('tenant');
   const draftStorageKey = `prestamoplus-form:${isClientMode ? 'client' : 'request'}:${tenantId || 'default'}`;
-  const readSavedDraft = () => {
+  const readSavedDraft = useCallback(() => {
     try {
       return JSON.parse(sessionStorage.getItem(draftStorageKey) || 'null');
     } catch {
       return null;
     }
-  };
+  }, [draftStorageKey]);
   const [currentStep, setCurrentStep] = useState(() => {
     const savedStep = Number(readSavedDraft()?.step);
     return savedStep >= 1 && savedStep <= maxStep ? savedStep : 1;
@@ -126,6 +126,7 @@ export default function Solicitud() {
   const videoUrlRef = useRef(null);
   const idPhotoUrlRef = useRef(null);
   const idPhotoInputRef = useRef(null);
+  const garantiaInputRef = useRef(null);
   const photoScrollPositionRef = useRef(0);
 
   const [videoValid, setVideoValid] = useState(false);
@@ -136,8 +137,12 @@ export default function Solicitud() {
   const [idPhotoUrl, setIdPhotoUrl] = useState(null);
   const [idPhotoValid, setIdPhotoValid] = useState(false);
   const [idPhotoError, setIdPhotoError] = useState('');
+  const [garantiaPhoto, setGarantiaPhoto] = useState(null);
+  const [garantiaPhotoUrl, setGarantiaPhotoUrl] = useState(null);
+  const [garantiaPhotoError, setGarantiaPhotoError] = useState('');
 
   const [calcAmount, setCalcAmount] = useState('');
+  const [calcCurrency, setCalcCurrency] = useState('DOP');
   const [calcClosingCost, setCalcClosingCost] = useState('3');
   const [calcRate, setCalcRate] = useState('2.5');
   const [calcTerm, setCalcTerm] = useState('4');
@@ -187,7 +192,7 @@ export default function Solicitud() {
   useEffect(() => {
     const savedDraft = readSavedDraft();
     if (savedDraft?.values) reset(savedDraft.values);
-  }, [draftStorageKey, reset]);
+  }, [readSavedDraft, reset]);
 
   useEffect(() => {
     const subscription = watch((values) => {
@@ -202,7 +207,7 @@ export default function Solicitud() {
       step: currentStep,
       values: savedDraft?.values || {},
     }));
-  }, [currentStep, draftStorageKey]);
+  }, [currentStep, draftStorageKey, readSavedDraft]);
 
   const doCalc = useCallback(() => {
     const amount = parseFloat(calcAmount.replace(/,/g, '')) || 0;
@@ -558,6 +563,32 @@ export default function Solicitud() {
     if (idPhotoInputRef.current) idPhotoInputRef.current.value = '';
   };
 
+  const handleGarantiaPhoto = (e) => {
+    e.preventDefault();
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setGarantiaPhotoError('Selecciona una imagen JPG, PNG o WEBP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setGarantiaPhotoError('El archivo excede 5MB. Usa una imagen más pequeña.');
+      return;
+    }
+    if (garantiaPhotoUrl) URL.revokeObjectURL(garantiaPhotoUrl);
+    setGarantiaPhoto(file);
+    setGarantiaPhotoUrl(URL.createObjectURL(file));
+    setGarantiaPhotoError('');
+  };
+
+  const removeGarantiaPhoto = () => {
+    if (garantiaPhotoUrl) URL.revokeObjectURL(garantiaPhotoUrl);
+    setGarantiaPhoto(null);
+    setGarantiaPhotoUrl(null);
+    setGarantiaPhotoError('');
+    if (garantiaInputRef.current) garantiaInputRef.current.value = '';
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -599,6 +630,11 @@ export default function Solicitud() {
           alert(idPhotoError || 'La foto no parece una identificación válida.');
           return false;
         }
+        if (!isClientMode && !garantiaPhoto) {
+          setGarantiaPhotoError('La foto de la garantía es obligatoria para una solicitud de oficina.');
+          alert('Sube una foto clara de la garantía para continuar.');
+          return false;
+        }
         return true;
       default:
         return true;
@@ -627,7 +663,7 @@ export default function Solicitud() {
     if (!isClientMode && currentStep !== 6) return;
     try {
       let verificationMedia = null;
-      if (videoBlob || idPhoto) {
+      if (videoBlob || idPhoto || garantiaPhoto) {
         verificationMedia = {};
         if (videoBlob) {
           const videoBase64 = await new Promise((resolve) => {
@@ -644,6 +680,14 @@ export default function Solicitud() {
             reader.readAsDataURL(idPhoto);
           });
           verificationMedia.fotoCedulaPath = fotoBase64;
+        }
+        if (garantiaPhoto) {
+          const garantiaBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(garantiaPhoto);
+          });
+          verificationMedia.garantiaPath = garantiaBase64;
         }
       }
 
@@ -684,12 +728,13 @@ export default function Solicitud() {
         },
         verificationMedia,
         montoSolicitado: parseFloat(calcAmount.replace(/,/g, '')) || 0,
+        moneda: calcCurrency,
         tasaInteresMensual: parseFloat(calcRate) || 2.5,
         plazo: parseInt(calcTerm) || 4,
         unidadPlazo: 0,
         frecuenciaPago: calcFrequency === 'daily' ? 0 : calcFrequency === 'weekly' ? 1 : calcFrequency === 'biweekly' ? 2 : 3,
         gastoCierrePorcentaje: parseFloat(calcClosingCost) || 3,
-        tipoPrestamo: 0,
+        tipoPrestamo: 1,
       };
 
       const clientPayload = {
@@ -1196,6 +1241,24 @@ export default function Solicitud() {
                 {!idPhotoUrl && <p className="text-danger-500 text-xs mt-3 font-medium">* Requerido para continuar</p>}
               </div>
 
+              {!isClientMode && (
+                <div className="mt-6 rounded-16 border-2 border-accent-200 bg-accent-50/40 p-6 sm:p-8">
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className="w-12 h-12 bg-accent-100 rounded-full flex items-center justify-center flex-shrink-0"><Upload className="text-accent-600" size={24} /></div>
+                    <div><h3 className="text-lg font-bold text-navy-500">Garantía del préstamo <span className="text-danger-500">*</span></h3><p className="text-slate-500 text-sm">Requerida para registrar solicitudes desde oficina.</p></div>
+                  </div>
+                  {!garantiaPhotoUrl ? (
+                    <button type="button" onClick={() => garantiaInputRef.current?.click()} className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-accent-200 rounded-12 cursor-pointer bg-white hover:border-accent-500 hover:bg-accent-50 transition-all">
+                      <Upload className="w-9 h-9 mb-2 text-accent-400" /><p className="text-sm font-semibold text-accent-600">Subir foto de garantía</p><p className="text-xs text-slate-400 mt-1">JPG, PNG o WEBP · Máx. 5MB</p>
+                    </button>
+                  ) : (
+                    <div className="relative"><img src={garantiaPhotoUrl} alt="Garantía del préstamo" className="w-full h-48 object-contain bg-white rounded-12 border border-accent-200" /><button type="button" onClick={removeGarantiaPhoto} className="absolute top-3 right-3 p-2 bg-danger-500 text-white rounded-full hover:bg-danger-600"><Square size={14} /></button></div>
+                  )}
+                  <input ref={garantiaInputRef} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleGarantiaPhoto} />
+                  {garantiaPhotoError && <p className="mt-3 text-sm font-semibold text-danger-500">{garantiaPhotoError}</p>}
+                </div>
+              )}
+
               {/* Datos Bancarios */}
               <div className="bg-white rounded-16 border border-surface-border shadow-card p-6 sm:p-8">
                 <div className="flex items-center gap-4 mb-6">
@@ -1262,7 +1325,7 @@ export default function Solicitud() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Monto (RD$) *</label>
+                  <div className="flex items-center justify-between mb-2"><label className="block text-sm font-medium text-gray-700">Monto *</label><select aria-label="Moneda de la solicitud" value={calcCurrency} onChange={e => setCalcCurrency(e.target.value)} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm shadow-sm"><option value="DOP">🇩🇴  Pesos (DOP)</option><option value="USD">🇺🇸  Dólares (USD)</option><option value="EUR">🇪🇺  Euros (EUR)</option></select></div>
                   <input
                     type="text"
                     value={calcAmount}
@@ -1333,7 +1396,7 @@ export default function Solicitud() {
                 <div className="mt-8">
                   <div className="bg-gradient-to-r from-navy-500 to-navy-600 rounded-2xl p-6 sm:p-8 text-white text-center">
                     <p className="text-navy-200 mb-2 text-sm sm:text-base">Tu cuota {getFrequencyName(calcFrequency).toLowerCase()} sería</p>
-                    <p className="text-3xl sm:text-4xl font-bold mb-4">{formatCurrency(calcResults.payment)}</p>
+                    <p className="text-3xl sm:text-4xl font-bold mb-4">{formatCurrency(calcResults.payment, calcCurrency)}</p>
                     <p className="text-navy-200 text-xs sm:text-sm">* Cálculo sujeto a aprobación de crédito</p>
                   </div>
 

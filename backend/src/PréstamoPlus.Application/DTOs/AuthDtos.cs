@@ -31,8 +31,37 @@ namespace PréstamoPlus.Application.DTOs
         public string Role { get; init; } = "Client";
     }
 
+    public record TenantRegistrationRequest
+    {
+        public string BusinessName { get; init; } = string.Empty;
+        public string OwnerName { get; init; } = string.Empty;
+        public string Email { get; init; } = string.Empty;
+        public string Password { get; init; } = string.Empty;
+        public string? Rnc { get; init; }
+        public string? Phone { get; init; }
+        public decimal InitialCapital { get; init; }
+        public decimal InitialCapitalUsd { get; init; }
+        public decimal InitialCapitalEur { get; init; }
+        public List<string> EnabledCurrencies { get; init; } = new() { "DOP" };
+        public string? CompanyType { get; init; }
+        public string? EconomicActivity { get; init; }
+        public string? Address { get; init; }
+        public string? City { get; init; }
+        public string? Province { get; init; }
+        public string? Website { get; init; }
+        public int? EmployeeCount { get; init; }
+        public string? RepresentativeIdType { get; init; }
+        public string? RepresentativeIdNumber { get; init; }
+        public string? RepresentativeIdPhoto { get; init; }
+        public string? RepresentativePhoto { get; init; }
+        public bool AcceptTerms { get; init; }
+    }
+
     public record RefreshTokenRequest
     {
         public string RefreshToken { get; init; } = string.Empty;
     }
+
+    public record PasswordResetRequest { public string Email { get; init; } = string.Empty; }
+    public record PasswordResetConfirmRequest { public string Token { get; init; } = string.Empty; public string NewPassword { get; init; } = string.Empty; }
 }

@@ -32,6 +32,21 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations.Tenancy
             builder.Property(t => t.Telefono)
                 .HasMaxLength(20);
 
+            builder.Property(t => t.CapitalInicial)
+                .IsRequired()
+                .HasColumnType("decimal(18,2)")
+                .HasDefaultValue(0m);
+            builder.Property(t => t.TipoEmpresa).HasMaxLength(80);
+            builder.Property(t => t.ActividadEconomica).HasMaxLength(160);
+            builder.Property(t => t.Direccion).HasMaxLength(250);
+            builder.Property(t => t.Ciudad).HasMaxLength(100);
+            builder.Property(t => t.Provincia).HasMaxLength(100);
+            builder.Property(t => t.SitioWeb).HasMaxLength(250);
+            builder.Property(t => t.RepresentanteTipoIdentificacion).HasMaxLength(30);
+            builder.Property(t => t.RepresentanteNumeroIdentificacion).HasMaxLength(40);
+            builder.Property(t => t.RepresentanteFotoIdentificacionPath).HasMaxLength(500);
+            builder.Property(t => t.RepresentanteFotoPath).HasMaxLength(500);
+
             builder.Property(t => t.LogoUrl)
                 .HasMaxLength(500);
         }

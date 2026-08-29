@@ -54,6 +54,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.UpdateLoanStatus
                 Telefono = client?.Telefono ?? string.Empty,
                 Email = client?.Email ?? string.Empty,
                 Monto = loan.MontoOriginal,
+                Moneda = loan.Moneda,
                 Tasa = loan.TasaInteresAnual,
                 Plazo = loan.PlazoMeses,
                 CuotaMensual = loan.CuotaMensual,

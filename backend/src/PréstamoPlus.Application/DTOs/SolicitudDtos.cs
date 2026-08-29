@@ -8,6 +8,7 @@ namespace PréstamoPlus.Application.DTOs
         public decimal TotalPrestado { get; init; }
         public decimal Disponible { get; init; }
         public decimal CapitalDisponible { get; init; }
+        public Dictionary<string, decimal> CapitalDisponiblePorMoneda { get; init; } = new();
         public int EnCartera { get; init; }
         public decimal PorCobrar { get; init; }
         public int SolicitudesPendientes { get; init; }
@@ -98,12 +99,15 @@ namespace PréstamoPlus.Application.DTOs
     {
         public string? VideoPath { get; init; }
         public string? FotoCedulaPath { get; init; }
+        public string? GarantiaPath { get; init; }
+        public string? ContratoPath { get; init; }
     }
 
     public record LoanApplicationDto
     {
         public Guid Id { get; init; }
         public decimal MontoSolicitado { get; init; }
+        public string Moneda { get; init; } = "DOP";
         public decimal TasaInteresMensual { get; init; }
         public int Plazo { get; init; }
         public UnidadPlazo UnidadPlazo { get; init; }
@@ -133,6 +137,7 @@ namespace PréstamoPlus.Application.DTOs
         public BankAccountDto BankAccount { get; init; } = null!;
         public VerificationMediaDto? VerificationMedia { get; init; }
         public decimal MontoSolicitado { get; init; }
+        public string Moneda { get; init; } = "DOP";
         public decimal TasaInteresMensual { get; init; }
         public int Plazo { get; init; }
         public UnidadPlazo UnidadPlazo { get; init; }
@@ -151,6 +156,7 @@ namespace PréstamoPlus.Application.DTOs
         public string Telefono { get; init; } = string.Empty;
         public string Email { get; init; } = string.Empty;
         public decimal Monto { get; init; }
+        public string Moneda { get; init; } = "DOP";
         public decimal Tasa { get; init; }
         public int Plazo { get; init; }
         public decimal CuotaMensual { get; init; }

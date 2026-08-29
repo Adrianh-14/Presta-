@@ -74,6 +74,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.GeneratePaymentQ
                 LoanId = assignment.LoanId,
                 ClientId = loan.ClientId,
                 Monto = req.Monto,
+                Moneda = loan.Moneda,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5),
                 Status = PaymentQRStatus.Pending,
                 CreatedAt = DateTime.UtcNow
@@ -89,6 +90,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.GeneratePaymentQ
                 ClienteNombre = client.Nombre,
                 ClienteCedula = client.Cedula,
                 Monto = req.Monto,
+                Moneda = paymentQR.Moneda,
                 ExpiresAt = paymentQR.ExpiresAt,
                 Status = PaymentQRStatus.Pending,
                 CreatedAt = paymentQR.CreatedAt

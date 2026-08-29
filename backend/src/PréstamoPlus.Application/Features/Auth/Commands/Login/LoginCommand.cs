@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using MediatR;
 using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
@@ -15,22 +14,28 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Login
         private readonly IUnitOfWork _unitOfWork;
         private readonly IJwtService _jwtService;
         private readonly JwtSettings _jwtSettings;
+        private readonly IPasswordService _passwords;
+        private readonly ITenantAccessService _tenantAccess;
 
-        public LoginCommandHandler(IUnitOfWork unitOfWork, IJwtService jwtService, IOptions<JwtSettings> jwtSettings)
+        public LoginCommandHandler(IUnitOfWork unitOfWork, IJwtService jwtService, IOptions<JwtSettings> jwtSettings, IPasswordService passwords, ITenantAccessService tenantAccess)
         {
             _unitOfWork = unitOfWork;
             _jwtService = jwtService;
             _jwtSettings = jwtSettings.Value;
+            _passwords = passwords;
+            _tenantAccess = tenantAccess;
         }
 
         public async Task<AuthResponseDto> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
             var user = await _unitOfWork.Users.GetByEmailAsync(request.Request.Email);
-            if (user is null || !VerifyPassword(request.Request.Password, user.PasswordHash))
+            if (user is null || !_passwords.Verify(request.Request.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Credenciales inválidas");
 
             if (!user.IsActive)
                 throw new UnauthorizedAccessException("Cuenta desactivada");
+            if (!await _tenantAccess.CanAccessAsync(user.TenantId, cancellationToken))
+                throw new UnauthorizedAccessException("El acceso de tu empresa está bloqueado porque la cortesía o suscripción venció. Agrega un método de pago con tarjeta para reactivar el servicio.");
 
             user.LastLoginAt = DateTime.UtcNow;
             await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
@@ -73,21 +78,5 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Login
             };
         }
 
-        private static bool VerifyPassword(string password, string hash)
-        {
-            var hashBytes = Convert.FromBase64String(hash);
-            var salt = new byte[16];
-            Array.Copy(hashBytes, 0, salt, 0, 16);
-
-            using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256);
-            var hashToVerify = pbkdf2.GetBytes(20);
-
-            for (int i = 0; i < 20; i++)
-            {
-                if (hashBytes[i + 16] != hashToVerify[i])
-                    return false;
-            }
-            return true;
-        }
     }
 }

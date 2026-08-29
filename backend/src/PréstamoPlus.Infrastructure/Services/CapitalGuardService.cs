@@ -11,8 +11,11 @@ public sealed class CapitalGuardService : ICapitalGuardService
     public async Task<decimal> GetAvailableAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         if (tenantId == Guid.Empty) return 0;
-        return await _context.JournalLines.Where(line => line.LedgerAccount.TenantId == tenantId && line.LedgerAccount.Code == "CASH")
-            .SumAsync(line => line.Debit - line.Credit, cancellationToken);
+        var cashLines = _context.JournalLines.Where(line => line.LedgerAccount.TenantId == tenantId && line.LedgerAccount.Code == "CASH");
+        if (!await cashLines.AnyAsync(cancellationToken))
+            return await _context.TenantConfigs.Where(config => config.TenantId == tenantId)
+                .Select(config => config.CapitalInicial).SingleOrDefaultAsync(cancellationToken);
+        return await cashLines.SumAsync(line => line.Debit - line.Credit, cancellationToken);
     }
     public async Task EnsureCanDisburseAsync(Guid tenantId, decimal amount, CancellationToken cancellationToken = default)
     {

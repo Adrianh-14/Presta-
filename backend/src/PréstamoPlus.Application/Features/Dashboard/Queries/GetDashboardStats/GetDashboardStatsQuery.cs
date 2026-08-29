@@ -29,14 +29,19 @@ namespace PréstamoPlus.Application.Features.Dashboard.Queries.GetDashboardStats
                 solicitudes = solicitudes.Where(s => s.TenantId == request.TenantId.Value).ToList();
             }
 
-            var fallbackDisponible = 1000000 - loans.Where(l => l.Estado != EstadoPrestamo.Pagado).Sum(l => l.SaldoPendiente);
             var ledgerDisponible = await _capitalGuard.GetAvailableAsync(request.TenantId ?? Guid.Empty, cancellationToken);
-            var capitalDisponible = ledgerDisponible == 0 ? fallbackDisponible : ledgerDisponible;
+            var tenant = request.TenantId.HasValue ? await _unitOfWork.Tenants.GetByIdAsync(request.TenantId.Value, cancellationToken) : null;
             return new DashboardStatsDto
             {
                 TotalPrestado = loans.Where(l => l.Estado != EstadoPrestamo.Pagado).Sum(l => l.MontoOriginal),
-                Disponible = capitalDisponible,
-                CapitalDisponible = capitalDisponible,
+                Disponible = ledgerDisponible,
+                CapitalDisponible = ledgerDisponible,
+                CapitalDisponiblePorMoneda = new Dictionary<string, decimal>
+                {
+                    ["DOP"] = ledgerDisponible,
+                    ["USD"] = tenant?.CapitalInicialUsd ?? 0m,
+                    ["EUR"] = tenant?.CapitalInicialEur ?? 0m
+                },
                 EnCartera = loans.Count(l => l.Estado == EstadoPrestamo.Activo),
                 PorCobrar = loans.Where(l => l.Estado != EstadoPrestamo.Pagado).Sum(l => l.SaldoPendiente),
                 SolicitudesPendientes = solicitudes.Count(s => s.Estado == EstadoSolicitud.Pendiente)

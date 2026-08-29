@@ -1,0 +1,9 @@
+.vs
+**/bin
+**/obj
+tests
+tmp
+uploads
+*.db
+*.db-shm
+*.db-wal

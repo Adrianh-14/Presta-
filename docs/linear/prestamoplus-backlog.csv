@@ -194,7 +194,7 @@ Evitar regresiones que cambien saldos o expongan datos.
 - CI bloquea merges con pruebas fallidas.
 - Cobertura prioriza rutas de dinero y autorización.
 - Se validan explícitamente invariantes y no solo respuestas HTTP.",High,Backlog,,2026-08-23,,"testing,finance,security,p1",13
-"[P1] Añadir backups, recuperación, observabilidad y jobs resilientes","## Objetivo
+"[P0] Añadir backups, recuperación, observabilidad y jobs resilientes","## Objetivo
 Mantener operación y recuperar datos sin improvisación.
 
 ## Alcance
@@ -207,7 +207,7 @@ Mantener operación y recuperar datos sin improvisación.
 ## Criterios de aceptación
 - Restauración demostrada y documentada.
 - Alertas cubren caída de DB, mora fallida, pagos inconsistentes y cola detenida.
-- Reiniciar la API no pierde trabajos ni duplica cargos.",High,Backlog,,2026-08-23,,"reliability,observability,backup,p1",13
+- Reiniciar la API no pierde trabajos ni duplica cargos.",Urgent,Backlog,,2026-08-23,,"reliability,observability,backup,p0",13
 "[P1] Definir privacidad, consentimiento, retención y expediente contractual","## Objetivo
 Tratar datos y contratos con reglas verificables.
 
@@ -222,7 +222,7 @@ Tratar datos y contratos con reglas verificables.
 - Cada dato sensible tiene finalidad, acceso y retención definidos.
 - Se preserva la versión exacta aceptada por el cliente.
 - Existen flujos de exportación, corrección y eliminación cuando proceda.",High,Backlog,,2026-08-23,,"privacy,compliance,contracts,p1",8
-"[P2] Modernizar sesiones, accesibilidad y experiencia móvil","## Objetivo
+"[P0] Modernizar sesiones, accesibilidad y experiencia móvil","## Objetivo
 Ofrecer una experiencia segura y usable en móvil y escritorio.
 
 ## Alcance
@@ -236,7 +236,7 @@ Ofrecer una experiencia segura y usable en móvil y escritorio.
 - Flujos principales cumplen WCAG 2.2 AA.
 - Portal y panel funcionan desde 320px.
 - Tokens persistentes no son legibles por JavaScript.
-- Bundle inicial respeta presupuesto acordado.",Medium,Backlog,,2026-08-23,,"frontend,accessibility,performance,p2",8
+- Bundle inicial respeta presupuesto acordado.",Urgent,Backlog,,2026-08-23,,"frontend,accessibility,performance,security,p0",8
 "[P2] Construir Guardia de Capital y el hilo del dinero","## Objetivo
 Crear el diferenciador central de PréstamoPlus.
 
@@ -285,3 +285,105 @@ Convertir definiciones existentes en un SaaS operable.
 
 ## Dependencias
 Bloqueado por: aislamiento multi-tenant, RBAC y jobs resilientes.",Medium,Backlog,,2026-08-23,,"saas,integrations,onboarding,p2",13
+"[P0] Certificar cobro QR móvil en staging HTTPS","## Objetivo
+Demostrar que el cobro QR funciona de extremo a extremo en teléfonos reales antes de operar con dinero.
+
+## Alcance
+- Probar Android Chrome e iOS Safari bajo el dominio HTTPS final.
+- Cubrir permiso aceptado, denegado y reactivado; cámara ocupada y múltiples cámaras.
+- Escanear QR válido, vencido, usado, malformado y de otro origen.
+- Verificar OTP, pago idempotente, cartera, asiento contable, auditoría y comprobante.
+- Conservar evidencia de ejecución con dispositivo, navegador, fecha y resultado.
+
+## Criterios de aceptación
+- Matriz Android/iOS aprobada sin errores genéricos de HTTPS.
+- Un QR externo nunca provoca navegación fuera del origen actual.
+- El mismo token no puede aplicar el pago dos veces.
+- Existe evidencia reproducible del pago completo en staging.",Urgent,Backlog,,2026-08-28,,"qr,mobile,payments,security,staging,p0",5
+"[P0] Recuperar entorno y ensayar despliegue completo","## Objetivo
+Contar con un entorno reproducible donde frontend, API y PostgreSQL estén saludables.
+
+## Alcance
+- Reparar Docker Desktop/WSL o sustituirlo por un entorno de staging administrado.
+- Levantar PostgreSQL, aplicar migraciones y arrancar API y frontend.
+- Comprobar health, readiness, CORS, CSP, HTTPS y persistencia tras reinicio.
+- Documentar arranque, parada, diagnóstico y rollback.
+
+## Criterios de aceptación
+- `docker compose up -d` termina y todos los servicios quedan healthy.
+- `/health/ready`, login, autoregistro, OTP y QR funcionan contra la base real.
+- Un despliegue y rollback completos se ejecutan desde documentación limpia.",Urgent,Backlog,,2026-08-28,,"infrastructure,docker,postgresql,release,p0",5
+"[P1] Integrar facturación SaaS en sandbox","## Objetivo
+Convertir la prueba gratuita en una suscripción cobrable, auditable y recuperable.
+
+## Alcance
+- Integrar checkout con tarjeta usando el proveedor sandbox seleccionado.
+- Implementar webhooks firmados e idempotentes para alta, renovación, fallo y cancelación.
+- Modelar período de gracia, reintentos, suspensión y reactivación.
+- Crear portal de facturación y conciliación de cobros con suscripciones.
+- Evitar almacenar o registrar datos sensibles de tarjeta.
+
+## Criterios de aceptación
+- Alta, pago exitoso, pago fallido, renovación y cancelación pasan pruebas sandbox.
+- Un webhook repetido no duplica cargos ni cambios de estado.
+- La suscripción controla el acceso sin intervención manual.
+
+## Dependencias
+Bloqueado hasta que el usuario confirme el proveedor de pagos.",High,Backlog,,2026-08-28,,"saas,billing,payments,webhooks,p1",13
+"[P0] Verificar correo y recuperar acceso del administrador","## Objetivo
+Impedir cuentas SaaS activas con correos no controlados y ofrecer recuperación segura.
+
+## Alcance
+- Crear token de verificación de un solo uso, con hash, expiración y revocación.
+- Mantener el tenant restringido hasta verificar el correo principal.
+- Añadir reenvío limitado y cambio de correo auditado.
+- Implementar recuperación de contraseña con sesiones previas revocadas.
+- Evitar enumeración de cuentas en todas las respuestas públicas.
+
+## Criterios de aceptación
+- Un correo no verificado no accede al panel financiero.
+- Tokens vencidos, usados o alterados se rechazan.
+- Recuperar contraseña revoca refresh tokens anteriores.
+- Pruebas cubren enumeración, replay y límites de frecuencia.",Urgent,Backlog,,2026-08-28,,"security,email,authentication,onboarding,p0",8
+"[P0] Exigir cuotas y entitlements antes de cada escritura","## Objetivo
+Hacer efectivos los límites comerciales del plan en el backend.
+
+## Alcance
+- Validar usuarios, clientes y préstamos antes de crear recursos.
+- Centralizar la decisión en un servicio transaccional resistente a concurrencia.
+- Definir comportamiento al bajar de plan y al vencer la suscripción.
+- Auditar rechazos y exponer consumo/límite al administrador.
+
+## Criterios de aceptación
+- Ninguna API puede superar el límite mediante concurrencia o llamada directa.
+- Cambiar de plan actualiza límites de forma consistente.
+- Las pruebas cubren frontera, downgrade, trial vencido y tenants distintos.",Urgent,Backlog,,2026-08-28,,"saas,entitlements,limits,multi-tenant,p0",8
+"[P0] Certificar entrega OTP y recuperación de acceso","## Objetivo
+Garantizar que el OTP llega, se observa y se recupera sin respuestas engañosas.
+
+## Alcance
+- Verificar dominio y remitente de Resend en staging/producción.
+- Persistir entregas en una cola durable con reintentos y dead-letter.
+- Registrar estado aceptado, entregado, rechazado y rebotado sin guardar el código.
+- Añadir alertas, métricas y procedimiento de soporte.
+- Ejecutar pruebas reales con proveedores de correo diferentes.
+
+## Criterios de aceptación
+- La API y soporte pueden distinguir encolado, entregado y fallido.
+- Reiniciar la API no pierde un OTP pendiente.
+- Rechazos definitivos generan alerta y experiencia de recuperación segura.
+- No se registra OTP, token ni PII innecesaria.",Urgent,Backlog,,2026-08-28,,"otp,email,reliability,security,p0",8
+"[P1] Proteger formularios públicos contra abuso","## Objetivo
+Evitar altas, solicitudes y consumo de recursos automatizados o maliciosos.
+
+## Alcance
+- Añadir WAF y desafío anti-bot adaptativo al registro y solicitudes públicas.
+- Aplicar límites distribuidos por IP, tenant, identidad y dispositivo.
+- Usar enlaces públicos firmados o identificadores opacos para seleccionar tenant.
+- Definir alertas por picos, enumeración y abuso de almacenamiento/correo.
+- Ejecutar prueba de carga y abuso antes del lanzamiento.
+
+## Criterios de aceptación
+- Los límites funcionan con múltiples instancias de API.
+- Un bot distribuido no puede crear volumen ilimitado ni agotar correo/almacenamiento.
+- Las solicitudes legítimas conservan una ruta accesible de recuperación.",High,Backlog,,2026-08-28,,"security,waf,rate-limit,public-forms,p1",8

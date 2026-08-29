@@ -16,6 +16,8 @@ namespace PréstamoPlus.Infrastructure.Persistence
 
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<Subscription> Subscriptions => Set<Subscription>();
+        public DbSet<PlatformPlan> PlatformPlans => Set<PlatformPlan>();
+        public DbSet<PlatformPromotion> PlatformPromotions => Set<PlatformPromotion>();
         public DbSet<Client> Clients => Set<Client>();
         public DbSet<WorkInformation> WorkInformation => Set<WorkInformation>();
         public DbSet<Address> Addresses => Set<Address>();
@@ -25,6 +27,7 @@ namespace PréstamoPlus.Infrastructure.Persistence
         public DbSet<VerificationMedia> VerificationMedia => Set<VerificationMedia>();
         public DbSet<User> Users => Set<User>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
         public DbSet<ClientOtpChallenge> ClientOtpChallenges => Set<ClientOtpChallenge>();
         public DbSet<ClientSession> ClientSessions => Set<ClientSession>();
         public DbSet<ClientAuthenticationEvent> ClientAuthenticationEvents => Set<ClientAuthenticationEvent>();

@@ -67,6 +67,10 @@ public sealed class ResendClientOtpSender : IClientOtpSender
             _logger.LogError(
                 "El proveedor de correo rechazó una entrega OTP. Estado: {StatusCode}",
                 (int)response.StatusCode);
+            throw new HttpRequestException(
+                "El proveedor de correo rechazó la entrega OTP.",
+                inner: null,
+                response.StatusCode);
         }
     }
 }

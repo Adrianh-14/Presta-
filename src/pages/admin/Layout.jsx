@@ -3,10 +3,10 @@ import Sidebar from '../../components/Sidebar';
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen flex-col md:flex-row bg-surface-canvas">
+    <div className="flex min-h-screen bg-surface-canvas">
       <Sidebar />
-      <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">
-        <Outlet />
+      <main className="min-w-0 flex-1 px-4 pb-8 pt-20 sm:px-6 md:p-8 lg:p-10">
+        <div className="mx-auto w-full max-w-[1480px]"><Outlet /></div>
       </main>
     </div>
   );

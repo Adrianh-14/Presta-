@@ -75,7 +75,9 @@ namespace PréstamoPlus.Application.Features.Clients.Queries.GetClientById
                     ? new VerificationMediaDto
                     {
                         VideoPath = client.VerificationMedia.VideoPath,
-                        FotoCedulaPath = client.VerificationMedia.FotoCedulaPath
+                        FotoCedulaPath = client.VerificationMedia.FotoCedulaPath,
+                        GarantiaPath = client.VerificationMedia.GarantiaPath,
+                        ContratoPath = client.VerificationMedia.ContratoPath
                     }
                     : client.LoanApplications
                         ?.Where(la => la.VerificationMedia != null)
@@ -83,7 +85,9 @@ namespace PréstamoPlus.Application.Features.Clients.Queries.GetClientById
                         .Select(la => new VerificationMediaDto
                         {
                             VideoPath = la.VerificationMedia!.VideoPath,
-                            FotoCedulaPath = la.VerificationMedia!.FotoCedulaPath
+                            FotoCedulaPath = la.VerificationMedia!.FotoCedulaPath,
+                            GarantiaPath = la.VerificationMedia!.GarantiaPath,
+                            ContratoPath = la.VerificationMedia!.ContratoPath
                         })
                         .FirstOrDefault()
             };

@@ -86,7 +86,9 @@ namespace PréstamoPlus.Application.Features.Solicituds.Queries.GetSolicitudById
                     ? new VerificationMediaDto
                     {
                         VideoPath = loan.VerificationMedia.VideoPath,
-                        FotoCedulaPath = loan.VerificationMedia.FotoCedulaPath
+                        FotoCedulaPath = loan.VerificationMedia.FotoCedulaPath,
+                        GarantiaPath = loan.VerificationMedia.GarantiaPath,
+                        ContratoPath = loan.VerificationMedia.ContratoPath
                     }
                     : null
             };

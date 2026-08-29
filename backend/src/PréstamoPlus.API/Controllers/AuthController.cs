@@ -2,11 +2,16 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using PréstamoPlus.Application.Common;
+using Microsoft.EntityFrameworkCore;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Features.Auth.Commands.Login;
 using PréstamoPlus.Application.Features.Auth.Commands.RefreshToken;
 using PréstamoPlus.Application.Features.Auth.Commands.Register;
+using PréstamoPlus.Infrastructure.Persistence;
+using PréstamoPlus.Application.Common;
+using PréstamoPlus.Domain.Entities;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace PréstamoPlus.API.Controllers
 {
@@ -16,13 +21,45 @@ namespace PréstamoPlus.API.Controllers
     {
         private readonly IMediator _mediator;
         private readonly IClientAuthenticationService _clientAuthentication;
+        private readonly ITenantRegistrationService _tenantRegistration;
+        private readonly ApplicationDbContext _db;
+        private readonly IPasswordService _passwords;
+        private readonly INotificationService _notifications;
 
         public AuthController(
             IMediator mediator,
-            IClientAuthenticationService clientAuthentication)
+            IClientAuthenticationService clientAuthentication,
+            ITenantRegistrationService tenantRegistration,
+            ApplicationDbContext db,
+            IPasswordService passwords,
+            INotificationService notifications)
         {
             _mediator = mediator;
             _clientAuthentication = clientAuthentication;
+            _tenantRegistration = tenantRegistration;
+            _db = db;
+            _passwords = passwords;
+            _notifications = notifications;
+        }
+
+        [HttpPost("tenant-register")]
+        [AllowAnonymous]
+        [EnableRateLimiting("tenant-registration")]
+        [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> RegisterTenant(
+            [FromBody] TenantRegistrationRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _tenantRegistration.RegisterAsync(request, cancellationToken);
+                return Created(string.Empty, result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPost("login")]
@@ -40,6 +77,42 @@ namespace PréstamoPlus.API.Controllers
             {
                 return Unauthorized(new { message = ex.Message });
             }
+        }
+
+        [HttpPost("password-reset/request")]
+        [AllowAnonymous]
+        [EnableRateLimiting("tenant-registration")]
+        public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequest request, CancellationToken cancellationToken)
+        {
+            var response = new { message = "Si el correo existe, recibirás instrucciones para recuperar tu contraseña." };
+            var email = request.Email.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(email)) return Ok(response);
+            var user = await _db.Users.FirstOrDefaultAsync(x => x.Email.ToLower() == email && x.IsActive, cancellationToken);
+            if (user is null) return Ok(response);
+            var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+            var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken))).ToLowerInvariant();
+            _db.PasswordResetTokens.Add(new PasswordResetToken { Id = Guid.NewGuid(), UserId = user.Id, TokenHash = tokenHash, ExpiresAt = DateTime.UtcNow.AddMinutes(30) });
+            await _db.SaveChangesAsync(cancellationToken);
+            var resetUrl = $"{_notifications.ClientPortalUrl.Replace("/portal/login", "/recuperar-contrasena")}?token={rawToken}";
+            await _notifications.SendEmailAsync(user.Email, "Recupera tu contraseña de PréstamoPlus", $"<p>Solicitaste recuperar tu contraseña.</p><p><a href=\"{resetUrl}\">Crear una nueva contraseña</a></p><p>Este enlace vence en 30 minutos.</p>");
+            return Ok(response);
+        }
+
+        [HttpPost("password-reset/confirm")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmPasswordReset([FromBody] PasswordResetConfirmRequest request, CancellationToken cancellationToken)
+        {
+            if (request.NewPassword.Length < 12 || !request.NewPassword.Any(char.IsUpper) || !request.NewPassword.Any(char.IsLower) || !request.NewPassword.Any(char.IsDigit) || !request.NewPassword.Any(ch => !char.IsLetterOrDigit(ch)))
+                return BadRequest(new { message = "La contraseña debe tener 12 caracteres e incluir mayúscula, minúscula, número y símbolo." });
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Token))).ToLowerInvariant();
+            var reset = await _db.PasswordResetTokens.Include(x => x.User).FirstOrDefaultAsync(x => x.TokenHash == hash && x.UsedAt == null && x.ExpiresAt > DateTime.UtcNow, cancellationToken);
+            if (reset is null) return BadRequest(new { message = "El enlace es inválido o expiró." });
+            reset.User.PasswordHash = _passwords.Hash(request.NewPassword);
+            reset.UsedAt = DateTime.UtcNow;
+            var sessions = _db.RefreshTokens.Where(x => x.UserId == reset.UserId && x.RevokedAt == null);
+            await sessions.ForEachAsync(x => x.RevokedAt = DateTime.UtcNow, cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
+            return Ok(new { message = "Contraseña actualizada. Ya puedes iniciar sesión." });
         }
 
         [HttpPost("register")]

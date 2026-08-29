@@ -4,12 +4,15 @@ import { prestamoService } from '../../services/prestamoService';
 import { clientService } from '../../services/clientService';
 import { generateAmortizationTable } from '../../utils/amortization';
 import { printAmortization } from '../../utils/printAmortization';
+import { useAuth } from '../../context/AuthContext';
 
-function formatCurrency(v) { return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v); }
+function formatCurrency(v, currency = 'DOP') { return new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(v); }
 function formatNumber(v) { return new Intl.NumberFormat('es-DO').format(Math.round(v)); }
 const freqNames = { diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual' };
+const periodsPerFreq = { diaria: 30, semanal: 4, quincenal: 2, mensual: 1 };
 
 export default function NuevoPrestamo() {
+  const { user } = useAuth();
   const [step, setStep] = useState('qr'); // qr | select | loan
 
   // Client
@@ -20,6 +23,7 @@ export default function NuevoPrestamo() {
 
   // Loan
   const [monto, setMonto] = useState('50,000');
+  const [moneda, setMoneda] = useState('DOP');
   const [tasa, setTasa] = useState('2.5');
   const [plazo, setPlazo] = useState('6');
   const [frecuencia, setFrecuencia] = useState('quincenal');
@@ -33,11 +37,15 @@ export default function NuevoPrestamo() {
   const [created, setCreated] = useState(null);
   const [error, setError] = useState('');
 
-  const getAmount = () => parseFloat(monto.replace(/,/g, '')) || 0;
-  const periodsPerFreq = { diaria: 30, semanal: 4, quincenal: 2, mensual: 1 };
+  const getAmount = useCallback(() => parseFloat(monto.replace(/,/g, '')) || 0, [monto]);
   const freqMap = { daily: 0, weekly: 1, biweekly: 2, monthly: 3, diaria: 0, semanal: 1, quincenal: 2, mensual: 3 };
 
-  const qrUrl = `${window.location.origin}/solicitud?mode=client`;
+  const tokenTenantId = (() => {
+    try { return JSON.parse(atob(localStorage.getItem('accessToken')?.split('.')[1] || '')).tenantId || ''; } catch { return ''; }
+  })();
+  const tenantId = user?.tenantId || tokenTenantId;
+  // Este QR representa una solicitud completa: el cliente debe aportar su garantía.
+  const qrUrl = `${window.location.origin}/solicitud${tenantId ? `?tenant=${tenantId}` : ''}`;
 
   const doCalc = useCallback(() => {
     const amount = getAmount();
@@ -64,7 +72,7 @@ export default function NuevoPrestamo() {
       periods: n,
       principal: Math.round(principal * 100) / 100,
     });
-  }, [monto, cierre, tasa, plazo, frecuencia]);
+  }, [getAmount, cierre, tasa, plazo, frecuencia]);
 
   useEffect(() => { const t = setTimeout(doCalc, 300); return () => clearTimeout(t); }, [doCalc]);
 
@@ -99,6 +107,7 @@ export default function NuevoPrestamo() {
         telefono: client.telefono || '',
         email: client.email || '',
         monto: getAmount(),
+        moneda,
         tasaMensual: parseFloat(tasa) || 2.5,
         plazo: parseInt(plazo) || 6,
         frecuenciaPago: freqMap[frecuencia] ?? 2,
@@ -269,7 +278,7 @@ export default function NuevoPrestamo() {
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monto (RD$)</label>
+                  <div className="flex items-center justify-between"><label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monto</label><select aria-label="Moneda del préstamo" value={moneda} onChange={e => setMoneda(e.target.value)} className="rounded-4 border border-surface-border bg-white px-2 py-1 text-xs font-semibold shadow-sm"><option value="DOP">🇩🇴  Pesos (DOP)</option><option value="USD">🇺🇸  Dólares (USD)</option><option value="EUR">🇪🇺  Euros (EUR)</option></select></div>
                   <input value={monto} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setMonto(v ? formatNumber(parseInt(v)) : '0'); }} className="w-full mt-1 px-3 py-2.5 border border-surface-border rounded-4 text-lg font-bold focus:ring-2 focus:ring-accent-500 outline-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -321,20 +330,20 @@ export default function NuevoPrestamo() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Cuota {freqNames[frecuencia]}</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.cuota)}</p>
+                    <p className="text-3xl font-bold">{formatCurrency(results.cuota, moneda)}</p>
                     <p className="text-navy-300 text-xs mt-1">{(results.periods || 0)} pagos</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Total a pagar</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.totalPaid)}</p>
+                    <p className="text-3xl font-bold">{formatCurrency(results.totalPaid, moneda)}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Total intereses</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.totalInterest)}</p>
+                    <p className="text-3xl font-bold">{formatCurrency(results.totalInterest, moneda)}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Principal</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.principal)}</p>
+                    <p className="text-3xl font-bold">{formatCurrency(results.principal, moneda)}</p>
                     <p className="text-navy-300 text-xs mt-1">Incluye {cierre}% cierre</p>
                   </div>
                 </div>
@@ -421,7 +430,7 @@ export default function NuevoPrestamo() {
               )}
               <button onClick={handleCreate} disabled={creating} className="px-8 py-3 gradient-accent text-white rounded-8 font-semibold text-sm shadow-btn hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2">
                 <DollarSign size={18} />
-                {creating ? 'Creando...' : `Crear préstamo de ${formatCurrency(results.cuota)}/${freqNames[frecuencia].toLowerCase()}`}
+                {creating ? 'Creando...' : `Crear préstamo de ${formatCurrency(results.cuota, moneda)}/${freqNames[frecuencia].toLowerCase()}`}
               </button>
             </div>
           )}

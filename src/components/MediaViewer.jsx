@@ -1,8 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Maximize2 } from 'lucide-react';
+import api from '../services/api';
 
 export default function MediaViewer({ src, type = 'image', className = '' }) {
   const [fullscreen, setFullscreen] = useState(false);
+  const [resolvedSrc, setResolvedSrc] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    api.get(src, { responseType: 'blob' }).then(({ data }) => {
+      objectUrl = URL.createObjectURL(data);
+      if (active) setResolvedSrc(objectUrl);
+    }).catch(() => { if (active) setResolvedSrc(''); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [src]);
 
   if (!src) return null;
 
@@ -10,9 +22,9 @@ export default function MediaViewer({ src, type = 'image', className = '' }) {
     <>
       <div className={`relative group cursor-pointer ${className}`} onClick={() => setFullscreen(true)}>
         {type === 'video' ? (
-          <video src={src} className="w-full h-full object-contain rounded-lg border border-gray-200" />
+          <video src={resolvedSrc} controls className="w-full h-full object-contain rounded-lg border border-gray-200" />
         ) : (
-          <img src={src} alt="" className="w-full h-full object-contain rounded-lg border border-gray-200" />
+          <img src={resolvedSrc} alt="" className="w-full h-full object-contain rounded-lg border border-gray-200" />
         )}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors rounded-lg flex items-center justify-center">
           <Maximize2 size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
@@ -32,7 +44,7 @@ export default function MediaViewer({ src, type = 'image', className = '' }) {
           </button>
           {type === 'video' ? (
             <video
-              src={src}
+              src={resolvedSrc}
               controls
               autoPlay
               className="max-w-full max-h-[90vh] object-contain rounded-lg"
@@ -40,7 +52,7 @@ export default function MediaViewer({ src, type = 'image', className = '' }) {
             />
           ) : (
             <img
-              src={src}
+              src={resolvedSrc}
               alt=""
               className="max-w-full max-h-[90vh] object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}

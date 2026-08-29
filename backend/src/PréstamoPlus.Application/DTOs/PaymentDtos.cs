@@ -7,6 +7,7 @@ namespace PréstamoPlus.Application.DTOs
         public Guid Id { get; init; }
         public Guid LoanId { get; init; }
         public decimal Monto { get; init; }
+        public string Moneda { get; init; } = "DOP";
         public decimal Capital { get; init; }
         public decimal Interes { get; init; }
         public decimal MoraPagada { get; init; }
@@ -22,6 +23,7 @@ namespace PréstamoPlus.Application.DTOs
     {
         public Guid LoanId { get; init; }
         public decimal Monto { get; init; }
+        public string? Moneda { get; init; }
         public string MetodoPago { get; init; } = "transferencia";
         public string? ReferenciaExterna { get; init; }
         public string? Notas { get; init; }
@@ -33,6 +35,7 @@ namespace PréstamoPlus.Application.DTOs
         public Guid LoanId { get; init; }
         public Guid LateFeeId { get; init; }
         public decimal Monto { get; init; }
+        public string? Moneda { get; init; }
         public string MetodoPago { get; init; } = "transferencia";
         public string? ReferenciaExterna { get; init; }
         public string? Notas { get; init; }

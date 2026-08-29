@@ -9,6 +9,7 @@ namespace PréstamoPlus.Domain.Entities
         public Guid ClientId { get; set; }
         public Guid LoanApplicationId { get; set; }
         public decimal MontoOriginal { get; set; }
+        public string Moneda { get; set; } = "DOP";
         public decimal TasaInteresAnual { get; set; }
         public int PlazoMeses { get; set; }
         public decimal CuotaMensual { get; set; }

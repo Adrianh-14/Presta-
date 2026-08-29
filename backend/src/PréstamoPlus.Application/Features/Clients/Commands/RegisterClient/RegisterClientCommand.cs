@@ -25,13 +25,16 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
+        private readonly ITenantAccessService _tenantAccess;
 
         public RegisterClientCommandHandler(
             IUnitOfWork unitOfWork,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ITenantAccessService tenantAccess)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
+            _tenantAccess = tenantAccess;
         }
 
         public async Task<ClientDto> Handle(RegisterClientCommand command, CancellationToken cancellationToken)
@@ -41,6 +44,12 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
                 throw new InvalidOperationException("Se requiere aceptar el consentimiento de datos para registrarse.");
             if (!req.TenantId.HasValue || req.TenantId.Value == Guid.Empty)
                 throw new InvalidOperationException("El registro requiere un tenant válido.");
+            if (!await _tenantAccess.CanAccessAsync(req.TenantId.Value, cancellationToken))
+                throw new InvalidOperationException("La empresa no está disponible para registros.");
+
+            var existingClient = await _unitOfWork.Clients.GetByCedulaAsync(req.Client.Cedula, req.TenantId.Value);
+            if (existingClient is not null)
+                throw new InvalidOperationException("Ya existe un cliente con esa cédula. Utiliza el portal del cliente.");
 
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 

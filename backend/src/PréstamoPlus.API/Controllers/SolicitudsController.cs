@@ -2,6 +2,7 @@ using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud;
@@ -25,6 +26,8 @@ namespace PréstamoPlus.API.Controllers
 
         [HttpPost]
         [AllowAnonymous]
+        [EnableRateLimiting("public-form")]
+        [RequestSizeLimit(25 * 1024 * 1024)]
         [ProducesResponseType(typeof(LoanApplicationDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateSolicitudRequest request)
@@ -35,9 +38,16 @@ namespace PréstamoPlus.API.Controllers
                 request = request with { TenantId = tenantId };
             }
 
-            var command = new CreateSolicitudCommand(request);
-            var result = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            try
+            {
+                var command = new CreateSolicitudCommand(request);
+                var result = await _mediator.Send(command);
+                return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("{id:guid}")]

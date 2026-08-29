@@ -18,6 +18,9 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
             builder.Property(v => v.FotoCedulaPath)
                 .HasMaxLength(500);
 
+            builder.Property(v => v.GarantiaPath)
+                .HasMaxLength(500);
+
             builder.HasOne(v => v.LoanApplication)
                 .WithOne(l => l.VerificationMedia)
                 .HasForeignKey<VerificationMedia>(v => v.LoanApplicationId)

@@ -12,6 +12,11 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations.Tenancy
 
             builder.HasKey(tc => tc.Id);
 
+            builder.Property(tc => tc.CapitalInicial)
+                .IsRequired()
+                .HasColumnType("decimal(18,2)")
+                .HasDefaultValue(0m);
+
             builder.Property(tc => tc.TasaMoraDiaria)
                 .IsRequired()
                 .HasColumnType("decimal(5,4)")

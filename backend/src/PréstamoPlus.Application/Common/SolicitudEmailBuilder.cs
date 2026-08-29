@@ -38,6 +38,11 @@ namespace PréstamoPlus.Application.Common
                     "Solicitud no aprobada",
                     "Luego de revisar la información suministrada, no pudimos aprobar tu solicitud en esta ocasión.",
                     "#b91c1c"),
+                EstadoSolicitud.Cancelada => (
+                    "Solicitud desestimada",
+                    "Solicitud desestimada",
+                    "La solicitud fue cerrada por la empresa y no continuará a revisión.",
+                    "#64748b"),
                 _ => (
                     "Recibimos tu solicitud",
                     "Solicitud recibida",

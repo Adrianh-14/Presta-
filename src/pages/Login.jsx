@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
   const { login } = useAuth();
@@ -11,95 +12,75 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleReset = async () => {
+    setResetLoading(true);
+    try { await authService.requestPasswordReset(email.trim()); setResetSent(true); }
+    finally { setResetLoading(false); }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const data = await login(email, password);
-      if (data.user?.role === 'Cobrador') {
-        navigate('/cobrador');
-      } else {
-        navigate('/admin');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Credenciales inválidas');
+      const data = await login(email.trim(), password);
+      const role = data.user?.role;
+      navigate(role === 'Cobrador' ? '/cobrador' : ['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(role) ? '/plataforma' : '/admin');
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'No pudimos validar tus credenciales.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen gradient-hero flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-gradient-to-br from-[#e55cff] to-[#8247f5] blur-3xl" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] rounded-full bg-gradient-to-br from-[#ffa600] to-[#0099ff] blur-3xl" />
-      </div>
-
-      <div className="bg-white rounded-16 shadow-card-lg p-8 max-w-md w-full relative z-10">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-navy-500 to-navy-600 rounded-12 flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">P+</span>
-          </div>
-          <h1 className="text-2xl font-bold text-navy-500">PréstamoPlus</h1>
-          <p className="text-slate-500 text-sm mt-2">Panel de administración</p>
+    <main className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="financial-grid relative hidden min-h-screen overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-20">
+        <div className="absolute right-[-8rem] top-28 h-72 w-72 rounded-full border-[50px] border-accent-400/10" />
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-8 border border-white/20 bg-white/10 font-display font-extrabold">P+</div>
+          <div><p className="font-display text-lg font-bold">PréstamoPlus</p><p className="text-[10px] uppercase tracking-[0.22em] text-accent-200">Control de cartera</p></div>
         </div>
-
-        {error && (
-          <div className="bg-danger-50 border border-red-200 text-danger-600 px-4 py-3 rounded-lg mb-6 text-sm">
-            {error}
+        <div className="relative max-w-xl">
+          <p className="mb-5 font-mono text-xs uppercase tracking-[0.22em] text-accent-300">Capital · Riesgo · Cobranza</p>
+          <h1 className="font-display text-5xl font-extrabold leading-[1.08] xl:text-6xl">Decisiones claras para una cartera saludable.</h1>
+          <p className="mt-6 max-w-lg text-base leading-7 text-slate-200">Administra préstamos, recaudos y equipos de campo desde un registro financiero central, trazable y listo para crecer.</p>
+          <div className="mt-10 grid grid-cols-3 border-y border-white/15 py-5">
+            {['Cartera unificada', 'Cobro verificable', 'Acceso por roles'].map((item) => <div key={item} className="pr-5 text-xs font-semibold text-slate-200"><CheckCircle2 size={16} className="mb-2 text-success-500" />{item}</div>)}
           </div>
-        )}
+        </div>
+        <p className="relative text-xs text-slate-400">Infraestructura financiera para operaciones responsables.</p>
+      </section>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-navy-500 mb-2">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-surface-border rounded-4 focus:ring-2 focus:ring-accent-500 focus:border-accent-500 outline-none text-sm"
-                placeholder="tu@empresa.com"
-                required
-              />
-            </div>
-          </div>
+      <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-10">
+        <div className="w-full max-w-md">
+          <div className="mb-9 flex items-center gap-3 lg:hidden"><div className="flex h-10 w-10 items-center justify-center rounded-8 bg-navy-800 font-display font-extrabold text-white">P+</div><p className="font-display text-lg font-bold text-navy-800">PréstamoPlus</p></div>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-600">Acceso empresarial</p>
+          <h2 className="mt-2 font-display text-3xl font-extrabold text-navy-800">Bienvenido de vuelta</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Consulta la cartera y continúa donde dejaste tu operación.</p>
 
-          <div>
-            <label className="block text-sm font-medium text-navy-500 mb-2">Contraseña</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-12 py-3 border border-surface-border rounded-4 focus:ring-2 focus:ring-accent-500 focus:border-accent-500 outline-none text-sm"
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-500"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
+          {error && <div role="alert" className="mt-6 rounded-8 border border-red-200 bg-danger-50 px-4 py-3 text-sm text-danger-600">{error}</div>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 gradient-accent text-white rounded-4 hover:opacity-90 transition-opacity font-semibold text-sm shadow-btn disabled:opacity-50"
-          >
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+            <label className="block text-sm font-semibold text-navy-700">Correo de trabajo
+              <span className="relative mt-2 block"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} /><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="auth-input pl-10" placeholder="nombre@empresa.com" required /></span>
+            </label>
+            <label className="block text-sm font-semibold text-navy-700">Contraseña
+              <span className="relative mt-2 block"><LockKeyhole className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} /><input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="auth-input px-10" placeholder="Tu contraseña" required /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-navy-600">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span>
+            </label>
+            <button type="button" onClick={() => { setShowReset(true); setResetSent(false); }} className="-mt-2 text-left text-sm font-semibold text-accent-600 hover:text-accent-700">¿Olvidaste tu contraseña?</button>
+            <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-8 bg-navy-800 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-navy-700 disabled:cursor-wait disabled:opacity-60">{loading ? 'Validando acceso…' : <>Entrar a mi cuenta <ArrowRight size={17} /></>}</button>
+          </form>
 
-      </div>
-    </div>
+          {showReset && <div className="mt-5 rounded-12 border border-accent-100 bg-accent-50 p-4"><p className="font-semibold text-navy-800">Recuperar contraseña</p>{resetSent ? <p className="mt-2 text-sm text-slate-600">Si el correo existe, recibirás un enlace para crear una nueva contraseña.</p> : <><p className="mt-1 text-xs text-slate-500">Te enviaremos un enlace seguro con vigencia de 30 minutos.</p><button type="button" onClick={handleReset} disabled={resetLoading} className="mt-3 rounded-8 bg-accent-600 px-3 py-2 text-sm font-bold text-white">{resetLoading ? 'Enviando…' : 'Enviar enlace'}</button></>}</div>}
+
+          <div className="mt-7 rounded-12 border border-surface-border bg-white p-4"><div className="flex gap-3"><ShieldCheck size={19} className="mt-0.5 shrink-0 text-success-600" /><div><p className="text-sm font-semibold text-navy-700">¿Tu empresa aún no tiene cuenta?</p><p className="mt-1 text-xs leading-5 text-slate-500">Crea el espacio de trabajo y comienza una prueba de 14 días.</p><Link to="/registro" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-accent-600 hover:text-accent-700">Registrar mi empresa <ArrowRight size={14} /></Link></div></div></div>
+        </div>
+      </section>
+    </main>
   );
 }

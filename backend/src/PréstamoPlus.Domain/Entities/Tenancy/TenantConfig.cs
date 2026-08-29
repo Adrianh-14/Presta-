@@ -4,6 +4,9 @@ namespace PréstamoPlus.Domain.Entities.Tenancy
     {
         public Guid Id { get; set; }
         public Guid TenantId { get; set; }
+        public decimal CapitalInicial { get; set; }
+        public decimal CapitalInicialUsd { get; set; }
+        public decimal CapitalInicialEur { get; set; }
         public decimal TasaMoraDiaria { get; set; } = 0.05m;
         public int DiasGracia { get; set; } = 3;
         public string? TelefonoWhatsApp { get; set; }

@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using MediatR;
 using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
@@ -15,12 +14,14 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Register
         private readonly IUnitOfWork _unitOfWork;
         private readonly IJwtService _jwtService;
         private readonly JwtSettings _jwtSettings;
+        private readonly IPasswordService _passwords;
 
-        public RegisterCommandHandler(IUnitOfWork unitOfWork, IJwtService jwtService, IOptions<JwtSettings> jwtSettings)
+        public RegisterCommandHandler(IUnitOfWork unitOfWork, IJwtService jwtService, IOptions<JwtSettings> jwtSettings, IPasswordService passwords)
         {
             _unitOfWork = unitOfWork;
             _jwtService = jwtService;
             _jwtSettings = jwtSettings.Value;
+            _passwords = passwords;
         }
 
         public async Task<AuthResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -46,7 +47,7 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Register
                 Id = Guid.NewGuid(),
                 TenantId = request.TenantId,
                 Email = email,
-                PasswordHash = HashPassword(request.Request.Password),
+                PasswordHash = _passwords.Hash(request.Request.Password),
                 Nombre = request.Request.Nombre,
                 Role = role,
                 IsActive = true,
@@ -88,20 +89,5 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Register
             };
         }
 
-        private static string HashPassword(string password)
-        {
-            var salt = new byte[16];
-            using var rng = RandomNumberGenerator.Create();
-            rng.GetBytes(salt);
-
-            using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256);
-            var hash = pbkdf2.GetBytes(20);
-
-            var hashBytes = new byte[36];
-            Array.Copy(salt, 0, hashBytes, 0, 16);
-            Array.Copy(hash, 0, hashBytes, 16, 20);
-
-            return Convert.ToBase64String(hashBytes);
-        }
     }
 }

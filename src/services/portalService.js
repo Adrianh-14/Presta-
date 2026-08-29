@@ -26,6 +26,14 @@ export const portalService = {
     const { data } = await api.get('/api/clients/me/loans', { useClientToken: true });
     return data;
   },
+  getMyApplications: async () => {
+    const { data } = await api.get('/api/clients/me/solicitudes', { useClientToken: true });
+    return data;
+  },
+  uploadGuarantee: async (id, image) => {
+    const { data } = await api.post(`/api/clients/me/solicitudes/${id}/garantia`, { image }, { useClientToken: true, timeout: 120000 });
+    return data;
+  },
   getLoan: async (loanId) => {
     const { data } = await api.get(`/api/prestamos/${loanId}`, { useClientToken: true });
     return data;

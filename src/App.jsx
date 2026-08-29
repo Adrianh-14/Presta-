@@ -8,12 +8,21 @@ import Solicitudes from './pages/admin/Solicitudes';
 import Solicitud from './pages/client/Solicitud';
 import NuevoPrestamo from './pages/admin/NuevoPrestamo';
 import Login from './pages/Login';
+import PasswordReset from './pages/PasswordReset';
+import Register from './pages/Register';
 import PortalLayout from './pages/portal/Layout';
 import PortalDashboard from './pages/portal/Dashboard';
 import PortalLoanDetail from './pages/portal/LoanDetail';
 import PortalLogin from './pages/portal/Login';
 import Cobradores from './pages/admin/Cobradores';
 import Gastos from './pages/admin/Gastos';
+import Garantias from './pages/admin/Garantias';
+import PlatformDashboard from './pages/platform/Dashboard';
+import PlatformEmpresas from './pages/platform/Empresas';
+import PlatformPlanes from './pages/platform/Planes';
+import PlatformAuditoria from './pages/platform/Auditoria';
+import PlatformSuscripciones from './pages/platform/Suscripciones';
+import PlatformPromociones from './pages/platform/Promociones';
 import CollectorLogin from './pages/cobrador/Login';
 import CollectorLayout from './pages/cobrador/CollectorLayout';
 import CollectorDashboard from './pages/cobrador/Dashboard';
@@ -27,6 +36,7 @@ function ProtectedRoute({ children }) {
   if (loading) return <div className="flex items-center justify-center h-screen"><p>Cargando...</p></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user?.role === 'Cobrador') return <Navigate to="/cobrador" replace />;
+  if (['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role)) return <Navigate to="/plataforma" replace />;
   return children;
 }
 
@@ -35,6 +45,7 @@ function PublicRoute({ children }) {
   if (loading) return <div className="flex items-center justify-center h-screen"><p>Cargando...</p></div>;
   if (!isAuthenticated) return children;
   if (user?.role === 'Cobrador') return <Navigate to="/cobrador" replace />;
+  if (['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role)) return <Navigate to="/plataforma" replace />;
   return <Navigate to="/admin" replace />;
 }
 
@@ -51,10 +62,28 @@ function CollectorRoute({ children }) {
   return children;
 }
 
+function PlatformRoute({ children }) {
+  const { isAuthenticated, user, loading } = useAuth();
+  if (loading) return <div className="flex items-center justify-center h-screen"><p>Cargando...</p></div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role)) return <Navigate to="/admin" replace />;
+  return children;
+}
+
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/plataforma" element={<PlatformRoute><AdminLayout /></PlatformRoute>}>
+        <Route index element={<PlatformDashboard />} />
+        <Route path="empresas" element={<PlatformEmpresas />} />
+        <Route path="planes" element={<PlatformPlanes />} />
+        <Route path="suscripciones" element={<PlatformSuscripciones />} />
+        <Route path="promociones" element={<PlatformPromociones />} />
+        <Route path="auditoria" element={<PlatformAuditoria />} />
+      </Route>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/recuperar-contrasena" element={<PasswordReset />} />
+      <Route path="/registro" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/solicitud" element={<Solicitud />} />
       <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
@@ -64,6 +93,7 @@ function AppRoutes() {
         <Route path="solicitudes" element={<Solicitudes />} />
         <Route path="cobradores" element={<Cobradores />} />
         <Route path="gastos" element={<Gastos />} />
+        <Route path="garantias" element={<Garantias />} />
       </Route>
       <Route path="/cobrador/login" element={<CollectorLogin />} />
       <Route path="/cobrador" element={<CollectorRoute><CollectorLayout /></CollectorRoute>}>

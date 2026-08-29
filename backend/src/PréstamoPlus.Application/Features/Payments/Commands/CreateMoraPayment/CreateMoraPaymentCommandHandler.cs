@@ -26,6 +26,8 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreateMoraPayment
             var loan = await _unitOfWork.Loans.GetByIdAsync(req.LoanId);
             if (loan is null)
                 throw new InvalidOperationException("Préstamo no encontrado.");
+            if (!string.IsNullOrWhiteSpace(req.Moneda) && !string.Equals(req.Moneda, loan.Moneda, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"La moneda del pago debe ser {loan.Moneda}.");
             if (!string.IsNullOrWhiteSpace(req.IdempotencyKey) &&
                 (await _unitOfWork.Payments.ListAsync(cancellationToken)).Any(p => p.LoanId == req.LoanId && p.IdempotencyKey == req.IdempotencyKey))
                 throw new InvalidOperationException("Este pago ya fue procesado.");
@@ -58,6 +60,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreateMoraPayment
                     Id = Guid.NewGuid(),
                     LoanId = req.LoanId,
                     Monto = montoMora,
+                    Moneda = loan.Moneda,
                     Capital = 0,
                     Interes = 0,
                     MoraPagada = montoMora,
@@ -96,6 +99,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreateMoraPayment
                     Id = payment.Id,
                     LoanId = payment.LoanId,
                     Monto = payment.Monto,
+                    Moneda = payment.Moneda,
                     Capital = payment.Capital,
                     Interes = payment.Interes,
                     MoraPagada = payment.MoraPagada,

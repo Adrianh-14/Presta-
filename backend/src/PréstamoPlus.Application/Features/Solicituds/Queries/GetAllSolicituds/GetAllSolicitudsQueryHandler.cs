@@ -23,6 +23,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Queries.GetAllSolicituds
             {
                 Id = loan.Id,
                 MontoSolicitado = loan.MontoSolicitado,
+                Moneda = loan.Moneda,
                 TasaInteresMensual = loan.TasaInteresMensual,
                 Plazo = loan.Plazo,
                 UnidadPlazo = loan.UnidadPlazo,
@@ -85,7 +86,9 @@ namespace PréstamoPlus.Application.Features.Solicituds.Queries.GetAllSolicituds
                     ? new VerificationMediaDto
                     {
                         VideoPath = loan.VerificationMedia.VideoPath,
-                        FotoCedulaPath = loan.VerificationMedia.FotoCedulaPath
+                        FotoCedulaPath = loan.VerificationMedia.FotoCedulaPath,
+                        GarantiaPath = loan.VerificationMedia.GarantiaPath,
+                        ContratoPath = loan.VerificationMedia.ContratoPath
                     }
                     : null
             }).ToList();

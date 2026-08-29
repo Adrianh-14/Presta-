@@ -2,6 +2,7 @@ using Ardalis.Specification;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using PréstamoPlus.Domain.Entities;
+using PréstamoPlus.Domain.Entities.Tenancy;
 using PréstamoPlus.Domain.Interfaces;
 using PréstamoPlus.Infrastructure.Persistence;
 
@@ -30,6 +31,7 @@ namespace PréstamoPlus.Infrastructure.Repositories
         private GenericRepository<CollectionVisit>? _collectionVisits;
         private GenericRepository<Expense>? _expenses;
         private GenericRepository<PaymentQR>? _paymentQRs;
+        private GenericRepository<Tenant>? _tenants;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -89,6 +91,9 @@ namespace PréstamoPlus.Infrastructure.Repositories
 
         public IRepositoryBase<PaymentQR> PaymentQRs =>
             _paymentQRs ??= new GenericRepository<PaymentQR>(_context);
+
+        public IRepositoryBase<Tenant> Tenants =>
+            _tenants ??= new GenericRepository<Tenant>(_context);
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
