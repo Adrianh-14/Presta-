@@ -26,7 +26,7 @@ services:
     ports:
       - "5002:5001"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       DatabaseProvider: PostgreSQL
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-prestamoplus};Username=${POSTGRES_USER:-prestamoplus};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in the ignored .env file}
       ClientAuthentication__Enabled: "true"
@@ -55,15 +55,31 @@ services:
     container_name: prestamoplus_web
     restart: unless-stopped
     ports:
-      - "8088:80"
+      - "3005:3005"
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/healthz"]
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3005/healthz"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Cloudflare Tunnel publica el frontend sin exponer puertos entrantes.
+  # En Dokploy basta declarar CLOUDFLARED_TUNNEL_TOKEN. Sin token, el
+  # contenedor termina de forma controlada y el entorno local sigue funcionando.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      if [ -z "$$TUNNEL_TOKEN" ]; then echo "CLOUDFLARED_TUNNEL_TOKEN no configurado"; exit 0; fi;
+      cloudflared tunnel --no-autoupdate run --token "$$TUNNEL_TOKEN"
+    depends_on:
+      frontend:
+        condition: service_healthy
 
 volumes:
   pgdata:
