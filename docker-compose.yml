@@ -26,16 +26,27 @@ services:
     ports:
       - "5002:5001"
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       DatabaseProvider: PostgreSQL
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-prestamoplus};Username=${POSTGRES_USER:-prestamoplus};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in the ignored .env file}
+      # Dentro de Compose se usa postgres:5432. Dokploy puede sobrescribir
+      # POSTGRES_HOST/POSTGRES_PORT si utiliza una base administrada externa.
+      ConnectionStrings__DefaultConnection: Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-prestamoplus};Username=${POSTGRES_USER:-prestamoplus};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in the ignored .env file}
       ClientAuthentication__Enabled: "true"
       DemoData__Enabled: "false"
       JwtSettings__SecretKey: ${JWT_SECRET:-dev-only-change-this-secret-key-please-rotate-in-production-2026}
+      JwtSettings__Issuer: ${JWT_ISSUER:-PrestamoPlus}
+      JwtSettings__Audience: ${JWT_AUDIENCE:-PrestamoPlusApp}
+      ClientAuthentication__OtpPepper: ${CLIENT_AUTH_OTP_PEPPER:-local-development-otp-pepper-change-before-production-2026}
+      ClientAuthentication__OtpLifetimeMinutes: ${CLIENT_AUTH_OTP_LIFETIME_MINUTES:-10}
+      ClientAuthentication__MaximumVerificationAttempts: ${CLIENT_AUTH_MAX_VERIFICATION_ATTEMPTS:-5}
+      ClientAuthentication__RequestLimitPerWindow: ${CLIENT_AUTH_REQUEST_LIMIT_PER_WINDOW:-10}
+      ClientAuthentication__SessionLifetimeMinutes: ${CLIENT_AUTH_SESSION_LIFETIME_MINUTES:-480}
       Resend__ApiKey: ${RESEND_API_KEY:-}
       Resend__FromEmail: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
       Resend__FromName: ${RESEND_FROM_NAME:-PrestamoPlus}
-      Resend__ClientPortalUrl: ${RESEND_CLIENT_PORTAL_URL:-http://localhost:8088/portal/login}
+      Resend__ClientPortalUrl: ${RESEND_CLIENT_PORTAL_URL:-http://localhost:3005/portal/login}
+      Security__RealDataApproved: ${SECURITY_REAL_DATA_APPROVED:-false}
+      Security__ReleaseApprovalReference: ${SECURITY_RELEASE_APPROVAL_REFERENCE:-}
     volumes:
       - uploads:/uploads
     depends_on:
