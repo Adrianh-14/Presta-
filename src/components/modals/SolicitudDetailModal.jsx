@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { X, User, DollarSign, Briefcase, MapPin, Users, CreditCard, Check, XIcon, Camera, Video, Clock, SlidersHorizontal } from 'lucide-react';
 import StatusBadge from '../StatusBadge';
 import MediaViewer from '../MediaViewer';
+import CurrencyFlag from '../CurrencyFlag';
+import { getCurrency } from '../../data/currencies';
 
 const frecuenciaLabels = { 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual', diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual' };
 const tipoEmpleoLabels = { 0: 'Formal', 1: 'Informal', 2: 'Independiente', 3: 'Jubilado' };
 const relacionLabels = { 0: 'Familiar', 1: 'Amigo', 2: 'Compañero', 3: 'Otro' };
 const tipoCuentaLabels = { 0: 'Corriente', 1: 'Ahorro', 2: 'Nómina' };
-const currencyMeta = { DOP: { flag: '🇩🇴', name: 'Pesos dominicanos' }, USD: { flag: '🇺🇸', name: 'Dólares estadounidenses' }, EUR: { flag: '🇪🇺', name: 'Euros' } };
 const money = (value, currency = 'DOP') => new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(Number(value || 0));
 
 export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject, onProcess }) {
@@ -40,7 +41,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   const isProcessing = solicitud.estado === 1 || estadoRaw === 'procesando' || estadoRaw === 'enrevision' || estadoRaw === 'en_revision';
   const montoNumero = Number(montoAprobado) || 0;
   const moneda = String(solicitud.moneda || 'DOP').toUpperCase();
-  const currency = currencyMeta[moneda] || currencyMeta.DOP;
+  const currency = getCurrency(moneda);
   const tasaNumero = Number(tasaAprobada) || 0;
   const cierreNumero = Number(gastoCierreAprobado) || 0;
   const plazoNumero = Number(plazoAprobado) || 0;
@@ -65,7 +66,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
     && fechaPrimerPago >= fechaInicio;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -90,7 +91,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
           <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-6 text-white text-center">
             <p className="text-yellow-100 text-sm mb-1">Monto Solicitado</p>
             <p className="text-3xl font-bold mb-1">{money(solicitud.montoSolicitado, moneda)}</p>
-            <p className="text-yellow-100 text-xs">{currency.flag} {currency.name} ({moneda})</p>
+            <p className="flex items-center justify-center gap-2 text-yellow-100 text-xs"><CurrencyFlag currency={currency} /> {currency.name} ({moneda})</p>
             <p className="text-yellow-200 text-sm">{tipoLabels[solicitud.tipoPrestamo] || solicitud.tipoPrestamo} — {solicitud.plazo} meses</p>
           </div>
 
@@ -348,11 +349,24 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                 />
                 <p className="mt-1 text-xs text-gray-500">Estas instrucciones aparecerán en el correo de revisión.</p>
               </div>
+              <div className="grid grid-cols-1 gap-4 rounded-xl border border-accent-100 bg-accent-50/40 p-4 sm:grid-cols-2">
+                <label className="text-sm font-medium text-gray-700">Monto a facilitar<input type="number" min="0.01" step="0.01" value={montoAprobado} onChange={(e) => setMontoAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /><span className="mt-1 block text-xs font-normal text-gray-500">Solicitó {money(solicitud.montoSolicitado, moneda)}</span></label>
+                <label className="text-sm font-medium text-gray-700">Tasa mensual (%)<input type="number" min="0" step="0.01" value={tasaAprobada} onChange={(e) => setTasaAprobada(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /></label>
+                <label className="text-sm font-medium text-gray-700">Gasto de cierre (%)<input type="number" min="0" step="0.01" value={gastoCierreAprobado} onChange={(e) => setGastoCierreAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /></label>
+                <div className="grid grid-cols-[1fr_auto] gap-2"><label className="text-sm font-medium text-gray-700">Plazo<input type="number" min="1" step="1" value={plazoAprobado} onChange={(e) => setPlazoAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /></label><label className="text-sm font-medium text-gray-700">Unidad<select value={unidadPlazoAprobada} onChange={(e) => setUnidadPlazoAprobada(Number(e.target.value))} className="mt-1.5 rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Meses</option><option value={1}>Años</option></select></label></div>
+                <label className="text-sm font-medium text-gray-700 sm:col-span-2">Frecuencia de pago<select value={frecuenciaAprobada} onChange={(e) => setFrecuenciaAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Diaria</option><option value={1}>Semanal</option><option value={2}>Quincenal</option><option value={3}>Mensual</option></select></label>
+              </div>
+              <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                <div className="p-3 text-center"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Cuota estimada</p><p className="mt-1 font-bold text-accent-700">{money(cuotaAprobada, moneda)}</p></div>
+                <div className="border-x border-gray-200 p-3 text-center"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Total a pagar</p><p className="mt-1 font-bold text-gray-900">{money(totalAprobado, moneda)}</p></div>
+                <div className="p-3 text-center"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Interés total</p><p className="mt-1 font-bold text-amber-600">{money(Math.max(0, totalAprobado - principalAprobado), moneda)}</p></div>
+              </div>
               <button
-                onClick={() => onProcess(solicitud.id, instrucciones.trim() || null)}
+                onClick={() => onProcess(solicitud.id, instrucciones.trim() || null, { montoAprobado: montoNumero, tasaInteresMensual: tasaNumero, gastoCierrePorcentaje: cierreNumero, plazo: plazoNumero, unidadPlazo: unidadPlazoAprobada, frecuenciaPago: frecuenciaAprobada })}
+                disabled={!montoNumero || tasaNumero < 0 || cierreNumero < 0 || !plazoNumero}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors font-medium"
               >
-                <Clock size={20} /> Marcar como procesando
+                <Clock size={20} /> Guardar condiciones y enviar propuesta
               </button>
               <button
                 onClick={() => onReject(solicitud.id, true)}

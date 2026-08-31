@@ -14,7 +14,9 @@ namespace PréstamoPlus.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
+    // Consultar la lista y sus detalles no debe exigir step-up authentication.
+    // Las operaciones que modifican datos mantienen ManageCollectors debajo.
+    [Authorize(Policy = AuthorizationPolicies.StaffRead)]
     public class CobradoresController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -48,6 +50,7 @@ namespace PréstamoPlus.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
         [ProducesResponseType(typeof(CollectorDto), StatusCodes.Status201Created)]
         public async Task<IActionResult> Create([FromBody] CreateCollectorRequest request)
         {
@@ -56,6 +59,7 @@ namespace PréstamoPlus.API.Controllers
         }
 
         [HttpPost("{id:guid}/assign")]
+        [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
         [ProducesResponseType(typeof(List<CollectionAssignmentDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> AssignLoans(Guid id, [FromBody] AssignLoansRequest request)
         {
@@ -67,7 +71,46 @@ namespace PréstamoPlus.API.Controllers
             return Ok(result);
         }
 
+        [HttpPatch("{id:guid}/status")]
+        [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
+        public async Task<IActionResult> ToggleStatus(Guid id, [FromBody] ToggleCollectorStatusRequest request)
+        {
+            var collector = await _unitOfWork.Collectors.GetByIdAsync(id);
+            if (collector is null || collector.TenantId != GetTenantId())
+                return NotFound(new { message = "Cobrador no encontrado." });
+
+            collector.IsActive = request.IsActive;
+            await _unitOfWork.Collectors.UpdateAsync(collector);
+            var user = await _unitOfWork.Users.GetByIdAsync(collector.UserId);
+            if (user is not null)
+            {
+                user.IsActive = request.IsActive;
+                await _unitOfWork.Users.UpdateAsync(user);
+            }
+            await _unitOfWork.SaveChangesAsync();
+            return Ok(new { collectorId = id, isActive = request.IsActive });
+        }
+
+        [HttpDelete("assignments/{assignmentId:guid}")]
+        [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
+        public async Task<IActionResult> RemoveAssignment(Guid assignmentId)
+        {
+            var assignment = (await _unitOfWork.CollectionAssignments.ListAsync())
+                .FirstOrDefault(a => a.Id == assignmentId);
+            if (assignment is null) return NotFound(new { message = "Asignación no encontrada." });
+
+            var collector = await _unitOfWork.Collectors.GetByIdAsync(assignment.CollectorId);
+            var loan = await _unitOfWork.Loans.GetByIdAsync(assignment.LoanId);
+            if (collector?.TenantId != GetTenantId() || loan?.TenantId != GetTenantId())
+                return NotFound(new { message = "Asignación no encontrada." });
+
+            await _unitOfWork.CollectionAssignments.DeleteAsync(assignment);
+            await _unitOfWork.SaveChangesAsync();
+            return NoContent();
+        }
+
         [HttpPatch("assignments/{assignmentId:guid}/qr-authorization")]
+        [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> ToggleQRAuthorization(Guid assignmentId, [FromBody] ToggleQRAuthorizationRequest request)
         {
@@ -83,6 +126,11 @@ namespace PréstamoPlus.API.Controllers
                 return NotFound(new { message = "Asignación no encontrada." });
 
             assignment.IsQRAuthorized = request.IsQRAuthorized;
+            if (request.IsQRAuthorized)
+            {
+                assignment.QRGenerationAttempts = 0;
+                assignment.QRPermissionRequested = false;
+            }
             await _unitOfWork.CollectionAssignments.UpdateAsync(assignment);
             await _unitOfWork.SaveChangesAsync();
 
@@ -120,6 +168,8 @@ namespace PréstamoPlus.API.Controllers
                     EstadoPrestamo = loan?.Estado ?? Domain.Enums.EstadoPrestamo.Activo,
                     Estado = a.Estado,
                     IsQRAuthorized = a.IsQRAuthorized,
+                    QRGenerationAttempts = a.QRGenerationAttempts,
+                    QRPermissionRequested = a.QRPermissionRequested,
                     AssignedAt = a.AssignedAt
                 });
             }
@@ -152,4 +202,5 @@ namespace PréstamoPlus.API.Controllers
     }
 
     public record ToggleQRAuthorizationRequest(bool IsQRAuthorized);
+    public record ToggleCollectorStatusRequest(bool IsActive);
 }

@@ -4,17 +4,24 @@ import DataTable from '../../components/DataTable';
 import StatusBadge from '../../components/StatusBadge';
 import PrestamoDetailModal from '../../components/modals/PrestamoDetailModal';
 import { prestamoService } from '../../services/prestamoService';
+import CurrencyFlag from '../../components/CurrencyFlag';
+import { getCurrency, formatCurrency } from '../../data/currencies';
 
 const tipoLabels = { personal: 'Personal', garantia: 'Garantía', 0: 'Personal', 1: 'Garantía' };
 const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
 
+const currencyCell = (value, row) => {
+  const currency = getCurrency(row?.moneda);
+  return <div className="flex items-center gap-2"><CurrencyFlag currency={currency} /><div><p className="font-semibold">{formatCurrency(value, currency.code)}</p><p className="text-[11px] text-gray-400">{currency.name} ({currency.code})</p></div></div>;
+};
+
 const columns = [
   { key: 'cliente', label: 'Cliente' },
-  { key: 'monto', label: 'Monto', render: (value) => `$${Number(value || 0).toLocaleString()}` },
+  { key: 'monto', label: 'Monto', render: currencyCell },
   { key: 'tipo', label: 'Tipo', render: (value) => tipoLabels[value] || String(value || '-') },
   { key: 'frecuenciaPago', label: 'Frecuencia', render: (value) => freqLabels[value] || String(value || '-') },
-  { key: 'cuotaMensual', label: 'Cuota', render: (value) => `$${Number(value || 0).toLocaleString()}` },
-  { key: 'saldoPendiente', label: 'Saldo', render: (value) => `$${Number(value || 0).toLocaleString()}` },
+  { key: 'cuotaMensual', label: 'Cuota', render: currencyCell },
+  { key: 'saldoPendiente', label: 'Saldo', render: currencyCell },
   { key: 'fechaVencimiento', label: 'Vencimiento', render: (value) => value ? new Date(value).toLocaleDateString() : '-' },
   { key: 'estado', label: 'Estado', render: (value) => <StatusBadge status={value} /> },
 ];

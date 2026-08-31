@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, QrCode, Loader2, ShieldOff } from 'lucide-react';
-import { collectorPortalService } from '../../services/cobradorService';
+import { X, QrCode, Loader2, ShieldOff, Trash2 } from 'lucide-react';
+import { cobradorService, collectorPortalService } from '../../services/cobradorService';
 
 const fmt = (n) => `$${(n || 0).toLocaleString()}`;
 
@@ -8,6 +8,7 @@ export default function QRManagementModal({ collector, onClose }) {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(null);
+  const [removing, setRemoving] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -34,6 +35,19 @@ export default function QRManagementModal({ collector, onClose }) {
       alert(err.response?.data?.message || 'Error al actualizar');
     } finally {
       setToggling(null);
+    }
+  };
+
+  const handleRemove = async (assignment) => {
+    if (!confirm(`¿Quitar el préstamo de ${assignment.clienteNombre} de este cobrador?`)) return;
+    setRemoving(assignment.id);
+    try {
+      await cobradorService.removeAssignment(assignment.id);
+      setAssignments(prev => prev.filter(item => item.id !== assignment.id));
+    } catch (err) {
+      alert(err.userMessage || err.response?.data?.message || 'No se pudo quitar la asignación.');
+    } finally {
+      setRemoving(null);
     }
   };
 
@@ -64,25 +78,30 @@ export default function QRManagementModal({ collector, onClose }) {
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-navy-500">{a.clienteNombre}</p>
                     <p className="text-xs text-slate-400">{a.clienteCedula} — Saldo: {fmt(a.saldoPendiente)}</p>
+                    <p className={`text-[11px] mt-1 ${a.qrPermissionRequested ? 'text-danger-600 font-semibold' : 'text-slate-400'}`}>
+                      {a.qrPermissionRequested
+                        ? 'Solicita nueva autorización: alcanzó 3 generaciones'
+                        : `Generaciones utilizadas: ${a.qrGenerationAttempts || 0}/3`}
+                    </p>
                   </div>
-                  <button
-                    onClick={() => handleToggle(a.id, a.isQRAuthorized)}
-                    disabled={toggling === a.id}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-8 text-xs font-semibold transition-all ${
+                  <div className="flex items-center gap-2 ml-3">
+                    <button
+                      onClick={() => handleToggle(a.id, a.isQRAuthorized)}
+                      disabled={toggling === a.id || removing === a.id}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-8 text-xs font-semibold transition-all ${
                       a.isQRAuthorized
                         ? 'bg-success-50 text-success-600 hover:bg-success-100'
                         : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
-                  >
-                    {toggling === a.id ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : a.isQRAuthorized ? (
-                      <QrCode size={12} />
-                    ) : (
-                      <ShieldOff size={12} />
-                    )}
-                    {a.isQRAuthorized ? 'QR Activo' : 'Activar QR'}
-                  </button>
+                      }`}
+                    >
+                      {toggling === a.id ? <Loader2 size={12} className="animate-spin" /> : a.isQRAuthorized ? <QrCode size={12} /> : <ShieldOff size={12} />}
+                      {a.isQRAuthorized ? 'QR Activo' : 'Activar QR'}
+                    </button>
+                    <button onClick={() => handleRemove(a)} disabled={removing === a.id || toggling === a.id}
+                      title="Quitar préstamo asignado" className="p-1.5 rounded-6 text-danger-500 hover:bg-danger-50 disabled:opacity-50">
+                      {removing === a.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -11,6 +11,8 @@ namespace PréstamoPlus.Domain.Entities
         public Guid AssignedBy { get; set; }
         public EstadoAsignacion Estado { get; set; } = EstadoAsignacion.Asignado;
         public bool IsQRAuthorized { get; set; } = false;
+        public int QRGenerationAttempts { get; set; } = 0;
+        public bool QRPermissionRequested { get; set; } = false;
 
         public Collector Collector { get; set; } = null!;
         public Loan Loan { get; set; } = null!;

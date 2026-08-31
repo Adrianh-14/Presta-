@@ -3,6 +3,11 @@ import { QRCodeSVG } from 'qrcode.react';
 import { X, Clock, Copy, Check } from 'lucide-react';
 import { collectorPortalService } from '../../services/cobradorService';
 
+const formatAmount = (value) => Number(value || 0).toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export default function GenerateQRModal({ isOpen, onClose, assignment }) {
   const [monto, setMonto] = useState('');
   const [qrData, setQrData] = useState(null);
@@ -11,6 +16,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
   const [countdown, setCountdown] = useState(0);
   const [copied, setCopied] = useState(false);
   const [sugerido, setSugerido] = useState(null);
+  const [attempts, setAttempts] = useState(0);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -21,16 +27,22 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
       setCountdown(0);
       setCopied(false);
       setSugerido(null);
+      setAttempts(0);
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && assignment?.id) {
+      setAttempts(Number(assignment.qrGenerationAttempts || 0));
       collectorPortalService.getSuggestedAmount(assignment.id)
         .then(data => {
           setSugerido(data);
-          setMonto(data.totalSugerido?.toString() || '');
+          // Some older API responses omit totalSugerido (or return zero when
+          // there is no generated schedule). Fall back to the installment
+          // already present on the collector assignment.
+          const suggestedAmount = Number(data.totalSugerido || data.cuotaMensual || assignment.cuotaMensual || 0);
+          setMonto(suggestedAmount > 0 ? suggestedAmount.toFixed(2) : '');
         })
         .catch(() => {});
     }
@@ -63,8 +75,9 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
     try {
       const result = await collectorPortalService.generateQR(assignment.id, parseFloat(monto));
       setQrData(result);
+      setAttempts((value) => value + 1);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al generar QR');
+      setError(err.userMessage || err.response?.data?.message || 'Error al generar QR');
     } finally {
       setLoading(false);
     }
@@ -84,6 +97,8 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const cuotaRapida = Number(sugerido?.totalSugerido || sugerido?.cuotaMensual || assignment?.cuotaMensual || 0);
+
   if (!isOpen) return null;
 
   return (
@@ -102,6 +117,11 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
         <div className="p-5">
           {!qrData ? (
             <>
+              {attempts >= 3 && (
+                <div className="rounded-8 border border-red-200 bg-red-50 p-3 mb-4 text-xs text-red-700">
+                  Alcanzaste el límite de 3 QR. Solicita al administrador una nueva autorización para este cliente.
+                </div>
+              )}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-navy-500 mb-1.5">Monto a cobrar</label>
                 <div className="relative">
@@ -110,15 +130,25 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
                     placeholder="0.00"
                     className="w-full pl-8 pr-4 py-2.5 bg-surface-fill rounded-8 text-sm border border-surface-border focus:border-accent-500 outline-none" />
                 </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <button type="button" onClick={() => setMonto(cuotaRapida.toFixed(2))}
+                    className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500 transition-colors">
+                    Cuota exacta ${formatAmount(cuotaRapida)}
+                  </button>
+                  <button type="button" onClick={() => setMonto(Number(assignment.saldoPendiente || 0).toFixed(2))}
+                    className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500 transition-colors">
+                    Saldo completo ${formatAmount(assignment.saldoPendiente)}
+                  </button>
+                </div>
               </div>
 
               <div className="bg-surface-fill rounded-8 p-3 mb-4 space-y-1">
-                <p className="text-xs text-slate-400">Saldo pendiente: <span className="font-semibold text-navy-500">${(assignment.saldoPendiente || 0).toLocaleString()}</span></p>
+                <p className="text-xs text-slate-400">Saldo pendiente: <span className="font-semibold text-navy-500">${formatAmount(assignment.saldoPendiente)}</span></p>
                 {sugerido && (
                   <>
-                    <p className="text-xs text-slate-400">Cuota: <span className="font-semibold text-navy-500">${sugerido.cuotaMensual?.toLocaleString()}</span></p>
+                    <p className="text-xs text-slate-400">Cuota: <span className="font-semibold text-navy-500">${formatAmount(cuotaRapida)}</span></p>
                     {sugerido.morasPendientes > 0 && (
-                      <p className="text-xs text-red-400">Mora: <span className="font-semibold text-red-500">+${sugerido.morasPendientes.toLocaleString()}</span></p>
+                      <p className="text-xs text-red-400">Mora: <span className="font-semibold text-red-500">+${formatAmount(sugerido.morasPendientes)}</span></p>
                     )}
                   </>
                 )}
@@ -126,7 +156,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
 
               {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
 
-              <button onClick={handleGenerate} disabled={loading || !monto}
+              <button onClick={handleGenerate} disabled={loading || !monto || attempts >= 3}
                 className="w-full py-2.5 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-sm font-semibold rounded-8 shadow-btn hover:shadow-card-lg transition-all disabled:opacity-50">
                 {loading ? 'Generando...' : 'Generar QR'}
               </button>

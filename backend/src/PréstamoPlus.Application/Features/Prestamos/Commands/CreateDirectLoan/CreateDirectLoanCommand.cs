@@ -2,6 +2,7 @@ using MediatR;
 using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
+using PréstamoPlus.Domain;
 using PréstamoPlus.Domain.Enums;
 using PréstamoPlus.Domain.Interfaces;
 
@@ -30,14 +31,16 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
         private readonly IJournalService _journal;
+        private readonly ICapitalGuardService _capitalGuard;
 
         public CreateDirectLoanCommandHandler(
             IUnitOfWork unitOfWork,
-            INotificationService notificationService, IJournalService journal)
+            INotificationService notificationService, IJournalService journal, ICapitalGuardService capitalGuard)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _journal = journal;
+            _capitalGuard = capitalGuard;
         }
 
         public async Task<LoanDto> Handle(CreateDirectLoanCommand command, CancellationToken cancellationToken)
@@ -70,6 +73,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
 
                 var plazoMeses = req.Plazo;
                 var principal = req.Monto + (req.Monto * req.GastoCierrePorcentaje / 100);
+                await _capitalGuard.EnsureCanDisburseAsync(tenantId, moneda, req.Monto, cancellationToken);
                 var tasaDecimal = req.TasaMensual / 100;
 
                 var totalPeriods = req.FrecuenciaPago switch
@@ -143,25 +147,26 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     CreatedAt = DateTime.UtcNow
                 };
 
-                GenerateInstallments(loan, principal, req.TasaMensual, cuota);
+                GenerateInstallments(loan, principal, req.TasaMensual, cuota, CalculatePaymentDate(fechaInicio, 1, req.FrecuenciaPago));
                 await _unitOfWork.Loans.AddAsync(loan, cancellationToken);
                 var disbursementLines = new List<JournalLineInput>
                 {
-                    new("LOAN_RECEIVABLE", req.Monto, 0, "Desembolso de préstamo"),
-                    new("CASH", 0, req.Monto, "Salida por desembolso")
+                    new("LOAN_RECEIVABLE", req.Monto, 0, "Desembolso de préstamo", moneda),
+                    new("CASH", 0, req.Monto, "Salida por desembolso", moneda)
                 };
                 var closingFee = loan.MontoOriginal - req.Monto;
                 if (closingFee > 0)
                 {
-                    disbursementLines[0] = new JournalLineInput("LOAN_RECEIVABLE", loan.MontoOriginal, 0, "Desembolso y gasto de cierre capitalizado");
-                    disbursementLines.Add(new JournalLineInput("COMMISSION_INCOME", 0, closingFee, "Gasto de cierre"));
+                    disbursementLines[0] = new JournalLineInput("LOAN_RECEIVABLE", loan.MontoOriginal, 0, "Desembolso y gasto de cierre capitalizado", moneda);
+                    disbursementLines.Add(new JournalLineInput("COMMISSION_INCOME", 0, closingFee, "Gasto de cierre", moneda));
                 }
                 await _journal.PostAsync(tenantId, "loan.disbursement", loan.Id, disbursementLines, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
+                var tenant = await _unitOfWork.Tenants.GetByIdAsync(tenantId, cancellationToken);
                 var email = LoanEmailBuilder.Created(loan, client, _notificationService.ClientPortalUrl);
-                var pdf = AmortizationPdfBuilder.Build(loan, client);
+                var pdf = AmortizationPdfBuilder.Build(loan, client, tenant?.Nombre);
                 await _notificationService.SendEmailAsync(
                     client.Email,
                     email.Subject,
@@ -197,9 +202,9 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
         }
 
         private static string NormalizeCurrency(string? value) =>
-            value?.Trim().ToUpperInvariant() is "USD" or "EUR" ? value.Trim().ToUpperInvariant() : "DOP";
+            CurrencyCatalog.Normalize(value);
 
-        private static void GenerateInstallments(Loan loan, decimal principal, decimal tasaMensual, decimal cuotaPeriodo)
+        private static void GenerateInstallments(Loan loan, decimal principal, decimal tasaMensual, decimal cuotaPeriodo, DateTime firstPaymentDate)
         {
             var periodsPerMonth = loan.FrecuenciaPago switch
             {
@@ -221,11 +226,11 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
 
                 var fechaPago = loan.FrecuenciaPago switch
                 {
-                    FrecuenciaPago.Mensual => loan.FechaInicio.AddMonths(i),
-                    FrecuenciaPago.Quincenal => loan.FechaInicio.AddDays(i * 15),
-                    FrecuenciaPago.Semanal => loan.FechaInicio.AddDays(i * 7),
-                    FrecuenciaPago.Diaria => loan.FechaInicio.AddDays(i),
-                    _ => loan.FechaInicio.AddMonths(i)
+                    FrecuenciaPago.Mensual => firstPaymentDate.AddMonths(i - 1),
+                    FrecuenciaPago.Quincenal => firstPaymentDate.AddDays((i - 1) * 15),
+                    FrecuenciaPago.Semanal => firstPaymentDate.AddDays((i - 1) * 7),
+                    FrecuenciaPago.Diaria => firstPaymentDate.AddDays(i - 1),
+                    _ => firstPaymentDate.AddMonths(i - 1)
                 };
 
                 loan.Installments.Add(new Installment
@@ -244,5 +249,14 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                 });
             }
         }
+
+        private static DateTime CalculatePaymentDate(DateTime start, int number, FrecuenciaPago frequency) => frequency switch
+        {
+            FrecuenciaPago.Mensual => start.AddMonths(number),
+            FrecuenciaPago.Quincenal => start.AddDays(number * 15),
+            FrecuenciaPago.Semanal => start.AddDays(number * 7),
+            FrecuenciaPago.Diaria => start.AddDays(number),
+            _ => start.AddMonths(number)
+        };
     }
 }

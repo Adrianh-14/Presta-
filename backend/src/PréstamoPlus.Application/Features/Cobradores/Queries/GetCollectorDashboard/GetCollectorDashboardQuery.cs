@@ -71,6 +71,8 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     EstadoPrestamo = loan?.Estado ?? EstadoPrestamo.Activo,
                     Estado = assignment.Estado,
                     IsQRAuthorized = assignment.IsQRAuthorized,
+                    QRGenerationAttempts = assignment.QRGenerationAttempts,
+                    QRPermissionRequested = assignment.QRPermissionRequested,
                     AssignedAt = assignment.AssignedAt,
                     UltimaVisita = lastVisit?.CreatedAt,
                     UltimoResultado = lastVisit?.TipoVisita

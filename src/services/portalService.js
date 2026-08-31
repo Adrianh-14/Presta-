@@ -1,6 +1,10 @@
 import api from './api';
 
 export const portalService = {
+  findClientTenants: async (cedula) => {
+    const { data } = await api.post('/api/auth/client-otp/tenants', { cedula });
+    return data;
+  },
   requestOtp: async (tenant, cedula) => {
     const { data } = await api.post('/api/auth/client-otp/request', { tenant, cedula });
     return data;
@@ -55,7 +59,7 @@ export const portalService = {
     return data;
   },
   processQRPayment: async (token, latitud, longitud) => {
-    const { data } = await api.post('/api/portal/pago-qr/process', { token, latitud, longitud });
+    const { data } = await api.post('/api/portal/pago-qr/process', { token, latitud, longitud }, { useClientToken: true });
     return data;
   },
 

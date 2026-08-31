@@ -5,6 +5,8 @@ import { clientService } from '../../services/clientService';
 import { generateAmortizationTable } from '../../utils/amortization';
 import { printAmortization } from '../../utils/printAmortization';
 import { useAuth } from '../../context/AuthContext';
+import { CURRENCY_CATALOG } from '../../data/currencies';
+import { tenantService } from '../../services/tenantService';
 
 function formatCurrency(v, currency = 'DOP') { return new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(v); }
 function formatNumber(v) { return new Intl.NumberFormat('es-DO').format(Math.round(v)); }
@@ -24,6 +26,7 @@ export default function NuevoPrestamo() {
   // Loan
   const [monto, setMonto] = useState('50,000');
   const [moneda, setMoneda] = useState('DOP');
+  const [enabledCurrencies, setEnabledCurrencies] = useState(['DOP']);
   const [tasa, setTasa] = useState('2.5');
   const [plazo, setPlazo] = useState('6');
   const [frecuencia, setFrecuencia] = useState('quincenal');
@@ -44,6 +47,12 @@ export default function NuevoPrestamo() {
     try { return JSON.parse(atob(localStorage.getItem('accessToken')?.split('.')[1] || '')).tenantId || ''; } catch { return ''; }
   })();
   const tenantId = user?.tenantId || tokenTenantId;
+  useEffect(() => {
+    tenantService.getCurrencies().then((codes) => {
+      const allowed = CURRENCY_CATALOG.filter((c) => codes.includes(c.code));
+      if (allowed.length) { setEnabledCurrencies(allowed.map((c) => c.code)); setMoneda((current) => allowed.some((c) => c.code === current) ? current : allowed[0].code); }
+    }).catch(() => {});
+  }, []);
   // Este QR representa una solicitud completa: el cliente debe aportar su garantía.
   const qrUrl = `${window.location.origin}/solicitud${tenantId ? `?tenant=${tenantId}` : ''}`;
 
@@ -278,7 +287,7 @@ export default function NuevoPrestamo() {
               </h2>
               <div className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between"><label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monto</label><select aria-label="Moneda del préstamo" value={moneda} onChange={e => setMoneda(e.target.value)} className="rounded-4 border border-surface-border bg-white px-2 py-1 text-xs font-semibold shadow-sm"><option value="DOP">🇩🇴  Pesos (DOP)</option><option value="USD">🇺🇸  Dólares (USD)</option><option value="EUR">🇪🇺  Euros (EUR)</option></select></div>
+                  <div className="flex items-center justify-between"><label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Monto</label><select aria-label="Moneda del préstamo" value={moneda} onChange={e => setMoneda(e.target.value)} className="max-w-[13rem] rounded-4 border border-surface-border bg-white px-2 py-1 text-xs font-semibold shadow-sm">{CURRENCY_CATALOG.filter(({ code }) => enabledCurrencies.includes(code)).map(({ code, flag, name }) => <option key={code} value={code}>{flag} {name} ({code})</option>)}</select></div>
                   <input value={monto} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setMonto(v ? formatNumber(parseInt(v)) : '0'); }} className="w-full mt-1 px-3 py-2.5 border border-surface-border rounded-4 text-lg font-bold focus:ring-2 focus:ring-accent-500 outline-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -371,6 +380,7 @@ export default function NuevoPrestamo() {
                   type="button"
                   onClick={() => printAmortization({
                     client,
+                    companyName: user?.nombreEmpresa || user?.NombreEmpresa,
                     loan: {
                       monto: getAmount(),
                       tasa,

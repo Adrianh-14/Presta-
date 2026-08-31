@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Mail, MapPin, CheckCircle, XCircle, TrendingUp, QrCode } from 'lucide-react';
+import { Users, Plus, Search, Phone, Mail, MapPin, CheckCircle, XCircle, TrendingUp, QrCode, Power } from 'lucide-react';
 import KPICard from '../../components/KPICard';
 import StatusBadge from '../../components/StatusBadge';
 import { cobradorService } from '../../services/cobradorService';
@@ -16,6 +16,7 @@ export default function Cobradores() {
   const [selectedCollector, setSelectedCollector] = useState(null);
   const [showAssign, setShowAssign] = useState(null);
   const [showQRManage, setShowQRManage] = useState(null);
+  const [togglingStatus, setTogglingStatus] = useState(null);
 
   useEffect(() => { loadCollectors(); }, []);
 
@@ -46,6 +47,21 @@ export default function Cobradores() {
       loadCollectors();
     } catch (err) {
       alert(err.response?.data?.message || 'Error al crear cobrador');
+    }
+  };
+
+  const handleToggleStatus = async (collector) => {
+    const next = !collector.isActive;
+    const action = next ? 'activar' : 'desactivar';
+    if (!confirm(`¿Deseas ${action} a ${collector.nombre}?`)) return;
+    setTogglingStatus(collector.id);
+    try {
+      await cobradorService.toggleStatus(collector.id, next);
+      setCollectors(prev => prev.map(item => item.id === collector.id ? { ...item, isActive: next } : item));
+    } catch (err) {
+      alert(err.userMessage || err.response?.data?.message || `No se pudo ${action} el cobrador.`);
+    } finally {
+      setTogglingStatus(null);
     }
   };
 
@@ -143,6 +159,11 @@ export default function Cobradores() {
                       </button>
                       <button onClick={() => setShowAssign(collector)} className="text-xs font-semibold text-accent-500 hover:text-accent-600 transition-colors">
                         Asignar
+                      </button>
+                      <button onClick={() => handleToggleStatus(collector)} disabled={togglingStatus === collector.id}
+                        title={collector.isActive ? 'Desactivar cobrador' : 'Activar cobrador'}
+                        className={`text-xs font-semibold transition-colors flex items-center gap-1 ${collector.isActive ? 'text-danger-500 hover:text-danger-600' : 'text-success-600 hover:text-success-700'}`}>
+                        <Power size={12} /> {togglingStatus === collector.id ? '...' : collector.isActive ? 'Desactivar' : 'Activar'}
                       </button>
                     </div>
                   </td>

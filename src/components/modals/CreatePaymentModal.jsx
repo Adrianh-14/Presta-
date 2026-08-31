@@ -3,6 +3,25 @@ import { X, DollarSign, CreditCard, Banknote, ArrowRight } from 'lucide-react';
 
 const metodoLabels = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
 
+// Keep payment shortcuts precise to the cent. The API receives a number, while
+// the input keeps a dot as the decimal separator (HTML/JS numeric convention).
+const formatAmount = (value) => Number(value || 0).toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const parseAmount = (value) => {
+  const raw = String(value ?? '').trim().replace(/\s/g, '');
+  if (!raw) return NaN;
+  // Accept both 1,234.56 and 1.234,56 when entered manually.
+  const normalized = raw.includes(',') && raw.includes('.')
+    ? (raw.lastIndexOf(',') > raw.lastIndexOf('.')
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, ''))
+    : raw.includes(',') ? raw.replace(',', '.') : raw;
+  return Number(normalized);
+};
+
 export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCreated }) {
   const [monto, setMonto] = useState('');
   const [metodo, setMetodo] = useState('transferencia');
@@ -19,7 +38,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const montoNum = parseFloat(monto.replace(/,/g, ''));
+    const montoNum = parseAmount(monto);
     if (!montoNum || montoNum <= 0) {
       setError('Ingresa un monto válido');
       return;
@@ -50,7 +69,8 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
   };
 
   const handleQuickPay = (amount) => {
-    setMonto(amount.toLocaleString());
+    // Do not round the installment: cents are part of the amount due.
+    setMonto(Number(amount || 0).toFixed(2));
   };
 
   if (success) {
@@ -94,12 +114,12 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
           <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-500">{moraPendiente > 0 ? 'Cuota con mora' : 'Cuota esperada'}</p>
-              <p className="font-semibold text-gray-900">${Number(cuota).toLocaleString()}</p>
-              {moraPendiente > 0 && <p className="mt-1 text-xs text-red-600">${cuotaBase.toLocaleString()} + ${moraPendiente.toLocaleString()} de mora</p>}
+              <p className="font-semibold text-gray-900">${formatAmount(cuota)}</p>
+              {moraPendiente > 0 && <p className="mt-1 text-xs text-red-600">${formatAmount(cuotaBase)} + ${formatAmount(moraPendiente)} de mora</p>}
             </div>
             <div>
               <p className="text-xs text-gray-500">Saldo Pendiente</p>
-              <p className="font-semibold text-red-600">${Number(saldo).toLocaleString()}</p>
+              <p className="font-semibold text-red-600">${formatAmount(saldo)}</p>
             </div>
           </div>
 
@@ -118,11 +138,11 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
               />
             </div>
             <div className="flex gap-2 mt-2">
-              <button type="button" onClick={() => handleQuickPay(Math.round(cuota))} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
-                {moraPendiente > 0 ? 'Cuota + mora' : 'Cuota'} ${Math.round(cuota).toLocaleString()}
+              <button type="button" onClick={() => handleQuickPay(cuota)} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
+                {moraPendiente > 0 ? 'Cuota + mora' : 'Cuota'} ${formatAmount(cuota)}
               </button>
-              <button type="button" onClick={() => handleQuickPay(Math.round(Number(saldo) + moraPendiente))} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
-                Saldo + mora ${Math.round(Number(saldo) + moraPendiente).toLocaleString()}
+              <button type="button" onClick={() => handleQuickPay(Number(saldo) + moraPendiente)} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors">
+                Saldo + mora ${formatAmount(Number(saldo) + moraPendiente)}
               </button>
             </div>
           </div>

@@ -73,7 +73,7 @@ namespace PréstamoPlus.Application.Common
                       {instructionsBlock}
                       <table style="width:100%;margin-top:24px;border-collapse:collapse;background:#f8f9fb;">
                         <tr><td style="padding:12px;color:#64748b;">Referencia</td><td style="padding:12px;text-align:right;font-weight:700;">{referencia}</td></tr>
-                        <tr><td style="padding:12px;color:#64748b;">Monto solicitado</td><td style="padding:12px;text-align:right;font-weight:700;">RD$ {monto}</td></tr>
+                        <tr><td style="padding:12px;color:#64748b;">Monto solicitado</td><td style="padding:12px;text-align:right;font-weight:700;">{WebUtility.HtmlEncode(solicitud.Moneda)} {monto}</td></tr>
                         <tr><td style="padding:12px;color:#64748b;">Estado</td><td style="padding:12px;text-align:right;font-weight:700;color:{accent};">{title}</td></tr>
                       </table>
                       <div style="margin-top:28px;text-align:center;">

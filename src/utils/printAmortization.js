@@ -17,7 +17,7 @@ const formatDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? escapeHtml(value) : parsed.toLocaleDateString('es-DO');
 };
 
-export function printAmortization({ client, loan, rows, title = 'Tabla de amortización' }) {
+export function printAmortization({ client, loan, rows, title = 'Tabla de amortización', companyName }) {
   const printWindow = window.open('', '_blank', 'width=1100,height=800');
   if (!printWindow) {
     window.alert('Permite las ventanas emergentes para imprimir la tabla.');
@@ -76,7 +76,7 @@ export function printAmortization({ client, loan, rows, title = 'Tabla de amorti
     </head>
     <body>
       <header>
-        <div><div class="brand">Préstamo<span>Plus</span></div><h1>${escapeHtml(title)}</h1></div>
+        <div><div class="brand">${escapeHtml(companyName || 'PréstamoPlus')}</div><h1>${escapeHtml(title)}</h1></div>
         <div class="issued">Documento generado<br><strong>${escapeHtml(new Date().toLocaleString('es-DO'))}</strong></div>
       </header>
       <section class="grid">

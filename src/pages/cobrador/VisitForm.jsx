@@ -23,6 +23,13 @@ export default function VisitForm() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [assignment, setAssignment] = useState(null);
+
+  useEffect(() => {
+    collectorPortalService.getCollections()
+      .then(data => setAssignment(data.find(item => item.id === id) || null))
+      .catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -93,9 +100,19 @@ export default function VisitForm() {
 
           {(tipo === 'cobroExitoso' || tipo === 'cobroParcial') && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1">Monto Recibido (RD$)</label>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">Monto Recibido</label>
               <input type="number" step="0.01" min="0" value={monto} onChange={(e) => setMonto(e.target.value)}
                 className="w-full px-4 py-2.5 bg-surface-fill rounded-8 text-sm border border-surface-border focus:border-accent-500 outline-none" placeholder="0.00" />
+              {assignment && <div className="flex flex-wrap gap-2 mt-2">
+                <button type="button" onClick={() => setMonto(Number(assignment.cuotaMensual || 0).toFixed(2))}
+                  className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500">
+                  Cuota ${Number(assignment.cuotaMensual || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </button>
+                <button type="button" onClick={() => setMonto(Number(assignment.saldoPendiente || 0).toFixed(2))}
+                  className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500">
+                  Saldo completo ${Number(assignment.saldoPendiente || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </button>
+              </div>}
             </div>
           )}
 

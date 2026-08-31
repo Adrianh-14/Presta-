@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { ChevronRight, ChevronLeft, Check, User, Briefcase, MapPin, Users, Camera, Video, Square, CreditCard, Upload, RotateCcw, Calculator, AlertTriangle, UserPlus } from 'lucide-react';
 import { solicitudService } from '../../services/solicitudService';
 import { clientService } from '../../services/clientService';
+import { CURRENCY_CATALOG } from '../../data/currencies';
+import { tenantService } from '../../services/tenantService';
 
 const mode = new URLSearchParams(window.location.search).get('mode');
 const isClientMode = mode === 'client';
@@ -94,6 +96,14 @@ function calculateLoanPayment(amount, closingCostPercent, monthlyRate, term, ter
 export default function Solicitud() {
   const [searchParams] = useSearchParams();
   const tenantId = searchParams.get('tenant');
+  const [enabledCurrencies, setEnabledCurrencies] = useState(['DOP']);
+  useEffect(() => {
+    if (!tenantId) return;
+    tenantService.getCurrencies(tenantId).then((codes) => {
+      const allowed = CURRENCY_CATALOG.filter((c) => codes.includes(c.code));
+      if (allowed.length) { setEnabledCurrencies(allowed.map((c) => c.code)); setCalcCurrency((current) => allowed.some((c) => c.code === current) ? current : allowed[0].code); }
+    }).catch(() => {});
+  }, [tenantId]);
   const draftStorageKey = `prestamoplus-form:${isClientMode ? 'client' : 'request'}:${tenantId || 'default'}`;
   const readSavedDraft = useCallback(() => {
     try {
@@ -1325,7 +1335,7 @@ export default function Solicitud() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-2"><label className="block text-sm font-medium text-gray-700">Monto *</label><select aria-label="Moneda de la solicitud" value={calcCurrency} onChange={e => setCalcCurrency(e.target.value)} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm shadow-sm"><option value="DOP">🇩🇴  Pesos (DOP)</option><option value="USD">🇺🇸  Dólares (USD)</option><option value="EUR">🇪🇺  Euros (EUR)</option></select></div>
+                  <div className="mb-2 flex items-center justify-between"><label className="block text-sm font-medium text-gray-700">Monto *</label><select aria-label="Moneda de la solicitud" value={calcCurrency} onChange={e => setCalcCurrency(e.target.value)} className="max-w-[13rem] rounded-md border border-gray-300 bg-white px-2 py-1 text-sm shadow-sm">{CURRENCY_CATALOG.filter(({ code }) => enabledCurrencies.includes(code)).map(({ code, flag, name }) => <option key={code} value={code}>{flag} {name} ({code})</option>)}</select></div>
                   <input
                     type="text"
                     value={calcAmount}

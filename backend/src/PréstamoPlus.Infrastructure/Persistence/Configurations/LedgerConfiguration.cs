@@ -13,7 +13,7 @@ public sealed class LedgerAccountConfiguration : IEntityTypeConfiguration<Ledger
         builder.Property(x => x.Code).IsRequired().HasMaxLength(40);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(160);
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
-        builder.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+        builder.HasIndex(x => new { x.TenantId, x.Code, x.Currency }).IsUnique();
     }
 }
 

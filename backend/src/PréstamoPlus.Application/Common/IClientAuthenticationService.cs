@@ -5,6 +5,8 @@ public sealed record ClientOtpRequestResult(
     string Message,
     int ExpiresInSeconds);
 
+public sealed record ClientTenantOption(Guid Id, string Slug, string Nombre);
+
 public sealed record ClientAuthenticationResult(
     string Token,
     string Nombre,
@@ -14,6 +16,10 @@ public sealed record ClientAuthenticationResult(
 
 public interface IClientAuthenticationService
 {
+    Task<IReadOnlyList<ClientTenantOption>> FindClientTenantsAsync(
+        string cedula,
+        CancellationToken cancellationToken = default);
+
     Task<ClientOtpRequestResult> RequestOtpAsync(
         string tenant,
         string cedula,

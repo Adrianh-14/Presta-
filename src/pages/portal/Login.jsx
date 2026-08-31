@@ -10,19 +10,23 @@ import {
 } from 'lucide-react';
 import { portalService } from '../../services/portalService';
 
-const DEFAULT_TENANT = 'prestamoplus-global';
 const GENERIC_REQUEST_MESSAGE =
   'Si los datos coinciden con una cuenta activa, enviaremos un código de acceso.';
 
 export default function PortalLogin() {
   const [searchParams] = useSearchParams();
-  const presetTenant = searchParams.get('tenant') || DEFAULT_TENANT;
-  const [tenant] = useState(presetTenant);
+  const presetTenant = searchParams.get('tenant') || '';
+  const returnTo = searchParams.get('returnTo') || '';
+  const hasPresetTenant = Boolean(presetTenant);
+  const [tenant, setTenant] = useState(presetTenant);
+  const [tenantOptions, setTenantOptions] = useState([]);
   const [cedula, setCedula] = useState('');
   const [code, setCode] = useState('');
   const [challengeId, setChallengeId] = useState(null);
   const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => searchParams.get('reason') === 'session-expired'
+    ? 'Tu sesión ya no es válida. Solicita un nuevo código para continuar.'
+    : '');
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate();
@@ -51,7 +55,22 @@ export default function PortalLogin() {
     setLoading(true);
     setError('');
     try {
-      const result = await portalService.requestOtp(tenant.trim(), cedula.trim());
+      let tenantToUse = tenant.trim();
+      if (!tenantToUse) {
+        const matches = await portalService.findClientTenants(cedula.trim());
+        if (matches.length === 0) {
+          setMessage(GENERIC_REQUEST_MESSAGE);
+          return;
+        }
+        if (matches.length > 1) {
+          setTenantOptions(matches);
+          setMessage('Selecciona la empresa a la que deseas acceder.');
+          return;
+        }
+        tenantToUse = matches[0].slug;
+        setTenant(tenantToUse);
+      }
+      const result = await portalService.requestOtp(tenantToUse, cedula.trim());
       setChallengeId(result.challengeId);
       setMessage(result.message || GENERIC_REQUEST_MESSAGE);
       setCooldown(60);
@@ -92,7 +111,7 @@ export default function PortalLogin() {
       localStorage.setItem('clientName', result.nombre);
       localStorage.setItem('clientEmail', result.email);
       localStorage.setItem('clientSessionExpiresAt', result.expiresAt);
-      navigate('/portal');
+      navigate(returnTo || '/portal');
     } catch (verificationError) {
       if (verificationError.response?.status === 429) {
         setError('Demasiados intentos. Espera unos minutos antes de continuar.');
@@ -110,6 +129,10 @@ export default function PortalLogin() {
     setMessage('');
     setError('');
     setCooldown(0);
+    if (!hasPresetTenant) {
+      setTenant('');
+      setTenantOptions([]);
+    }
   };
 
   return (
@@ -148,6 +171,16 @@ export default function PortalLogin() {
 
             {!isCodeStep ? (
               <form onSubmit={handleRequest} className="space-y-4">
+                {!hasPresetTenant && tenantOptions.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-semibold text-navy-500 mb-2 uppercase tracking-wider">Empresa</label>
+                    <select value={tenant} onChange={(event) => setTenant(event.target.value)}
+                      className="w-full px-4 py-3 border border-surface-border rounded-4 focus:ring-2 focus:ring-accent-500 outline-none text-sm">
+                      <option value="">Selecciona una empresa</option>
+                      {tenantOptions.map(option => <option key={option.id} value={option.slug}>{option.nombre}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-semibold text-navy-500 mb-2 uppercase tracking-wider">
                     Cédula o documento
@@ -164,7 +197,7 @@ export default function PortalLogin() {
                 </div>
                 <button
                   type="submit"
-                  disabled={loading || !cedula.trim()}
+                  disabled={loading || !cedula.trim() || (!tenant.trim() && tenantOptions.length > 0)}
                   className="w-full py-3 gradient-accent text-white rounded-4 hover:opacity-90 transition-opacity font-semibold text-sm shadow-btn flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {loading ? 'Enviando…' : 'Enviar código'} <ArrowRight size={18} />

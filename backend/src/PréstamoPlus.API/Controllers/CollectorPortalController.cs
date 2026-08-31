@@ -6,6 +6,7 @@ using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.Features.Cobradores.Commands.RecordVisit;
 using PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDashboard;
 using PréstamoPlus.Application.Features.PaymentQR.Commands.GeneratePaymentQR;
+using PréstamoPlus.Domain.Interfaces;
 
 namespace PréstamoPlus.API.Controllers
 {
@@ -15,10 +16,12 @@ namespace PréstamoPlus.API.Controllers
     public class CollectorPortalController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public CollectorPortalController(IMediator mediator)
+        public CollectorPortalController(IMediator mediator, IUnitOfWork unitOfWork)
         {
             _mediator = mediator;
+            _unitOfWork = unitOfWork;
         }
 
         private Guid GetCollectorId()
@@ -57,6 +60,33 @@ namespace PréstamoPlus.API.Controllers
         {
             var result = await _mediator.Send(new GeneratePaymentQRCommand(request, GetCollectorId()));
             return Ok(result);
+        }
+
+        [HttpGet("assignments/{assignmentId:guid}/suggested-amount")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetSuggestedAmount(Guid assignmentId)
+        {
+            var collectorId = GetCollectorId();
+            var assignment = (await _unitOfWork.CollectionAssignments.ListAsync())
+                .FirstOrDefault(a => a.Id == assignmentId && a.CollectorId == collectorId);
+            if (assignment is null) return NotFound(new { message = "Asignación no encontrada." });
+
+            var loan = await _unitOfWork.Loans.GetByIdAsync(assignment.LoanId);
+            if (loan is null) return NotFound(new { message = "Préstamo no encontrado." });
+
+            var installments = await _unitOfWork.Installments.ListAsync();
+            var lateFees = await _unitOfWork.LateFees.ListAsync();
+            var moras = lateFees
+                .Where(lf => lf.LoanId == loan.Id && !lf.Pagado && lf.Monto > 0)
+                .Sum(lf => lf.Monto);
+
+            return Ok(new
+            {
+                cuotaMensual = loan.CuotaMensual,
+                morasPendientes = moras,
+                totalSugerido = loan.CuotaMensual + moras,
+                cuotasPendientes = installments.Count(i => i.LoanId == loan.Id && i.Estado != Domain.Enums.EstadoInstallment.Pagado)
+            });
         }
     }
 }

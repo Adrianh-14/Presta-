@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap, PiggyBank } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -12,6 +13,7 @@ const navItems = [
   { to: '/admin/cobradores', icon: UsersRound, label: 'Cobradores' },
   { to: '/admin/gastos', icon: Receipt, label: 'Gastos' },
   { to: '/admin/garantias', icon: FolderLock, label: 'Documentos y garantías' },
+  { to: '/admin/inversiones', icon: PiggyBank, label: 'Inversiones' },
 ];
 
 const platformNavItems = [
@@ -27,7 +29,9 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [tenantName, setTenantName] = useState(user?.nombreEmpresa || '');
   const isPlatformAdmin = ['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role);
+  useEffect(() => { if (!user?.tenantId || isPlatformAdmin) return; api.get('/api/tenant/config').then(({ data }) => setTenantName(data.nombre || '')).catch(() => {}); }, [user?.tenantId, isPlatformAdmin]);
 
   const handleLogout = () => {
     logout();
@@ -46,7 +50,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <BrandMark />
           <div>
-            <h1 className="font-display text-base font-bold leading-tight text-white">PréstamoPlus</h1>
+            <h1 className="max-w-[150px] truncate font-display text-base font-bold leading-tight text-white">{tenantName || user?.nombreEmpresa || 'PréstamoPlus'}</h1>
             <p className="text-[10px] uppercase tracking-[0.16em] text-accent-200">{user?.role} · Operación</p>
           </div>
           <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar navegación" className="ml-auto rounded-8 p-2 text-slate-300 hover:bg-white/10 md:hidden"><X size={18} /></button>

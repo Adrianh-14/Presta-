@@ -5,8 +5,12 @@ import CreatePaymentModal from './CreatePaymentModal';
 import { paymentService } from '../../services/paymentService';
 import { amortizationService } from '../../services/amortizationService';
 import { printAmortization } from '../../utils/printAmortization';
+import CurrencyFlag from '../CurrencyFlag';
+import { getCurrency, formatCurrency } from '../../data/currencies';
+import { useAuth } from '../../context/AuthContext';
 
 export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLegal }) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('resumen');
   const [payments, setPayments] = useState([]);
   const [paymentSummary, setPaymentSummary] = useState(null);
@@ -21,6 +25,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
 
   const loanId = loan?.id;
   const monto = Number(loan?.monto || 0);
+  const currency = getCurrency(loan?.moneda);
   const tasa = Number(loan?.tasa || 0);
   const plazo = Number(loan?.plazo || 0);
   const saldo = paymentSummary?.saldoPendiente ?? Number(loan?.saldoPendiente || 0);
@@ -101,7 +106,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{loan.cliente}</h2>
-                <p className="text-sm text-gray-500">{tipoLabels[loan.tipo] || loan.tipo} — {freqLabel}</p>
+                <p className="flex items-center gap-2 text-sm text-gray-500"><CurrencyFlag currency={currency} /> {currency.name} ({currency.code}) · {tipoLabels[loan.tipo] || loan.tipo} — {freqLabel}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -137,20 +142,20 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
                     <p className="text-navy-200 text-xs">Monto Original</p>
-                    <p className="text-2xl font-bold">${monto.toLocaleString()}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(monto, currency.code)}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs">{tieneMora ? 'Cuota con mora' : `Cuota ${freqLabel}`}</p>
-                    <p className="text-2xl font-bold">${cuotaConMora.toLocaleString()}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(cuotaConMora, currency.code)}</p>
                     <p className="text-navy-300 text-xs">{tieneMora ? `Base $${cuotaBase.toLocaleString()} + mora` : `$${(cuotaBase * periodsPerMonth).toLocaleString()}/mes`}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs">Saldo Pendiente</p>
-                    <p className="text-2xl font-bold">${saldo.toLocaleString()}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(saldo, currency.code)}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs">Total Pagado</p>
-                    <p className="text-2xl font-bold">${totalPagado.toLocaleString()}</p>
+                    <p className="text-2xl font-bold">{formatCurrency(totalPagado, currency.code)}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs">Frecuencia</p>
@@ -297,6 +302,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                     disabled={amortization.length === 0}
                     onClick={() => printAmortization({
                       client: loan,
+                      companyName: user?.nombreEmpresa || user?.NombreEmpresa,
                       loan: {
                         ...loan,
                         monto,

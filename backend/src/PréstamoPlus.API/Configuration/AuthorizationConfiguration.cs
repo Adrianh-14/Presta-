@@ -6,7 +6,9 @@ namespace PréstamoPlus.API.Configuration;
 
 internal static class AuthorizationConfiguration
 {
-    private static readonly TimeSpan StepUpWindow = TimeSpan.FromMinutes(10);
+    // Permite aprobar lotes de solicitudes sin volver a iniciar sesión por cada una.
+    // La sesión sigue exigiendo autenticación reciente y se renueva al iniciar sesión.
+    private static readonly TimeSpan StepUpWindow = TimeSpan.FromMinutes(30);
 
     public static IServiceCollection AddPrestamoPlusAuthorization(this IServiceCollection services)
     {

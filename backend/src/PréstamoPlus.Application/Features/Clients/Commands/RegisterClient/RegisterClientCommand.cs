@@ -49,7 +49,7 @@ namespace PréstamoPlus.Application.Features.Clients.Commands.RegisterClient
 
             var existingClient = await _unitOfWork.Clients.GetByCedulaAsync(req.Client.Cedula, req.TenantId.Value);
             if (existingClient is not null)
-                throw new InvalidOperationException("Ya existe un cliente con esa cédula. Utiliza el portal del cliente.");
+                throw new InvalidOperationException("Ya existe un cliente con esa cédula en esta empresa. Utiliza su portal para solicitar otro préstamo.");
 
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 

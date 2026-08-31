@@ -171,6 +171,17 @@ namespace PréstamoPlus.API.Controllers
             return Accepted(result);
         }
 
+        [HttpPost("client-otp/tenants")]
+        [AllowAnonymous]
+        [EnableRateLimiting("client-otp-request")]
+        public async Task<IActionResult> FindClientTenants(
+            [FromBody] ClientTenantLookupRequest request,
+            CancellationToken cancellationToken)
+        {
+            var result = await _clientAuthentication.FindClientTenantsAsync(request.Cedula, cancellationToken);
+            return Ok(result);
+        }
+
         [HttpPost("client-otp/verify")]
         [AllowAnonymous]
         [EnableRateLimiting("client-otp-verify")]
@@ -221,6 +232,7 @@ namespace PréstamoPlus.API.Controllers
     }
 
     public sealed record ClientOtpRequest(string Tenant, string Cedula);
+    public sealed record ClientTenantLookupRequest(string Cedula);
     public sealed record ClientOtpVerificationRequest(
         Guid ChallengeId,
         string Tenant,

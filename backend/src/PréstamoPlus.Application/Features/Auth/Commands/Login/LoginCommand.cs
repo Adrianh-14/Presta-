@@ -48,6 +48,7 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Login
                 collectorId = collector?.Id;
             }
 
+            var tenant = await _unitOfWork.Tenants.GetByIdAsync(user.TenantId, cancellationToken);
             var accessToken = _jwtService.GenerateAccessToken(user, collectorId, user.LastLoginAt);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
@@ -73,7 +74,8 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Login
                     TenantId = user.TenantId,
                     Email = user.Email,
                     Nombre = user.Nombre,
-                    Role = user.Role
+                    Role = user.Role,
+                    NombreEmpresa = tenant?.Nombre
                 }
             };
         }

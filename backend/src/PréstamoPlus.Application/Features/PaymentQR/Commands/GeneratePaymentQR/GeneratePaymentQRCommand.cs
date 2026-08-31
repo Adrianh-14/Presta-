@@ -32,6 +32,14 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.GeneratePaymentQ
             if (!assignment.IsQRAuthorized)
                 throw new InvalidOperationException("Este préstamo no está autorizado para cobro por QR.");
 
+            if (assignment.QRGenerationAttempts >= 3)
+            {
+                assignment.QRPermissionRequested = true;
+                await _unitOfWork.CollectionAssignments.UpdateAsync(assignment, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                throw new InvalidOperationException("Se alcanzó el límite de 3 QR para este cliente. Solicita al administrador una nueva autorización.");
+            }
+
             var loan = await _unitOfWork.Loans.GetByIdAsync(assignment.LoanId);
             if (loan is null || loan.TenantId != collector.TenantId)
                 throw new InvalidOperationException("Préstamo no encontrado.");
@@ -81,6 +89,9 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.GeneratePaymentQ
             };
 
             await _unitOfWork.PaymentQRs.AddAsync(paymentQR, cancellationToken);
+            assignment.QRGenerationAttempts++;
+            assignment.QRPermissionRequested = assignment.QRGenerationAttempts >= 3;
+            await _unitOfWork.CollectionAssignments.UpdateAsync(assignment, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return new PaymentQRDto

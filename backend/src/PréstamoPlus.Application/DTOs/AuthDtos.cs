@@ -15,6 +15,7 @@ namespace PréstamoPlus.Application.DTOs
         public string Email { get; init; } = string.Empty;
         public string Nombre { get; init; } = string.Empty;
         public string Role { get; init; } = string.Empty;
+        public string? NombreEmpresa { get; init; }
     }
 
     public record LoginRequest
@@ -43,11 +44,13 @@ namespace PréstamoPlus.Application.DTOs
         public decimal InitialCapitalUsd { get; init; }
         public decimal InitialCapitalEur { get; init; }
         public List<string> EnabledCurrencies { get; init; } = new() { "DOP" };
+        public Dictionary<string, decimal> InitialCapitalByCurrency { get; init; } = new();
         public string? CompanyType { get; init; }
         public string? EconomicActivity { get; init; }
         public string? Address { get; init; }
         public string? City { get; init; }
         public string? Province { get; init; }
+        public string? Country { get; init; }
         public string? Website { get; init; }
         public int? EmployeeCount { get; init; }
         public string? RepresentativeIdType { get; init; }

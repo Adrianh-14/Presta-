@@ -14,11 +14,13 @@ namespace PréstamoPlus.Domain.Entities.Tenancy
         public decimal CapitalInicialEur { get; set; }
         public string MonedaPredeterminada { get; set; } = "DOP";
         public string MonedasHabilitadas { get; set; } = "DOP";
+        public string CapitalInicialPorMonedaJson { get; set; } = "{}";
         public string? TipoEmpresa { get; set; }
         public string? ActividadEconomica { get; set; }
         public string? Direccion { get; set; }
         public string? Ciudad { get; set; }
         public string? Provincia { get; set; }
+        public string Pais { get; set; } = "DO";
         public string? SitioWeb { get; set; }
         public int? CantidadEmpleados { get; set; }
         public string? RepresentanteTipoIdentificacion { get; set; }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin, CheckCircle, Loader2, Shield, QrCode, Camera, LockKeyhole, TriangleAlert } from 'lucide-react';
 import { portalService } from '../../services/portalService';
 import jsQR from 'jsqr';
@@ -10,6 +10,7 @@ function QrCodeIcon({ large = false }) {
 
 export default function PagoQR() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const token = searchParams.get('token');
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,8 @@ export default function PagoQR() {
   const [countdown, setCountdown] = useState(0);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [qrInput, setQrInput] = useState('');
   const [scannerActive, setScannerActive] = useState(false);
   const [scannerError, setScannerError] = useState('');
@@ -105,8 +108,21 @@ export default function PagoQR() {
       setLoading(false);
       return;
     }
+    // Un QR escaneado desde el teléfono debe pasar primero por el portal si
+    // todavía no existe una sesión de cliente. Conservamos el token para
+    // volver automáticamente a esta confirmación después del login.
+    if (!localStorage.getItem('clientToken')) {
+      const returnTo = `/portal/pago-qr?token=${encodeURIComponent(token)}`;
+      navigate(`/portal/login?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+      return;
+    }
     portalService.getQRInfo(token)
-      .then(data => setInfo(data))
+      .then(data => {
+        setInfo(data);
+        // El acceso al portal ya verificó la identidad mediante OTP. Al
+        // regresar desde el login solo queda confirmar y aplicar el pago.
+        setVerified(true);
+      })
       .catch(() => setError('QR no encontrado o inválido'))
       .finally(() => setLoading(false));
   }, [token]);
@@ -219,12 +235,31 @@ export default function PagoQR() {
     try {
       const { latitud, longitud } = await getGPS();
       const res = await portalService.verifyQRPaymentOtp(token, cedula.trim(), challengeId, otpCode.trim(), latitud, longitud);
-      setInfo(null);
-      setResult(res);
+      localStorage.setItem('clientToken', res.clientToken);
+      localStorage.setItem('clientId', res.clientId);
+      localStorage.setItem('clientName', res.clienteNombre);
+      localStorage.setItem('clientEmail', res.email);
+      localStorage.setItem('clientSessionExpiresAt', res.expiresAt);
+      setInfo(res.payment || info);
+      setVerified(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Código inválido o expirado');
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleApplyPayment = async () => {
+    setApplying(true);
+    setError('');
+    try {
+      const { latitud, longitud } = await getGPS();
+      const payment = await portalService.processQRPayment(token, latitud, longitud);
+      setResult(payment);
+    } catch (err) {
+      setError(err.response?.data?.message || 'No pudimos aplicar el pago. Intenta nuevamente.');
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -328,6 +363,16 @@ export default function PagoQR() {
 
         {info && info.status !== 'Pending' ? (
           <p className="text-sm text-slate-400 text-center">{info.estadoMensaje}</p>
+        ) : verified ? (
+          <>
+            <div className="rounded-8 border border-green-200 bg-green-50 p-3 text-sm text-green-700 mb-4">
+              Identidad verificada. Revisa el monto y confirma para aplicar el pago.
+            </div>
+            <button onClick={handleApplyPayment} disabled={applying}
+              className="w-full py-3 bg-gradient-to-r from-accent-500 to-accent-600 text-white font-semibold rounded-8 shadow-btn hover:shadow-card-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+              {applying ? <><Loader2 size={16} className="animate-spin" /> Aplicando pago...</> : 'Aplicar pago'}
+            </button>
+          </>
         ) : !otpSent ? (
           <>
             <div className="mb-4">

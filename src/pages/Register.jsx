@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ChevronLeft, Eye, EyeOff, ImagePlus, LocateFixed, LockKeyhole, ShieldCheck, UserRound, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { CURRENCY_CATALOG } from '../data/currencies';
+import CurrencyFlag from '../components/CurrencyFlag';
 
 const initialForm = {
   businessName: '', ownerName: '', email: '', phone: '', rnc: '', password: '', acceptTerms: false,
-  initialCapital: '', initialCapitalUsd: '', initialCapitalEur: '', enabledCurrencies: ['DOP'], companyType: '', economicActivity: '', economicActivityOther: '', address: '', city: '', province: '', website: '', employeeCount: '',
+  initialCapital: '', initialCapitalUsd: '', initialCapitalEur: '', initialCapitalByCurrency: { DOP: '' }, enabledCurrencies: ['DOP'], companyType: '', economicActivity: '', economicActivityOther: '', country: 'DO', address: '', city: '', province: '', website: '', employeeCount: '',
   representativeIdType: 'Cédula', representativeIdNumber: '', representativeIdPhoto: '', representativePhoto: ''
 };
 
@@ -17,6 +19,7 @@ const steps = [
 ];
 
 const provinces = ['Azua', 'Baoruco', 'Barahona', 'Dajabón', 'Distrito Nacional', 'Duarte', 'Elías Piña', 'El Seibo', 'Espaillat', 'Hato Mayor', 'Hermanas Mirabal', 'Independencia', 'La Altagracia', 'La Romana', 'La Vega', 'María Trinidad Sánchez', 'Monseñor Nouel', 'Monte Cristi', 'Monte Plata', 'Pedernales', 'Peravia', 'Puerto Plata', 'Samaná', 'San Cristóbal', 'San José de Ocoa', 'San Juan', 'San Pedro de Macorís', 'Sánchez Ramírez', 'Santiago', 'Santiago Rodríguez', 'Santo Domingo', 'Valverde'];
+const countries = [{ code: 'DO', name: 'República Dominicana', regionLabel: 'Provincia', provinces }, ...['AR|Argentina|Provincia', 'BO|Bolivia|Departamento', 'BR|Brasil|Estado', 'CA|Canadá|Provincia', 'CL|Chile|Región', 'CO|Colombia|Departamento', 'CR|Costa Rica|Provincia', 'EC|Ecuador|Provincia', 'ES|España|Provincia', 'GT|Guatemala|Departamento', 'HN|Honduras|Departamento', 'MX|México|Estado', 'NI|Nicaragua|Departamento', 'PA|Panamá|Provincia', 'PE|Perú|Región', 'US|Estados Unidos|Estado'].map((item) => { const [code, name, regionLabel] = item.split('|'); return { code, name, regionLabel, provinces: [] }; })];
 const activities = ['Préstamos personales', 'Microcrédito y emprendimiento', 'Préstamos comerciales', 'Cooperativa de ahorro y crédito', 'Financiamiento de vehículos', 'Factoring y adelanto de facturas', 'Servicios financieros digitales'];
 
 export default function Register() {
@@ -28,12 +31,19 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  useEffect(() => {
+    const field = Object.keys(fieldErrors)[0];
+    if (!field) return;
+    const input = document.querySelector(`[name="${field}"]`) || document.querySelector('.field-invalid .auth-input');
+    input?.focus({ preventScroll: true });
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [fieldErrors]);
   const update = (field) => (event) => { setForm((current) => ({ ...current, [field]: event.target.type === 'checkbox' ? event.target.checked : event.target.value })); setFieldErrors((current) => { const next = { ...current }; delete next[field]; return next; }); setError(''); };
 
   const validateStep = () => {
     const required = {
       0: [['businessName', 'Indica el nombre de la empresa.'], ['companyType', 'Selecciona el tipo de empresa.'], ['economicActivity', 'Indica la actividad económica.']],
-      1: [['initialCapital', 'Indica el capital inicial disponible.'], ['address', 'Indica la dirección de la empresa.'], ['city', 'Indica la ciudad.'], ['province', 'Indica la provincia.'], ['employeeCount', 'Indica la cantidad de empleados.']],
+      1: [['initialCapital', 'Indica el capital inicial disponible.'], ['country', 'Selecciona el país.'], ['address', 'Indica la dirección de la empresa.'], ['city', 'Indica la ciudad.'], ['province', 'Indica la provincia.'], ['employeeCount', 'Indica la cantidad de empleados.']],
       2: [['ownerName', 'Indica el nombre del representante.'], ['representativeIdNumber', 'Indica el número de identificación.'], ['representativeIdPhoto', 'Adjunta la identificación del representante.'], ['representativePhoto', 'Adjunta una foto del representante.']],
       3: [['email', 'Indica un correo válido.'], ['password', 'Crea una contraseña segura']]
     }[step];
@@ -41,7 +51,7 @@ export default function Register() {
     if (missing) { setFieldErrors({ [missing[0]]: missing[1] }); setError(missing[1]); return false; }
     if (step === 0 && form.economicActivity === 'Otra' && !form.economicActivityOther.trim()) { setFieldErrors({ economicActivityOther: 'Especifica la actividad económica.' }); setError('Especifica la actividad económica.'); return false; }
     if (step === 1 && (Number(form.initialCapital) < 0 || Number(form.initialCapitalUsd) < 0 || Number(form.initialCapitalEur) < 0)) { setFieldErrors({ initialCapital: 'El capital inicial no puede ser negativo.' }); setError('El capital inicial no puede ser negativo.'); return false; }
-    if (step === 1 && (!form.enabledCurrencies.length || form.enabledCurrencies.some((currency) => !String(form[currency === 'DOP' ? 'initialCapital' : currency === 'USD' ? 'initialCapitalUsd' : 'initialCapitalEur'] ?? '').trim()))) { setError('Indica el capital inicial de cada divisa habilitada.'); return false; }
+    if (step === 1 && (!form.enabledCurrencies.length || form.enabledCurrencies.some((currency) => !String(form.initialCapitalByCurrency?.[currency] ?? (currency === 'DOP' ? form.initialCapital : currency === 'USD' ? form.initialCapitalUsd : currency === 'EUR' ? form.initialCapitalEur : '')).trim()))) { setError('Indica el capital inicial de cada divisa habilitada.'); return false; }
     if (step === 3 && !form.acceptTerms) { setFieldErrors({ acceptTerms: 'Acepta los términos para continuar.' }); setError('Acepta los términos para continuar.'); return false; }
     setFieldErrors({});
     setError('');
@@ -80,10 +90,23 @@ export default function Register() {
     if (!validateStep()) return;
     setLoading(true);
     try {
-      await registerTenant({ ...form, economicActivity: form.economicActivity === 'Otra' ? form.economicActivityOther.trim() : form.economicActivity, initialCapital: Number(form.initialCapital || 0), initialCapitalUsd: Number(form.initialCapitalUsd || 0), initialCapitalEur: Number(form.initialCapitalEur || 0), employeeCount: Number(form.employeeCount), email: form.email.trim(), phone: form.phone.trim() || null, rnc: form.rnc.trim() || null, website: form.website.trim() || null });
+      await registerTenant({ ...form, initialCapitalByCurrency: Object.fromEntries(form.enabledCurrencies.map((code) => [code, Number(form.initialCapitalByCurrency?.[code] || (code === 'DOP' ? form.initialCapital : code === 'USD' ? form.initialCapitalUsd : form.initialCapitalEur) || 0)])), economicActivity: form.economicActivity === 'Otra' ? form.economicActivityOther.trim() : form.economicActivity, initialCapital: Number(form.initialCapital || 0), initialCapitalUsd: Number(form.initialCapitalUsd || 0), initialCapitalEur: Number(form.initialCapitalEur || 0), employeeCount: Number(form.employeeCount), email: form.email.trim(), phone: form.phone.trim() || null, rnc: form.rnc.trim() || null, website: form.website.trim() || null });
       navigate('/admin', { replace: true });
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'No pudimos crear la cuenta. Revisa los datos e inténtalo de nuevo.');
+      const response = requestError.response;
+      const apiErrors = Array.isArray(response?.data?.errors) ? response.data.errors : [];
+      if (apiErrors.length) {
+        const mapped = Object.fromEntries(apiErrors.map((item) => [String(item.field || '').replace(/^\w/, (letter) => letter.toLowerCase()), item.message || 'Revisa este campo.']).filter(([field]) => field));
+        setFieldErrors(mapped);
+        setError('Revisa los campos marcados para continuar.');
+        const firstField = Object.keys(mapped)[0];
+        const fieldStep = Object.entries({ businessName: 0, companyType: 0, economicActivity: 0, initialCapital: 1, country: 1, address: 1, city: 1, province: 1, employeeCount: 1, ownerName: 2, representativeIdNumber: 2, representativeIdPhoto: 2, representativePhoto: 2, email: 3, password: 3 }).find(([field]) => firstField === field)?.[1];
+        if (fieldStep !== undefined) setStep(fieldStep);
+      } else if (response?.status === 429) {
+        setError('Has alcanzado el límite de registros desde este dispositivo. Espera unos minutos antes de volver a intentarlo; ninguna cuenta nueva fue creada por este intento.');
+      } else {
+        setError(response?.data?.message || 'No pudimos crear la cuenta. Revisa los datos e inténtalo de nuevo.');
+      }
     } finally { setLoading(false); }
   };
 
@@ -108,6 +131,7 @@ export default function Register() {
           <div className="mt-8 grid grid-cols-4 gap-2">{steps.map((item, index) => <div key={item.title} className="min-w-0"><div className={`h-1.5 rounded-full ${index <= step ? 'bg-accent-500' : 'bg-slate-200'}`} /><p className={`mt-2 truncate text-xs font-bold ${index === step ? 'text-navy-800' : 'text-slate-400'}`}>{item.title}</p><p className="hidden truncate text-[10px] text-slate-400 sm:block">{item.caption}</p></div>)}</div>
           {error && <div role="alert" className="mt-6 rounded-8 border border-red-200 bg-danger-50 px-4 py-3 text-sm text-danger-600">{error}</div>}
           {step === 1 && <CurrencyCapitalFields form={form} update={update} setForm={setForm} fieldErrors={fieldErrors} />}
+          {step === 1 && <div className="mb-5 rounded-12 border border-surface-border bg-white p-4"><Field label="País de operación" required error={fieldErrors.country}><select className="auth-input" value={form.country} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value, province: '' }))}><option value="">Selecciona un país</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name} ({country.code})</option>)}</select></Field><p className="mt-2 text-[11px] text-slate-400">Las provincias/estados y municipios se adaptarán al país seleccionado.</p></div>}
 
           <form onSubmit={submit} className="mt-7 rounded-16 border border-surface-border bg-white p-5 shadow-card sm:p-7">
             {step === 0 && <Step title="Identidad de la empresa" icon={Building2} description="Cuéntanos quién opera este espacio."><Field label="Nombre comercial o razón social" required error={fieldErrors.businessName}><input autoFocus className="auth-input" value={form.businessName} onChange={update('businessName')} maxLength={200} placeholder="Financiera Ejemplo" /></Field><div className="grid gap-5 sm:grid-cols-2"><Field label="Tipo de empresa" required error={fieldErrors.companyType}><select className="auth-input" value={form.companyType} onChange={update('companyType')}><option value="">Selecciona una opción</option><option>Persona física con negocio</option><option>SRL</option><option>SA</option><option>Cooperativa</option><option>Otra entidad</option></select></Field><Field label="RNC"><input inputMode="numeric" className="auth-input font-mono" value={form.rnc} onChange={update('rnc')} maxLength={20} placeholder="Opcional" /></Field></div><Field label="Actividad económica" required error={fieldErrors.economicActivity}><select className="auth-input" value={form.economicActivity} onChange={update('economicActivity')}><option value="">Selecciona una actividad</option>{activities.map((activity) => <option key={activity}>{activity}</option>)}<option value="Otra">Otra</option></select></Field>{form.economicActivity === 'Otra' && <Field label="Especifica la actividad" required><input className="auth-input" value={form.economicActivityOther || ''} onChange={update('economicActivityOther')} maxLength={160} placeholder="Describe la actividad" /></Field>}<Field label="Sitio web o página pública"><input type="url" className="auth-input" value={form.website} onChange={update('website')} placeholder="https://tuempresa.com" /></Field></Step>}
@@ -125,8 +149,8 @@ export default function Register() {
 
 function Step({ title, description, icon: Icon, children }) { return <div><div className="mb-6 flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-12 bg-accent-50 text-accent-600"><Icon size={19} /></span><div><h3 className="font-display text-xl font-extrabold text-navy-800">{title}</h3><p className="mt-1 text-sm text-slate-500">{description}</p></div></div><div className="grid gap-5">{children}</div></div>; }
 function CurrencyCapitalFields({ form, update, setForm, fieldErrors }) {
-  const currencies = [['USD', '🇺🇸', 'Dólares estadounidenses', 'initialCapitalUsd'], ['EUR', '🇪🇺', 'Euros', 'initialCapitalEur']];
-  return <div className="mb-7 rounded-12 border border-accent-100 bg-accent-50/40 p-4"><p className="text-sm font-semibold text-navy-700">Divisas y capital inicial <span className="text-accent-600">*</span></p><p className="mt-1 text-[11px] text-slate-500">Selecciona las monedas que manejarás e indica el saldo disponible de cada una.</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{currencies.map(([code, flag, label]) => <label key={code} className="flex cursor-pointer items-center gap-2 rounded-8 border border-surface-border bg-white px-3 py-2 text-sm"><input type="checkbox" checked={form.enabledCurrencies.includes(code)} onChange={(event) => setForm((current) => ({ ...current, enabledCurrencies: event.target.checked ? [...new Set([...current.enabledCurrencies, code])] : current.enabledCurrencies.filter((item) => item !== code) }))} className="h-4 w-4 rounded border-surface-border text-accent-600" /><span className="text-base">{flag}</span><b>{code}</b><span className="truncate text-[11px] text-slate-400">{label}</span></label>)}</div><div className="mt-4 grid gap-3 sm:grid-cols-3">{currencies.map(([code, flag, label, field]) => form.enabledCurrencies.includes(code) && <Field key={code} label={`${flag} Capital inicial · ${code}`} required error={fieldErrors[field]}><input type="number" min="0" step="0.01" className="auth-input font-mono" value={form[field]} onChange={update(field)} placeholder="0.00" /></Field>)}</div></div>;
+  const currencies = CURRENCY_CATALOG;
+  return <div className="mb-7 rounded-12 border border-accent-100 bg-accent-50/40 p-4"><p className="text-sm font-semibold text-navy-700">Divisas y capital inicial <span className="text-accent-600">*</span></p><p className="mt-1 text-[11px] text-slate-500">Selecciona las monedas que manejarás e indica el saldo disponible de cada una.</p><div className="mt-3 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">{currencies.map((currency) => <label key={currency.code} className="flex cursor-pointer items-center gap-2 rounded-8 border border-surface-border bg-white px-3 py-2 text-sm"><input type="checkbox" checked={form.enabledCurrencies.includes(currency.code)} onChange={(event) => setForm((current) => ({ ...current, enabledCurrencies: event.target.checked ? [...new Set([...current.enabledCurrencies, currency.code])] : current.enabledCurrencies.filter((item) => item !== currency.code) }))} className="h-4 w-4 rounded border-surface-border text-accent-600" /><CurrencyFlag currency={currency} /><b>{currency.code}</b><span className="truncate text-[11px] text-slate-400">{currency.name}</span></label>)}</div><div className="mt-4 grid max-h-72 gap-3 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">{currencies.filter(({ code }) => form.enabledCurrencies.includes(code)).map((currency) => <Field key={currency.code} label={`${currency.name} · ${currency.code}`} required error={fieldErrors[currency.code]}><input type="number" min="0" step="0.01" className="auth-input font-mono" value={form.initialCapitalByCurrency?.[currency.code] ?? ''} onChange={(event) => setForm((current) => ({ ...current, initialCapitalByCurrency: { ...current.initialCapitalByCurrency, [currency.code]: event.target.value }, ...(currency.code === 'DOP' ? { initialCapital: event.target.value } : currency.code === 'USD' ? { initialCapitalUsd: event.target.value } : currency.code === 'EUR' ? { initialCapitalEur: event.target.value } : {}) }))} placeholder="0.00" /></Field>)}</div></div>;
 }
 function Field({ label, required, hint, error, children }) { return <label className={`block text-sm font-semibold text-navy-700 ${error ? 'field-invalid' : ''}`}>{label}{required && <span className="ml-1 text-accent-600">*</span>}{children || null}{hint && <span className="mt-1.5 block text-[11px] font-normal leading-4 text-slate-400">{hint}</span>}{error && <span className="mt-1 block text-xs font-semibold text-danger-600">{error}</span>}</label>; }
 function ImageUpload({ label, value, onChange, required, error }) { return <div className={error ? 'field-invalid' : ''}><p className="mb-2 text-sm font-semibold text-navy-700">{label}{required && <span className="ml-1 text-accent-600">*</span>}</p><label className="group relative flex min-h-36 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-12 border border-dashed border-slate-300 bg-slate-50 text-center transition hover:border-accent-400 hover:bg-accent-50">{value ? <img src={value} alt={label} className="absolute inset-0 h-full w-full object-cover" /> : <><Upload size={22} className="text-slate-400 transition group-hover:text-accent-500" /><span className="mt-2 text-xs font-semibold text-slate-500">Subir imagen</span><span className="mt-1 text-[10px] text-slate-400">JPG, PNG o WEBP · 5 MB</span></>}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={onChange} className="sr-only" />{value && <span className="absolute bottom-2 right-2 rounded-full bg-white/90 p-1.5 text-accent-600 shadow"><ImagePlus size={14} /></span>}</label>{error && <p className="mt-1 text-xs font-semibold text-danger-600">{error}</p>}</div>; }

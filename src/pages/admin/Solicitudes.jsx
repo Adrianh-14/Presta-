@@ -5,6 +5,8 @@ import StatusBadge from '../../components/StatusBadge';
 import SolicitudDetailModal from '../../components/modals/SolicitudDetailModal';
 import { solicitudService } from '../../services/solicitudService';
 import { useAuth } from '../../context/AuthContext';
+import CurrencyFlag from '../../components/CurrencyFlag';
+import { getCurrency } from '../../data/currencies';
 
 function getTenantIdFromToken() {
   try {
@@ -17,7 +19,6 @@ function getTenantIdFromToken() {
   }
 }
 
-const currencyMeta = { DOP: '🇩🇴', USD: '🇺🇸', EUR: '🇪🇺' };
 const formatMoney = (value, currency = 'DOP') => new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(Number(value || 0));
 
 export default function Solicitudes() {
@@ -126,15 +127,15 @@ export default function Solicitudes() {
     }
   };
 
-  const handleProcesar = async (id, instrucciones) => {
+  const handleProcesar = async (id, instrucciones, terms = {}) => {
     try {
       setActionError('');
-      await solicitudService.updateEstado(id, 'Procesando', { instrucciones });
+      await solicitudService.updateEstado(id, 'Procesando', { instrucciones, ...terms });
       setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'procesando' } : s)));
       setSelectedSolicitud((prev) => prev ? { ...prev, estado: 'procesando' } : null);
     } catch (err) {
       console.error('Error processing:', err);
-      setActionError(err.response?.status === 403 ? 'Tu sesión de aprobación expiró por seguridad. Cierra sesión, vuelve a entrar y repite la acción.' : (err.response?.data?.message || 'No se pudo procesar la solicitud.'));
+      setActionError(err.response?.status === 403 ? 'Tu autorización para aprobar solicitudes expiró. Vuelve a iniciar sesión una vez y podrás continuar con el lote.' : (err.response?.data?.message || 'No se pudo procesar la solicitud.'));
     }
   };
 
@@ -232,7 +233,7 @@ export default function Solicitudes() {
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <p className="text-sm text-gray-500">Monto solicitado</p>
-                <p className="font-semibold text-gray-900">{currencyMeta[String(s.moneda || 'DOP').toUpperCase()] || '💱'} {formatMoney(s.montoSolicitado, String(s.moneda || 'DOP').toUpperCase())}</p>
+                <p className="flex items-center gap-2 font-semibold text-gray-900"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.montoSolicitado, String(s.moneda || 'DOP').toUpperCase())}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Plazo</p>
@@ -244,7 +245,7 @@ export default function Solicitudes() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Cuota estimada</p>
-                <p className="font-semibold text-gray-900">{currencyMeta[String(s.moneda || 'DOP').toUpperCase()] || '💱'} {formatMoney(s.cuotaEstimada, String(s.moneda || 'DOP').toUpperCase())}</p>
+                <p className="flex items-center gap-2 font-semibold text-gray-900"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.cuotaEstimada, String(s.moneda || 'DOP').toUpperCase())}</p>
               </div>
             </div>
 

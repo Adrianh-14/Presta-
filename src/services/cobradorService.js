@@ -15,6 +15,15 @@ export const cobradorService = {
     const { data } = await api.post(`/api/cobradores/${collectorId}/assign`, { loanIds });
     return data;
   },
+
+  toggleStatus: async (collectorId, isActive) => {
+    const { data } = await api.patch(`/api/cobradores/${collectorId}/status`, { isActive });
+    return data;
+  },
+
+  removeAssignment: async (assignmentId) => {
+    await api.delete(`/api/cobradores/assignments/${assignmentId}`);
+  },
 };
 
 export const collectorPortalService = {
@@ -49,7 +58,7 @@ export const collectorPortalService = {
   },
 
   getSuggestedAmount: async (assignmentId) => {
-    const { data } = await api.get(`/api/cobradores/assignments/${assignmentId}/suggested-amount`);
+    const { data } = await api.get(`/api/collector/assignments/${assignmentId}/suggested-amount`);
     return data;
   },
 };

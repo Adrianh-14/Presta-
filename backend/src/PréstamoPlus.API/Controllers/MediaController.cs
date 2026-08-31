@@ -51,7 +51,7 @@ namespace PréstamoPlus.API.Controllers
 
         [HttpPost("loan-application/{applicationId}/contract")]
         [RequestSizeLimit(10 * 1024 * 1024)]
-        public async Task<IActionResult> UploadContract(Guid applicationId, IFormFile file, CancellationToken cancellationToken)
+        public async Task<IActionResult> UploadContract(Guid applicationId, [FromForm] IFormFile file, CancellationToken cancellationToken)
         {
             if (file is null || file.Length == 0 || file.Length > 10 * 1024 * 1024)
                 return BadRequest(new { message = "Adjunta un archivo de hasta 10 MB." });

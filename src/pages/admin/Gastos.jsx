@@ -14,6 +14,7 @@ export default function Gastos() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
   const [filterCategory, setFilterCategory] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
@@ -44,6 +45,8 @@ export default function Gastos() {
       alert('Error al eliminar gasto');
     }
   };
+
+  const handleEdit = (expense) => setEditingExpense(expense);
 
   const filtered = expenses.filter(e => {
     if (filterCategory && e.category !== filterCategory) return false;
@@ -156,9 +159,14 @@ export default function Gastos() {
                   <td className="px-6 py-4 text-sm font-semibold text-danger-500">{fmt(expense.amount)}</td>
                   <td className="px-6 py-4 text-xs text-slate-400">{expense.recordedByName}</td>
                   <td className="px-6 py-4">
-                    <button onClick={() => handleDelete(expense.id)} className="p-1.5 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-6 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleEdit(expense)} title="Editar gasto" className="p-1.5 text-slate-400 hover:text-accent-500 hover:bg-accent-50 rounded-6 transition-colors">
+                        <Edit size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(expense.id)} title="Eliminar gasto" className="p-1.5 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-6 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -168,6 +176,7 @@ export default function Gastos() {
       </div>
 
       {showCreate && <CreateExpenseModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); loadData(); }} />}
+      {editingExpense && <CreateExpenseModal expense={editingExpense} onClose={() => setEditingExpense(null)} onCreated={() => { setEditingExpense(null); loadData(); }} />}
     </div>
   );
 }

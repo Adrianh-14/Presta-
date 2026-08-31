@@ -9,7 +9,7 @@ namespace PréstamoPlus.Application.Common
         private const int RowsFirstPage = 18;
         private const int RowsOtherPages = 24;
 
-        public static byte[] Build(Loan loan, Client client)
+        public static byte[] Build(Loan loan, Client client, string? companyName = null)
         {
             var installments = loan.Installments.OrderBy(i => i.Numero).ToList();
             var pages = Paginate(installments);
@@ -24,7 +24,7 @@ namespace PréstamoPlus.Application.Common
 
             for (var index = 0; index < pages.Count; index++)
             {
-                var content = BuildPage(loan, client, pages[index], index, pages.Count);
+                var content = BuildPage(loan, client, pages[index], index, pages.Count, companyName);
                 var contentId = objects.Count + 1;
                 AddStream(objects, content);
                 var pageId = objects.Count + 1;
@@ -58,10 +58,11 @@ namespace PréstamoPlus.Application.Common
             Client client,
             IReadOnlyList<Installment> rows,
             int pageIndex,
-            int pageCount)
+            int pageCount,
+            string? companyName)
         {
             var sb = new StringBuilder();
-            Text(sb, 38, 570, 20, true, "PrestamoPlus");
+            Text(sb, 38, 570, 20, true, string.IsNullOrWhiteSpace(companyName) ? "PrestamoPlus" : companyName);
             Text(sb, 38, 550, 12, true, "Tabla de amortizacion");
             TextRight(sb, 754, 570, 9, $"Pagina {pageIndex + 1} de {pageCount}");
             Line(sb, 38, 540, 754, 540, 0.2, 0.4, 0.85, 2);

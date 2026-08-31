@@ -27,7 +27,7 @@ namespace PréstamoPlus.API.Controllers
         [HttpPost]
         [AllowAnonymous]
         [EnableRateLimiting("public-form")]
-        [RequestSizeLimit(25 * 1024 * 1024)]
+        [RequestSizeLimit(70 * 1024 * 1024)]
         [ProducesResponseType(typeof(LoanApplicationDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateSolicitudRequest request)
@@ -84,10 +84,14 @@ namespace PréstamoPlus.API.Controllers
         {
             var current = await _mediator.Send(new GetSolicitudByIdQuery(id));
             if (current is null) return NotFound();
+            // ASP.NET puede mapear el claim JWT `sub` a NameIdentifier.
+            // Aceptamos ambas formas para que la aprobación no falle con 500.
+            var actorClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub");
             var result = await _mediator.Send(new UpdateSolicitudCommand(
                 id,
                 request.Estado,
-                Guid.TryParse(User.FindFirst("sub")?.Value, out var actorUserId) ? actorUserId : null,
+                Guid.TryParse(actorClaim, out var actorUserId) ? actorUserId : null,
                 request.FechaInicio,
                 request.FechaPrimerPago,
                 request.Instrucciones,

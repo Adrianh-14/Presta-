@@ -29,9 +29,13 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       DatabaseProvider: PostgreSQL
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-prestamoplus};Username=${POSTGRES_USER:-prestamoplus};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in the ignored .env file}
-      ClientAuthentication__Enabled: "false"
+      ClientAuthentication__Enabled: "true"
       DemoData__Enabled: "false"
       JwtSettings__SecretKey: ${JWT_SECRET:-dev-only-change-this-secret-key-please-rotate-in-production-2026}
+      Resend__ApiKey: ${RESEND_API_KEY:-}
+      Resend__FromEmail: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      Resend__FromName: ${RESEND_FROM_NAME:-PrestamoPlus}
+      Resend__ClientPortalUrl: ${RESEND_CLIENT_PORTAL_URL:-http://localhost:8088/portal/login}
     volumes:
       - uploads:/uploads
     depends_on:

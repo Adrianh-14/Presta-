@@ -1,6 +1,6 @@
 namespace PréstamoPlus.Application.Common;
 
-public sealed record JournalLineInput(string AccountCode, decimal Debit, decimal Credit, string Description);
+public sealed record JournalLineInput(string AccountCode, decimal Debit, decimal Credit, string Description, string Currency = "DOP");
 
 public interface IJournalService
 {

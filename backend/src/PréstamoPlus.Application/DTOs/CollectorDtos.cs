@@ -53,6 +53,8 @@ namespace PréstamoPlus.Application.DTOs
         public EstadoPrestamo EstadoPrestamo { get; init; }
         public EstadoAsignacion Estado { get; init; }
         public bool IsQRAuthorized { get; init; }
+        public int QRGenerationAttempts { get; init; }
+        public bool QRPermissionRequested { get; init; }
         public DateTime AssignedAt { get; init; }
         public DateTime? UltimaVisita { get; init; }
         public TipoVisita? UltimoResultado { get; init; }

@@ -7,6 +7,7 @@ using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
 using PréstamoPlus.Domain.Entities.Tenancy;
+using PréstamoPlus.Domain;
 using PréstamoPlus.Infrastructure.Persistence;
 
 namespace PréstamoPlus.Infrastructure.Services;
@@ -63,12 +64,14 @@ public sealed partial class TenantRegistrationService : ITenantRegistrationServi
             CapitalInicial = request.InitialCapital,
             CapitalInicialUsd = request.InitialCapitalUsd,
             CapitalInicialEur = request.InitialCapitalEur,
-            MonedasHabilitadas = string.Join(',', request.EnabledCurrencies.Where(x => x is "DOP" or "USD" or "EUR").Distinct()),
+            MonedasHabilitadas = string.Join(',', request.EnabledCurrencies.Where(CurrencyCatalog.IsSupported).Select(CurrencyCatalog.Normalize).Distinct()),
+            CapitalInicialPorMonedaJson = System.Text.Json.JsonSerializer.Serialize(request.InitialCapitalByCurrency.Where(x => CurrencyCatalog.IsSupported(x.Key)).ToDictionary(x => CurrencyCatalog.Normalize(x.Key), x => x.Value)),
             TipoEmpresa = request.CompanyType!.Trim(),
             ActividadEconomica = request.EconomicActivity!.Trim(),
             Direccion = request.Address!.Trim(),
             Ciudad = request.City!.Trim(),
             Provincia = request.Province!.Trim(),
+            Pais = string.IsNullOrWhiteSpace(request.Country) ? "DO" : request.Country.Trim().ToUpperInvariant(),
             SitioWeb = NormalizeOptional(request.Website),
             CantidadEmpleados = request.EmployeeCount,
             RepresentanteTipoIdentificacion = request.RepresentativeIdType!.Trim(),
@@ -132,7 +135,8 @@ public sealed partial class TenantRegistrationService : ITenantRegistrationServi
                 TenantId = tenant.Id,
                 Email = user.Email,
                 Nombre = user.Nombre,
-                Role = user.Role
+                Role = user.Role,
+                NombreEmpresa = tenant.Nombre
             }
         };
     }
@@ -155,8 +159,10 @@ public sealed partial class TenantRegistrationService : ITenantRegistrationServi
             throw new InvalidOperationException("El capital inicial debe estar entre RD$ 0 y RD$ 1,000,000,000.");
         if (request.InitialCapitalUsd < 0 || request.InitialCapitalEur < 0)
             throw new InvalidOperationException("El capital inicial no puede ser negativo.");
-        if (request.EnabledCurrencies.Count == 0 || request.EnabledCurrencies.Any(x => x is not ("DOP" or "USD" or "EUR")))
+        if (request.EnabledCurrencies.Count == 0 || request.EnabledCurrencies.Any(x => !CurrencyCatalog.IsSupported(x)))
             throw new InvalidOperationException("Selecciona divisas válidas.");
+        if (request.InitialCapitalByCurrency.Any(x => x.Value < 0 || !CurrencyCatalog.IsSupported(x.Key)))
+            throw new InvalidOperationException("El capital inicial por divisa no es válido.");
         Require(request.CompanyType, "Selecciona el tipo de empresa.");
         Require(request.EconomicActivity, "Indica la actividad económica de la empresa.");
         Require(request.Address, "Indica la dirección de la empresa.");

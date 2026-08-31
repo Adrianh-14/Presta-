@@ -9,6 +9,7 @@ namespace PréstamoPlus.Application.DTOs
         public decimal Disponible { get; init; }
         public decimal CapitalDisponible { get; init; }
         public Dictionary<string, decimal> CapitalDisponiblePorMoneda { get; init; } = new();
+        public List<string> MonedasHabilitadas { get; init; } = new();
         public int EnCartera { get; init; }
         public decimal PorCobrar { get; init; }
         public int SolicitudesPendientes { get; init; }

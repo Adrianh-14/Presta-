@@ -2,6 +2,7 @@ using MediatR;
 using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
+using PréstamoPlus.Domain;
 using PréstamoPlus.Domain.Interfaces;
 
 namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
@@ -25,7 +26,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
         public async Task<LoanApplicationDto> Handle(CreateSolicitudCommand request, CancellationToken cancellationToken)
         {
             var req = request.Request;
-            var moneda = req.Moneda?.Trim().ToUpperInvariant() is "USD" or "EUR" ? req.Moneda.Trim().ToUpperInvariant() : "DOP";
+            var moneda = CurrencyCatalog.Normalize(req.Moneda);
             var tenantId = req.TenantId ?? Guid.Empty;
             if (tenantId == Guid.Empty || !await _tenantAccess.CanAccessAsync(tenantId, cancellationToken))
                 throw new InvalidOperationException("La empresa no está disponible para recibir solicitudes.");
@@ -40,7 +41,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
             {
                 var client = await _unitOfWork.Clients.GetByCedulaAsync(req.Client.Cedula, tenantId);
                 if (client is not null)
-                    throw new InvalidOperationException("Ya existe un cliente con esa cédula. Utiliza el portal del cliente para continuar.");
+                    throw new InvalidOperationException("Ya existe un cliente con esa cédula en esta empresa. Utiliza su portal para solicitar otro préstamo.");
                 client = new Client
                 {
                     Id = Guid.NewGuid(),

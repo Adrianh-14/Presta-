@@ -26,22 +26,27 @@ public sealed class JournalService : IJournalService
         if (debit != credit)
             throw new InvalidOperationException("El asiento no está balanceado.");
 
-        var accountCodes = lines.Select(line => line.AccountCode).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var accountKeys = lines.Select(line => (Code: line.AccountCode.ToUpperInvariant(), Currency: line.Currency.ToUpperInvariant())).Distinct().ToArray();
         var accounts = await _context.LedgerAccounts
-            .Where(account => account.TenantId == tenantId && accountCodes.Contains(account.Code))
-            .ToDictionaryAsync(account => account.Code, cancellationToken);
-        foreach (var code in accountCodes.Where(code => !accounts.ContainsKey(code)))
+            .Where(account => account.TenantId == tenantId && accountKeys.Select(k => k.Code).Contains(account.Code))
+            .ToListAsync(cancellationToken);
+        var accountMap = accounts.ToDictionary(account => (account.Code, account.Currency), account => account);
+        foreach (var key in accountKeys.Where(key => !accountMap.ContainsKey(key)))
         {
-            var account = new LedgerAccount { Id = Guid.NewGuid(), TenantId = tenantId, Code = code.ToUpperInvariant(), Name = code switch { "CASH" => "Caja y bancos", "LOAN_RECEIVABLE" => "Cartera de préstamos", "INTEREST_INCOME" => "Ingresos por intereses", "LATE_FEE_INCOME" => "Ingresos por mora", _ => code } };
+            var code = key.Code;
+            var account = new LedgerAccount { Id = Guid.NewGuid(), TenantId = tenantId, Code = code, Currency = key.Currency, Name = code switch { "CASH" => "Caja y bancos", "LOAN_RECEIVABLE" => "Cartera de préstamos", "INTEREST_INCOME" => "Ingresos por intereses", "LATE_FEE_INCOME" => "Ingresos por mora", _ => code } };
             _context.LedgerAccounts.Add(account);
-            accounts[code] = account;
+            accountMap[key] = account;
         }
 
         var previousHash = await _context.JournalEntries.Where(entry => entry.TenantId == tenantId)
             .OrderByDescending(entry => entry.PostedAt).Select(entry => entry.Hash).FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
         var entry = new JournalEntry { Id = Guid.NewGuid(), TenantId = tenantId, SourceType = sourceType.Trim(), SourceId = sourceId, PostedAt = DateTime.UtcNow };
         foreach (var line in lines)
-            entry.Lines.Add(new JournalLine { Id = Guid.NewGuid(), LedgerAccountId = accounts[line.AccountCode].Id, Debit = line.Debit, Credit = line.Credit, Description = line.Description.Trim() });
+        {
+            var key = (line.AccountCode.ToUpperInvariant(), line.Currency.ToUpperInvariant());
+            entry.Lines.Add(new JournalLine { Id = Guid.NewGuid(), LedgerAccountId = accountMap[key].Id, Debit = line.Debit, Credit = line.Credit, Description = line.Description.Trim() });
+        }
 
         var canonical = JsonSerializer.Serialize(new { entry.TenantId, entry.SourceType, entry.SourceId, entry.PostedAt, PreviousHash = previousHash, Lines = entry.Lines.OrderBy(line => line.LedgerAccountId).Select(line => new { line.LedgerAccountId, line.Debit, line.Credit, line.Description }) });
         entry.Hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();

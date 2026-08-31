@@ -13,15 +13,21 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
         private readonly IAuditLogService _auditLog;
+        private readonly ICapitalGuardService _capitalGuard;
+        private readonly IJournalService _journal;
 
         public UpdateSolicitudCommandHandler(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
-            IAuditLogService auditLog)
+            IAuditLogService auditLog,
+            ICapitalGuardService capitalGuard,
+            IJournalService journal)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _auditLog = auditLog;
+            _capitalGuard = capitalGuard;
+            _journal = journal;
         }
 
         public async Task<LoanApplicationDto?> Handle(UpdateSolicitudCommand request, CancellationToken cancellationToken)
@@ -43,6 +49,33 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
 
             if (request.Estado == EstadoSolicitud.Procesando && string.IsNullOrWhiteSpace(loanApp.VerificationMedia?.GarantiaPath))
                 throw new InvalidOperationException("No se puede procesar la solicitud hasta que el cliente suba la garantía.");
+
+            // Una contraoferta se guarda al pasar a procesamiento para que el cliente
+            // reciba por correo exactamente las condiciones propuestas por la empresa.
+            if (request.Estado == EstadoSolicitud.Procesando &&
+                (request.MontoAprobado.HasValue || request.TasaInteresMensual.HasValue || request.GastoCierrePorcentaje.HasValue || request.Plazo.HasValue || request.UnidadPlazo.HasValue || request.FrecuenciaPago.HasValue))
+            {
+                var monto = request.MontoAprobado ?? loanApp.MontoSolicitado;
+                var tasa = request.TasaInteresMensual ?? loanApp.TasaInteresMensual;
+                var cierre = request.GastoCierrePorcentaje ?? loanApp.GastoCierrePorcentaje;
+                var plazo = request.Plazo ?? loanApp.Plazo;
+                var unidad = request.UnidadPlazo ?? loanApp.UnidadPlazo;
+                var frecuencia = request.FrecuenciaPago ?? loanApp.FrecuenciaPago;
+                if (monto <= 0 || tasa < 0 || cierre < 0 || plazo <= 0 || !Enum.IsDefined(frecuencia))
+                    throw new ArgumentException("Las condiciones propuestas no son válidas.");
+                var plazoMeses = unidad == UnidadPlazo.Anios ? plazo * 12 : plazo;
+                var principal = monto + monto * cierre / 100;
+                var (cuota, totalPagar, totalIntereses) = CalculateLoan(principal, tasa, plazoMeses, frecuencia);
+                loanApp.MontoSolicitado = monto;
+                loanApp.TasaInteresMensual = tasa;
+                loanApp.GastoCierrePorcentaje = cierre;
+                loanApp.Plazo = plazo;
+                loanApp.UnidadPlazo = unidad;
+                loanApp.FrecuenciaPago = frecuencia;
+                loanApp.CuotaEstimada = cuota;
+                loanApp.TotalPagar = totalPagar;
+                loanApp.TotalIntereses = totalIntereses;
+            }
 
             if (request.Estado == EstadoSolicitud.Aprobada)
             {
@@ -84,6 +117,9 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 var fechaInicio = rawFecha.Kind == DateTimeKind.Utc ? rawFecha : DateTime.SpecifyKind(rawFecha, DateTimeKind.Utc);
                 var plazoMeses = unidadPlazo == UnidadPlazo.Anios ? plazo * 12 : plazo;
                 var principal = montoAprobado + (montoAprobado * gastoCierre / 100);
+                // El efectivo desembolsado es el monto aprobado; el gasto de cierre
+                // se reconoce como ingreso y no debe descontarse dos veces del capital.
+                await _capitalGuard.EnsureCanDisburseAsync(loanApp.TenantId, loanApp.Moneda, montoAprobado, cancellationToken);
                 var (cuota, totalPagar, totalIntereses) = CalculateLoan(
                     principal,
                     tasaMensual,
@@ -125,12 +161,21 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 var firstPayment = rawFirstPayment.Kind == DateTimeKind.Utc
                     ? rawFirstPayment
                     : DateTime.SpecifyKind(rawFirstPayment, DateTimeKind.Utc);
-                if (firstPayment.Date < fechaInicio.Date)
-                    throw new ArgumentException("La primera fecha de pago no puede ser anterior a la fecha de inicio.");
+                // Nunca se genera una cuota el mismo día del desembolso. Si el
+                // navegador envía una fecha igual/anterior por zona horaria,
+                // usamos el siguiente período según la frecuencia.
+                if (firstPayment.Date <= fechaInicio.Date)
+                    firstPayment = defaultFirstPayment;
 
                 GenerateInstallments(loan, principal, tasaMensual, cuota, firstPayment);
                 loan.FechaVencimiento = loan.Installments.Max(i => i.FechaPago);
                 await _unitOfWork.Loans.AddAsync(loan, cancellationToken);
+                await _journal.PostAsync(loanApp.TenantId, "loan.disbursement", loan.Id, new[]
+                {
+                    new JournalLineInput("LOAN_RECEIVABLE", principal, 0, "Desembolso de préstamo", loanApp.Moneda),
+                    new JournalLineInput("CASH", 0, montoAprobado, "Salida por desembolso", loanApp.Moneda),
+                    new JournalLineInput("COMMISSION_INCOME", 0, principal - montoAprobado, "Gasto de cierre", loanApp.Moneda)
+                }, cancellationToken);
                 createdLoan = loan;
             }
 
@@ -145,7 +190,8 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                     createdLoan,
                     loanApp.Client,
                     _notificationService.ClientPortalUrl);
-                var pdf = AmortizationPdfBuilder.Build(createdLoan, loanApp.Client);
+                var tenant = await _unitOfWork.Tenants.GetByIdAsync(loanApp.TenantId, cancellationToken);
+                var pdf = AmortizationPdfBuilder.Build(createdLoan, loanApp.Client, tenant?.Nombre);
                 await _notificationService.SendEmailAsync(
                     loanApp.Client.Email,
                     loanEmail.Subject,

@@ -17,6 +17,7 @@ import PortalLogin from './pages/portal/Login';
 import Cobradores from './pages/admin/Cobradores';
 import Gastos from './pages/admin/Gastos';
 import Garantias from './pages/admin/Garantias';
+import Inversiones from './pages/admin/Inversiones';
 import PlatformDashboard from './pages/platform/Dashboard';
 import PlatformEmpresas from './pages/platform/Empresas';
 import PlatformPlanes from './pages/platform/Planes';
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="cobradores" element={<Cobradores />} />
         <Route path="gastos" element={<Gastos />} />
         <Route path="garantias" element={<Garantias />} />
+        <Route path="inversiones" element={<Inversiones />} />
       </Route>
       <Route path="/cobrador/login" element={<CollectorLogin />} />
       <Route path="/cobrador" element={<CollectorRoute><CollectorLayout /></CollectorRoute>}>

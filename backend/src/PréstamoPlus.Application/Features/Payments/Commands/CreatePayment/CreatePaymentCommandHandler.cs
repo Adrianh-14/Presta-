@@ -259,6 +259,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 Id = Guid.NewGuid(),
                 LoanId = req.LoanId,
                 Monto = monto,
+                Moneda = loan.Moneda,
                 Capital = capital,
                 Interes = interes,
                 MoraPagada = 0,
@@ -317,10 +318,10 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
 
         private static IReadOnlyCollection<JournalLineInput> BuildPaymentLines(Payment payment)
         {
-            var lines = new List<JournalLineInput> { new("CASH", payment.Monto, 0, "Cobro de pago") };
-            if (payment.Capital > 0) lines.Add(new JournalLineInput("LOAN_RECEIVABLE", 0, payment.Capital, "Aplicación a capital"));
-            if (payment.Interes > 0) lines.Add(new JournalLineInput("INTEREST_INCOME", 0, payment.Interes, "Aplicación a interés"));
-            if (payment.MoraPagada > 0) lines.Add(new JournalLineInput("LATE_FEE_INCOME", 0, payment.MoraPagada, "Aplicación a mora"));
+            var lines = new List<JournalLineInput> { new("CASH", payment.Monto, 0, "Cobro de pago", payment.Moneda) };
+            if (payment.Capital > 0) lines.Add(new JournalLineInput("LOAN_RECEIVABLE", 0, payment.Capital, "Aplicación a capital", payment.Moneda));
+            if (payment.Interes > 0) lines.Add(new JournalLineInput("INTEREST_INCOME", 0, payment.Interes, "Aplicación a interés", payment.Moneda));
+            if (payment.MoraPagada > 0) lines.Add(new JournalLineInput("LATE_FEE_INCOME", 0, payment.MoraPagada, "Aplicación a mora", payment.Moneda));
             return lines;
         }
     }

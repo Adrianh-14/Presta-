@@ -125,18 +125,46 @@ namespace PréstamoPlus.API.Controllers
             if (authResult is null || !identifierMatches)
                 return Unauthorized(new { message = "Código OTP inválido o expirado." });
 
-            var payResult = await _mediator.Send(new ProcessPaymentQRCommand(
-                new ProcessPaymentQRRequest
-                {
-                    Token = request.Token,
-                    Latitud = request.Latitud,
-                    Longitud = request.Longitud
-                }), cancellationToken);
+            // Verificar el OTP solo autoriza la operación. El pago se aplica
+            // únicamente cuando el cliente pulsa explícitamente “Aplicar pago”.
+            var paymentInfo = await _mediator.Send(new GetPaymentQRStatusQuery(request.Token), cancellationToken);
+            return Ok(new
+            {
+                verified = true,
+                clientToken = authResult.Token,
+                clientId = authResult.ClientId,
+                clienteNombre = authResult.Nombre,
+                email = authResult.Email,
+                expiresAt = authResult.ExpiresAt,
+                payment = paymentInfo
+            });
+        }
 
-            if (!payResult.Success)
-                return BadRequest(payResult);
+        [HttpPost("process")]
+        [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
+        [ProducesResponseType(typeof(PaymentQRProcessResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> ProcessPayment(
+            [FromBody] ProcessPaymentQRRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(User.FindFirst("clientId")?.Value, out var clientId) ||
+                !Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId))
+                return Unauthorized(new { message = "Sesión de cliente inválida." });
 
-            return Ok(payResult);
+            var paymentQR = await _dbContext.PaymentQRs
+                .AsNoTracking()
+                .SingleOrDefaultAsync(qr => qr.Token == request.Token, cancellationToken);
+            if (paymentQR is null || paymentQR.ClientId != clientId)
+                return NotFound(new { message = "Este cobro no pertenece a tu cuenta." });
+
+            var client = await _dbContext.Clients.AsNoTracking()
+                .SingleOrDefaultAsync(item => item.Id == clientId && item.TenantId == tenantId, cancellationToken);
+            if (client is null)
+                return NotFound(new { message = "Cliente no encontrado." });
+
+            var result = await _mediator.Send(new ProcessPaymentQRCommand(request), cancellationToken);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
         }
 
         private static string NormalizeIdentifier(string? value) => new(

@@ -19,6 +19,9 @@ export default function CollectorLogin() {
       if (data.user?.role === 'Cobrador') {
         navigate('/cobrador');
       } else {
+        // Evita dejar una sesión administrativa activa dentro del portal del
+        // cobrador cuando se usó una cuenta con otro rol.
+        authService.logout();
         setError('Esta cuenta no es de cobrador.');
       }
     } catch (err) {

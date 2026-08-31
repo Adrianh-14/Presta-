@@ -76,10 +76,19 @@ namespace PréstamoPlus.API.Controllers
         [HttpPost("direct")]
         [Authorize(Policy = AuthorizationPolicies.ManageLoans)]
         [ProducesResponseType(typeof(LoanDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateDirect([FromBody] CreateDirectLoanRequest request)
         {
-            var result = await _mediator.Send(new CreateDirectLoanCommand(request));
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            try
+            {
+                var result = await _mediator.Send(new CreateDirectLoanCommand(request));
+                return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Capital insuficiente", StringComparison.OrdinalIgnoreCase))
+            {
+                // La falta de capital es una validación de negocio esperable, no un fallo del servidor.
+                return BadRequest(new { message = ex.Message, code = "INSUFFICIENT_CAPITAL" });
+            }
         }
 
         private bool CanReadLoan(Guid clientId)

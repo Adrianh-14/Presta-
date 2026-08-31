@@ -51,6 +51,9 @@ public sealed class ClientAuthenticationService : IClientAuthenticationService
         var stopwatch = Stopwatch.StartNew();
         var now = UtcNow();
         var tenantSlug = NormalizeTenant(tenant);
+        var tenantIdFromLink = Guid.TryParse(tenantSlug, out var parsedTenantId)
+            ? parsedTenantId
+            : (Guid?)null;
         var identifier = NormalizeIdentifier(cedula);
         var identifierHash = Hash($"identifier:{tenantSlug}:{identifier}");
         var addressHash = HashOptional(remoteAddress, "address");
@@ -76,7 +79,9 @@ public sealed class ClientAuthenticationService : IClientAuthenticationService
         var tenantEntity = await _context.Tenants
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                item => item.IsActive && item.Slug.ToLower() == tenantSlug,
+                item => item.IsActive &&
+                    (item.Slug.ToLower() == tenantSlug ||
+                     (tenantIdFromLink.HasValue && item.Id == tenantIdFromLink.Value)),
                 cancellationToken);
 
         var client = tenantEntity is null
@@ -223,6 +228,31 @@ public sealed class ClientAuthenticationService : IClientAuthenticationService
 
         await DelayUniformlyAsync(stopwatch, cancellationToken);
         return PublicRequestResult(challenge.Id);
+    }
+
+    public async Task<IReadOnlyList<ClientTenantOption>> FindClientTenantsAsync(
+        string cedula,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeIdentifier(cedula);
+        if (!_options.Enabled || !IsValidIdentifier(normalized))
+            return Array.Empty<ClientTenantOption>();
+
+        var candidates = IdentifierCandidates(cedula, normalized);
+        var matches = await (from client in _context.Clients.AsNoTracking()
+            join tenant in _context.Tenants.AsNoTracking() on client.TenantId equals tenant.Id
+            where client.Estado == EstadoCliente.Activo &&
+                !string.IsNullOrWhiteSpace(client.Email) &&
+                candidates.Contains(client.Cedula) &&
+                tenant.IsActive
+            select new { tenant.Id, tenant.Slug, tenant.Nombre })
+            .ToListAsync(cancellationToken);
+
+        return matches
+            .Select(item => new ClientTenantOption(item.Id, item.Slug, item.Nombre))
+            .DistinctBy(item => item.Id)
+            .OrderBy(item => item.Nombre)
+            .ToList();
     }
 
     public async Task<ClientAuthenticationResult?> VerifyOtpAsync(

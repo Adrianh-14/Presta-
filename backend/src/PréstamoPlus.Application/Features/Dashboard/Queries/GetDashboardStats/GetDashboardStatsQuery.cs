@@ -3,6 +3,7 @@ using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Enums;
 using PréstamoPlus.Domain.Interfaces;
 using PréstamoPlus.Application.Common;
+using System.Text.Json;
 
 namespace PréstamoPlus.Application.Features.Dashboard.Queries.GetDashboardStats
 {
@@ -29,19 +30,19 @@ namespace PréstamoPlus.Application.Features.Dashboard.Queries.GetDashboardStats
                 solicitudes = solicitudes.Where(s => s.TenantId == request.TenantId.Value).ToList();
             }
 
-            var ledgerDisponible = await _capitalGuard.GetAvailableAsync(request.TenantId ?? Guid.Empty, cancellationToken);
+            var ledgerDisponible = await _capitalGuard.GetAvailableAsync(request.TenantId ?? Guid.Empty, "DOP", cancellationToken);
             var tenant = request.TenantId.HasValue ? await _unitOfWork.Tenants.GetByIdAsync(request.TenantId.Value, cancellationToken) : null;
+            var capitalPorMoneda = tenant is null ? new Dictionary<string, decimal>() : JsonSerializer.Deserialize<Dictionary<string, decimal>>(tenant.CapitalInicialPorMonedaJson) ?? new();
+            foreach (var currency in capitalPorMoneda.Keys.ToList())
+                capitalPorMoneda[currency] = await _capitalGuard.GetAvailableAsync(request.TenantId ?? Guid.Empty, currency, cancellationToken);
+            capitalPorMoneda["DOP"] = ledgerDisponible;
             return new DashboardStatsDto
             {
                 TotalPrestado = loans.Where(l => l.Estado != EstadoPrestamo.Pagado).Sum(l => l.MontoOriginal),
                 Disponible = ledgerDisponible,
                 CapitalDisponible = ledgerDisponible,
-                CapitalDisponiblePorMoneda = new Dictionary<string, decimal>
-                {
-                    ["DOP"] = ledgerDisponible,
-                    ["USD"] = tenant?.CapitalInicialUsd ?? 0m,
-                    ["EUR"] = tenant?.CapitalInicialEur ?? 0m
-                },
+                CapitalDisponiblePorMoneda = capitalPorMoneda,
+                MonedasHabilitadas = (tenant?.MonedasHabilitadas ?? "DOP").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
                 EnCartera = loans.Count(l => l.Estado == EstadoPrestamo.Activo),
                 PorCobrar = loans.Where(l => l.Estado != EstadoPrestamo.Pagado).Sum(l => l.SaldoPendiente),
                 SolicitudesPendientes = solicitudes.Count(s => s.Estado == EstadoSolicitud.Pendiente)

@@ -35,7 +35,7 @@ SecurityConfigurationValidator.Validate(builder.Configuration, builder.Environme
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 25 * 1024 * 1024;
+    options.Limits.MaxRequestBodySize = 70 * 1024 * 1024;
     options.ConfigureEndpointDefaults(o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2);
 });
 
@@ -67,6 +67,15 @@ builder.Services.AddPrestamoPlusAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            message = "Has alcanzado el límite temporal de intentos. Espera antes de volver a intentarlo.",
+            code = "RATE_LIMITED"
+        }, cancellationToken);
+    };
     options.AddPolicy("client-otp-request", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             GetRemoteAddress(context),
