@@ -12,18 +12,18 @@ public partial class ReconcileLoanCapitalAndPaymentDates : Migration
         // pero no todas sus columnas físicas. Repara únicamente lo que falte
         // para que la reconciliación sea segura e idempotente.
         migrationBuilder.Sql(@"
-            ALTER TABLE IF EXISTS \"Loans\"
-                ADD COLUMN IF NOT EXISTS \"Moneda\" character varying(3) NOT NULL DEFAULT 'DOP';
-            ALTER TABLE IF EXISTS \"LoanApplications\"
-                ADD COLUMN IF NOT EXISTS \"Moneda\" character varying(3) NOT NULL DEFAULT 'DOP';
-            ALTER TABLE IF EXISTS \"Payments\"
-                ADD COLUMN IF NOT EXISTS \"Moneda\" character varying(3) NOT NULL DEFAULT 'DOP';
-            ALTER TABLE IF EXISTS \"PaymentQRs\"
-                ADD COLUMN IF NOT EXISTS \"Moneda\" character varying(3) NOT NULL DEFAULT 'DOP';
-            ALTER TABLE IF EXISTS \"Tenants\"
-                ADD COLUMN IF NOT EXISTS \"MonedaPredeterminada\" character varying(3) NOT NULL DEFAULT 'DOP';
-            ALTER TABLE IF EXISTS \"Tenants\"
-                ADD COLUMN IF NOT EXISTS \"MonedasHabilitadas\" character varying(30) NOT NULL DEFAULT 'DOP';");
+            ALTER TABLE IF EXISTS ""Loans""
+                ADD COLUMN IF NOT EXISTS ""Moneda"" character varying(3) NOT NULL DEFAULT 'DOP';
+            ALTER TABLE IF EXISTS ""LoanApplications""
+                ADD COLUMN IF NOT EXISTS ""Moneda"" character varying(3) NOT NULL DEFAULT 'DOP';
+            ALTER TABLE IF EXISTS ""Payments""
+                ADD COLUMN IF NOT EXISTS ""Moneda"" character varying(3) NOT NULL DEFAULT 'DOP';
+            ALTER TABLE IF EXISTS ""PaymentQRs""
+                ADD COLUMN IF NOT EXISTS ""Moneda"" character varying(3) NOT NULL DEFAULT 'DOP';
+            ALTER TABLE IF EXISTS ""Tenants""
+                ADD COLUMN IF NOT EXISTS ""MonedaPredeterminada"" character varying(3) NOT NULL DEFAULT 'DOP';
+            ALTER TABLE IF EXISTS ""Tenants""
+                ADD COLUMN IF NOT EXISTS ""MonedasHabilitadas"" character varying(30) NOT NULL DEFAULT 'DOP';");
 
         migrationBuilder.DropIndex(name: "IX_LedgerAccounts_TenantId_Code", table: "LedgerAccounts");
         migrationBuilder.CreateIndex(name: "IX_LedgerAccounts_TenantId_Code_Currency", table: "LedgerAccounts", columns: new[] { "TenantId", "Code", "Currency" }, unique: true);
