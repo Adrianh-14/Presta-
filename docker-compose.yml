@@ -88,10 +88,8 @@ services:
     restart: unless-stopped
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:-}
-    entrypoint: ["/bin/sh", "-c"]
-    command: >-
-      if [ -z "$$TUNNEL_TOKEN" ]; then echo "CLOUDFLARED_TUNNEL_TOKEN no configurado"; exit 0; fi;
-      cloudflared tunnel --no-autoupdate run --token "$$TUNNEL_TOKEN"
+    entrypoint: ["cloudflared"]
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARED_TUNNEL_TOKEN:-}"]
     depends_on:
       frontend:
         condition: service_healthy
