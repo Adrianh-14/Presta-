@@ -23,5 +23,6 @@ COPY --from=build /app/publish .
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod 755 /app/docker-entrypoint.sh
 
+ENV ASPNETCORE_URLS=http://+:5001
 EXPOSE 5001
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

@@ -27,6 +27,7 @@ services:
       - "5002:5001"
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:5001
       DatabaseProvider: PostgreSQL
       # Dokploy puede entregar una cadena completa para una base administrada.
       # Si no existe, se usa el PostgreSQL del mismo Compose.
