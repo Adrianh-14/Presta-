@@ -52,6 +52,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - default
+      - dokploy-network
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:5001/health/ready"]
       interval: 10s
@@ -95,3 +98,7 @@ services:
 volumes:
   pgdata:
   uploads:
+
+networks:
+  dokploy-network:
+    external: true
