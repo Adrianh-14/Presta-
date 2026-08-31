@@ -26,11 +26,11 @@ services:
     ports:
       - "5002:5001"
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       DatabaseProvider: PostgreSQL
-      # Dentro de Compose se usa postgres:5432. Dokploy puede sobrescribir
-      # POSTGRES_HOST/POSTGRES_PORT si utiliza una base administrada externa.
-      ConnectionStrings__DefaultConnection: Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-prestamoplus};Username=${POSTGRES_USER:-prestamoplus};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in the ignored .env file}
+      # Dokploy puede entregar una cadena completa para una base administrada.
+      # Si no existe, se usa el PostgreSQL del mismo Compose.
+      ConnectionStrings__DefaultConnection: "${ConnectionStrings__DefaultConnection:-${DATABASE_CONNECTION_STRING:-Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-prestamoplus};Username=${POSTGRES_USER:-prestamoplus};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in the ignored .env file}}}"
       ClientAuthentication__Enabled: "true"
       DemoData__Enabled: "false"
       JwtSettings__SecretKey: ${JWT_SECRET:-dev-only-change-this-secret-key-please-rotate-in-production-2026}
