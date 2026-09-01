@@ -13,7 +13,25 @@ namespace PréstamoPlus.API.Controllers;
 public sealed class LocationController : ControllerBase
 {
     private const string TermsVersion = "2026-09-01-v1";
-    private const string TermsText = "El cliente autoriza compartir su ubicación únicamente durante una gestión de cobro activa, con el cobrador asignado al préstamo, por el tiempo indicado. Puede revocar esta autorización y la sesión expira automáticamente. No se habilita rastreo permanente ni se comparte la ubicación con terceros no autorizados.";
+    private const string TermsText = """
+Términos de autorización para compartir ubicación durante una gestión de cobro
+
+1. Finalidad. La ubicación se utilizará exclusivamente para coordinar una visita relacionada con un préstamo vigente, vencido o en gestión de cobro del cliente. La autorización no convierte la ubicación en un mecanismo de vigilancia general ni permite consultar la posición del cliente fuera de una gestión activa.
+
+2. Alcance. La ubicación podrá ser recibida únicamente durante una sesión temporal iniciada por la empresa para una asignación concreta y vinculada a un préstamo y a un cobrador identificado. La sesión tendrá una duración limitada, expirará automáticamente y no se mantendrá activa de forma permanente ni en segundo plano por defecto.
+
+3. Personas autorizadas. La posición podrá ser consultada por personal de la empresa que tenga permisos operativos y por el cobrador asignado a la gestión correspondiente. No se compartirá con otros clientes, terceros no autorizados ni personas ajenas a la gestión.
+
+4. Información visible. El cliente podrá consultar la finalidad, la versión de estos términos y el estado de su autorización. La aplicación puede solicitar adicionalmente el permiso técnico del sistema operativo. Aceptar estos términos no elimina ese permiso del dispositivo.
+
+5. Voluntariedad y revocación. El cliente puede no aceptar la autorización y puede revocarla desde el portal. La revocación detiene las sesiones activas y evita iniciar nuevas sesiones con ese consentimiento. La revocación no elimina las obligaciones financieras ni los registros mínimos que deban conservarse para demostrar la autorización y su revocación.
+
+6. Conservación y seguridad. Se conservará evidencia de la versión aceptada, el texto presentado, el momento de aceptación, vencimiento, revocación y los accesos realizados. Las coordenadas se conservarán solo durante el período operativo y de auditoría definido por la empresa, con controles de acceso y transmisión segura.
+
+7. Exactitud y disponibilidad. La ubicación depende del dispositivo, señal, permisos y configuración del sistema operativo. Puede ser imprecisa, estar desactualizada o no estar disponible. La empresa no debe tomar la ubicación como única prueba de identidad, domicilio, deuda o incumplimiento.
+
+8. Contacto y cambios. Cualquier cambio material en la finalidad, alcance, destinatarios o tiempo de conservación requerirá una nueva aceptación. La versión vigente y su huella digital se registrarán junto con cada autorización.
+""";
     private readonly ApplicationDbContext _db;
 
     public LocationController(ApplicationDbContext db) => _db = db;
@@ -53,6 +71,15 @@ public sealed class LocationController : ControllerBase
         foreach (var session in sessions) { session.Status = "Revoked"; session.EndedAt = now; }
         await _db.SaveChangesAsync(cancellationToken);
         return Ok(new { revoked = consents.Count });
+    }
+
+    [HttpGet("consent/status")]
+    [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
+    public async Task<IActionResult> ConsentStatus(CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(User.FindFirst("clientId")?.Value, out var clientId)) return Unauthorized();
+        var consent = await _db.LocationConsentEvidence.AsNoTracking().Where(item => item.ClientId == clientId && item.RevokedAt == null && item.ExpiresAt > DateTime.UtcNow).OrderByDescending(item => item.GrantedAt).FirstOrDefaultAsync(cancellationToken);
+        return Ok(new { active = consent is not null, consentId = consent?.Id, version = consent?.TermsVersion, expiresAt = consent?.ExpiresAt });
     }
 
     [HttpGet("my-session")]
