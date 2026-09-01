@@ -206,7 +206,9 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE IF EXISTS ""TenantConfigs""
             ADD COLUMN IF NOT EXISTS ""CapitalInicialEur"" numeric(18,2) NOT NULL DEFAULT 0;
         ALTER TABLE IF EXISTS ""Tenants""
-            ADD COLUMN IF NOT EXISTS ""CapitalInicialPorMonedaJson"" text NOT NULL DEFAULT '{{}}';");
+            ADD COLUMN IF NOT EXISTS ""CapitalInicialPorMonedaJson"" text NOT NULL DEFAULT '{{}}';
+        ALTER TABLE IF EXISTS ""Tenants""
+            ADD COLUMN IF NOT EXISTS ""Pais"" character varying NOT NULL DEFAULT 'DO';");
     logger.LogInformation("Reparación de tablas de plataforma completada.");
 
     if (builder.Configuration.GetValue<bool>("DemoData:Enabled"))
