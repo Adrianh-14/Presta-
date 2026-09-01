@@ -196,7 +196,15 @@ using (var scope = app.Services.CreateScope())
             ""Label"" character varying(200) NOT NULL,
             ""UpdatedAt"" timestamp with time zone NOT NULL,
             CONSTRAINT ""PK_PlatformPromotions"" PRIMARY KEY (""Id"")
-        );");
+        );
+        ALTER TABLE IF EXISTS ""Tenants"
+            ADD COLUMN IF NOT EXISTS ""CapitalInicialUsd"" numeric(18,2) NOT NULL DEFAULT 0;
+        ALTER TABLE IF EXISTS ""Tenants"
+            ADD COLUMN IF NOT EXISTS ""CapitalInicialEur"" numeric(18,2) NOT NULL DEFAULT 0;
+        ALTER TABLE IF EXISTS ""TenantConfigs"
+            ADD COLUMN IF NOT EXISTS ""CapitalInicialUsd"" numeric(18,2) NOT NULL DEFAULT 0;
+        ALTER TABLE IF EXISTS ""TenantConfigs"
+            ADD COLUMN IF NOT EXISTS ""CapitalInicialEur"" numeric(18,2) NOT NULL DEFAULT 0;");
     logger.LogInformation("Reparación de tablas de plataforma completada.");
 
     if (builder.Configuration.GetValue<bool>("DemoData:Enabled"))
