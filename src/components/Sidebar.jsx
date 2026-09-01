@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap, PiggyBank, AlertTriangle, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -10,6 +10,8 @@ const navItems = [
   { to: '/admin/prestamos', icon: CreditCard, label: 'Préstamos' },
   { to: '/admin/nuevo-prestamo', icon: PlusSquare, label: 'Nuevo Préstamo' },
   { to: '/admin/solicitudes', icon: FileText, label: 'Solicitudes' },
+  { to: '/admin/mora', icon: AlertTriangle, label: 'Mora y cobranza' },
+  { to: '/admin/configuracion', icon: Settings, label: 'Configuración' },
   { to: '/admin/cobradores', icon: UsersRound, label: 'Cobradores' },
   { to: '/admin/gastos', icon: Receipt, label: 'Gastos' },
   { to: '/admin/garantias', icon: FolderLock, label: 'Documentos y garantías' },
@@ -30,8 +32,32 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [tenantName, setTenantName] = useState(user?.nombreEmpresa || '');
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const previousPending = useRef(0);
   const isPlatformAdmin = ['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role);
   useEffect(() => { if (!user?.tenantId || isPlatformAdmin) return; api.get('/api/tenant/config').then(({ data }) => setTenantName(data.nombre || '')).catch(() => {}); }, [user?.tenantId, isPlatformAdmin]);
+  useEffect(() => {
+    if (!user?.tenantId || isPlatformAdmin) return undefined;
+    let cancelled = false;
+    const token = localStorage.getItem('accessToken');
+    const notify = (count) => {
+      if (count > previousPending.current && previousPending.current >= 0) {
+        try { const context = new AudioContext(); const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.frequency.value = 880; gain.gain.value = 0.06; oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + 0.16); } catch { /* el sonido requiere interacción previa en algunos navegadores */ }
+      }
+      previousPending.current = count; setPendingRequests(count);
+    };
+    const connect = async () => {
+      try {
+        const response = await fetch('/api/notifications/stream', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!response.ok || !response.body) throw new Error('stream unavailable');
+        const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+        while (!cancelled) { const { value, done } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); const chunks = buffer.split('\n\n'); buffer = chunks.pop() || ''; chunks.forEach((chunk) => { const line = chunk.split('\n').find((item) => item.startsWith('data:')); if (line) { try { notify(Number(JSON.parse(line.slice(5)).pendientes || 0)); } catch { /* evento inválido */ } } }); }
+      } catch { /* fallback de sondeo abajo */ }
+    };
+    connect();
+    const fallback = window.setInterval(() => api.get('/api/dashboard/stats').then(({ data }) => { if (!cancelled) notify(Number(data.solicitudesPendientes || 0)); }).catch(() => {}), 30000);
+    return () => { cancelled = true; window.clearInterval(fallback); };
+  }, [user?.tenantId, isPlatformAdmin]);
 
   const handleLogout = () => {
     logout();
@@ -74,7 +100,7 @@ export default function Sidebar() {
             }
           >
             <item.icon aria-hidden="true" size={18} />
-            {item.label}
+            {item.label}{item.to === '/admin/solicitudes' && pendingRequests > 0 && <span className="ml-auto min-w-5 rounded-full bg-danger-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white">+{pendingRequests}</span>}
           </NavLink>
         ))}
       </nav>

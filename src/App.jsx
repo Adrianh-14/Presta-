@@ -31,6 +31,9 @@ import CollectorCollections from './pages/cobrador/Collections';
 import VisitForm from './pages/cobrador/VisitForm';
 import PagoQR from './pages/portal/PagoQR';
 import PortalPayments from './pages/portal/Payments';
+import Mora from './pages/admin/Mora';
+import Configuracion from './pages/admin/Configuracion';
+import LocationConsent from './pages/portal/LocationConsent';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, user, loading } = useAuth();
@@ -92,6 +95,8 @@ function AppRoutes() {
         <Route path="prestamos" element={<Prestamos />} />
         <Route path="nuevo-prestamo" element={<NuevoPrestamo />} />
         <Route path="solicitudes" element={<Solicitudes />} />
+        <Route path="mora" element={<Mora />} />
+        <Route path="configuracion" element={<Configuracion />} />
         <Route path="cobradores" element={<Cobradores />} />
         <Route path="gastos" element={<Gastos />} />
         <Route path="garantias" element={<Garantias />} />
@@ -109,6 +114,7 @@ function AppRoutes() {
         <Route index element={<PortalDashboard />} />
         <Route path="pagos" element={<PortalPayments />} />
         <Route path="prestamo/:id" element={<PortalLoanDetail />} />
+        <Route path="ubicacion" element={<LocationConsent />} />
       </Route>
       <Route path="/" element={<Navigate to="/admin" replace />} />
       <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -24,6 +24,11 @@ export const cobradorService = {
   removeAssignment: async (assignmentId) => {
     await api.delete(`/api/cobradores/assignments/${assignmentId}`);
   },
+
+  startLocationSession: async (assignmentId, minutes = 30) => {
+    const { data } = await api.post('/api/location/sessions', { assignmentId, minutes });
+    return data;
+  },
 };
 
 export const collectorPortalService = {
@@ -59,6 +64,11 @@ export const collectorPortalService = {
 
   getSuggestedAmount: async (assignmentId) => {
     const { data } = await api.get(`/api/collector/assignments/${assignmentId}/suggested-amount`);
+    return data;
+  },
+
+  getMyLocationSessions: async () => {
+    const { data } = await api.get('/api/location/my-sessions');
     return data;
   },
 };

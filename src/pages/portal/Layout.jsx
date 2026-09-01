@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, DollarSign, LogOut, User, QrCode } from 'lucide-react';
+import { LayoutDashboard, DollarSign, LogOut, User, QrCode, MapPin } from 'lucide-react';
 
 export default function PortalLayout() {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ export default function PortalLayout() {
     { to: '/portal', icon: LayoutDashboard, label: 'Mis Préstamos', end: true },
     { to: '/portal/pagos', icon: DollarSign, label: 'Historial', end: false },
     { to: '/portal/pago-qr', icon: QrCode, label: 'Pagar con QR', end: false },
+    { to: '/portal/ubicacion', icon: MapPin, label: 'Ubicación para visita', end: false },
   ];
 
   const logout = async () => {

@@ -5,6 +5,7 @@ import StatusBadge from '../../components/StatusBadge';
 import { cobradorService } from '../../services/cobradorService';
 import AssignLoansModal from '../../components/modals/AssignLoansModal';
 import QRManagementModal from '../../components/modals/QRManagementModal';
+import LocationSessionModal from '../../components/modals/LocationSessionModal';
 
 const fmt = (n) => `$${(n || 0).toLocaleString()}`;
 
@@ -16,6 +17,7 @@ export default function Cobradores() {
   const [selectedCollector, setSelectedCollector] = useState(null);
   const [showAssign, setShowAssign] = useState(null);
   const [showQRManage, setShowQRManage] = useState(null);
+  const [showLocation, setShowLocation] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(null);
 
   useEffect(() => { loadCollectors(); }, []);
@@ -160,6 +162,7 @@ export default function Cobradores() {
                       <button onClick={() => setShowAssign(collector)} className="text-xs font-semibold text-accent-500 hover:text-accent-600 transition-colors">
                         Asignar
                       </button>
+                      <button onClick={() => setShowLocation(collector)} className="flex items-center gap-1 text-xs font-semibold text-accent-600 hover:text-accent-700" title="Iniciar ubicación temporal"><MapPin size={12} /> Ubicación</button>
                       <button onClick={() => handleToggleStatus(collector)} disabled={togglingStatus === collector.id}
                         title={collector.isActive ? 'Desactivar cobrador' : 'Activar cobrador'}
                         className={`text-xs font-semibold transition-colors flex items-center gap-1 ${collector.isActive ? 'text-danger-500 hover:text-danger-600' : 'text-success-600 hover:text-success-700'}`}>
@@ -232,6 +235,8 @@ export default function Cobradores() {
           onClose={() => setShowQRManage(null)}
         />
       )}
+
+      {showLocation && <LocationSessionModal collector={showLocation} onClose={() => setShowLocation(null)} />}
     </div>
   );
 }

@@ -54,6 +54,9 @@ namespace PréstamoPlus.Infrastructure.Persistence
         public DbSet<JobLock> JobLocks => Set<JobLock>();
         public DbSet<AnomalyAlert> AnomalyAlerts => Set<AnomalyAlert>();
         public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
+        public DbSet<LocationConsentEvidence> LocationConsentEvidence => Set<LocationConsentEvidence>();
+        public DbSet<LocationShareSession> LocationShareSessions => Set<LocationShareSession>();
+        public DbSet<LocationAccessAudit> LocationAccessAudits => Set<LocationAccessAudit>();
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
         {
