@@ -38,15 +38,27 @@ public sealed class MoraController : ControllerBase
                 .ToList();
             var client = clients.GetValueOrDefault(loan.ClientId);
             var moraEvents = loanLateFees
-                .OrderBy(item => item.FechaCalculo)
                 .Select(item => new
                 {
-                    id = item.Id,
-                    fecha = item.FechaCalculo,
-                    diasAtraso = item.DiasAtraso,
-                    monto = item.Monto,
-                    pagado = item.Pagado,
-                    cuota = loanInstallments.FirstOrDefault(i => i.FechaPago.Date <= item.FechaCalculo.Date && i.Estado != EstadoInstallment.Pagado)?.Numero
+                    item,
+                    cuota = loanInstallments
+                        .Where(i => i.FechaPago.Date <= item.FechaCalculo.Date)
+                        .OrderByDescending(i => i.FechaPago)
+                        .Select(i => (int?)i.Numero)
+                        .FirstOrDefault()
+                })
+                .Where(item => item.cuota.HasValue)
+                .GroupBy(item => item.cuota!.Value)
+                .OrderBy(group => group.Key)
+                .Select(group => new
+                {
+                    cuota = group.Key,
+                    fechaInicio = group.Min(item => item.item.FechaCalculo),
+                    fechaUltimoCargo = group.Max(item => item.item.FechaCalculo),
+                    diasAtraso = group.Max(item => item.item.DiasAtraso),
+                    monto = group.Sum(item => item.item.Monto),
+                    pagado = group.All(item => item.item.Pagado),
+                    cargosDiarios = group.Count()
                 })
                 .ToList();
 
@@ -63,7 +75,7 @@ public sealed class MoraController : ControllerBase
                 cuota = loan.CuotaMensual,
                 saldo = loan.SaldoPendiente,
                 moraPendiente = loanLateFees.Where(item => !item.Pagado).Sum(item => item.Monto),
-                vecesEnMora = loanLateFees.Select(item => item.FechaCalculo.Date).Distinct().Count(),
+                vecesEnMora = moraEvents.Count,
                 cuotasAtrasadas = overdueInstallments.Count,
                 moraEvents
             };
@@ -77,8 +89,8 @@ public sealed class MoraController : ControllerBase
             totalMoraPendiente = activeRows.Sum(row => row.moraPendiente),
             totalCasosLegales = rows.Count(row => row.estado.Equals(nameof(EstadoPrestamo.Legal), StringComparison.OrdinalIgnoreCase)),
             porCuota = activeRows.SelectMany(row => row.moraEvents)
-                .Where(item => item.cuota.HasValue)
-                .GroupBy(item => item.cuota!.Value)
+                .GroupBy(item => item.cuota)
+                .Where(group => group.Key > 0)
                 .OrderBy(group => group.Key)
                 .Select(group => new { cuota = group.Key, eventos = group.Count(), monto = group.Sum(item => item.monto) }),
             prestamos = activeRows
