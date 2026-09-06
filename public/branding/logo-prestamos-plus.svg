@@ -7,6 +7,6 @@
   <path d="M124 77h15v15" fill="none" stroke="#13A995" stroke-width="10" stroke-linecap="round"/>
   <path d="M28 55h40M28 76h28M28 97h20" stroke="#F5F8FB" stroke-width="8" stroke-linecap="round"/>
   <text x="215" y="105" font-family="Manrope, Inter, Arial, sans-serif" font-size="58" font-weight="750" fill="#071B2E">Préstamos</text>
-  <text x="510" y="105" font-family="Manrope, Inter, Arial, sans-serif" font-size="58" font-weight="750" fill="#006BFF">Plus</text>
+  <text x="558" y="105" font-family="Manrope, Inter, Arial, sans-serif" font-size="58" font-weight="750" fill="#006BFF">Plus</text>
   <text x="218" y="139" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="500" letter-spacing=".7" fill="#526477">Cada peso prestado. Cada cuota. Bajo control.</text>
 </svg>
