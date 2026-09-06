@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-labelledby="title">
+  <title id="title">Icono Préstamos Plus</title>
+  <rect width="180" height="180" rx="38" fill="#071B2E"/>
+  <path d="M47 42h54c32 0 53 18 53 46s-21 47-53 47H78v25H47V42zm31 27v39h22c15 0 23-7 23-20 0-12-8-19-23-19H78z" fill="#006BFF"/>
+  <path d="M62 127l25-25 17 14 31-38" fill="none" stroke="#13A995" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M124 77h15v15" fill="none" stroke="#13A995" stroke-width="10" stroke-linecap="round"/>
+  <path d="M28 55h40M28 76h28M28 97h20" stroke="#F5F8FB" stroke-width="8" stroke-linecap="round"/>
+</svg>
