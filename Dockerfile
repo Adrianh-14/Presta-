@@ -6,6 +6,7 @@ RUN npm ci
 
 COPY index.html postcss.config.js tailwind.config.js vite.config.js ./
 COPY src ./src
+COPY public ./public
 RUN npm run build
 COPY marketing ./marketing
 ARG SITE_URL=http://localhost:3005
@@ -16,6 +17,7 @@ FROM nginx:1.27-alpine AS runtime
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html/app
 COPY --from=build /app/dist/assets /usr/share/nginx/html/assets
+COPY --from=build /app/dist/branding /usr/share/nginx/html/branding
 COPY --from=build /app/marketing/dist /usr/share/nginx/html
 
 EXPOSE 3005

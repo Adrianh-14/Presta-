@@ -131,5 +131,5 @@ export default function Sidebar() {
 }
 
 function BrandMark() {
-  return <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-8 border border-white/15 bg-white/10 font-display text-sm font-extrabold text-white">P+</div>;
+  return <img src="/branding/icono-prestamos-plus.svg" alt="Préstamos Plus" className="h-9 w-9 shrink-0 rounded-8 object-contain" />;
 }

@@ -45,7 +45,7 @@ export default function Login() {
       <section className="financial-grid relative hidden min-h-screen overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-20">
         <div className="absolute right-[-8rem] top-28 h-72 w-72 rounded-full border-[50px] border-accent-400/10" />
         <div className="relative flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-8 border border-white/20 bg-white/10 font-display font-extrabold">P+</div>
+          <img src="/branding/icono-prestamos-plus.svg" alt="Préstamos Plus" className="h-10 w-10 rounded-8 object-contain" />
           <div><p className="font-display text-lg font-bold">PréstamoPlus</p><p className="text-[10px] uppercase tracking-[0.22em] text-accent-200">Control de cartera</p></div>
         </div>
         <div className="relative max-w-xl">
@@ -61,7 +61,7 @@ export default function Login() {
 
       <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-10">
         <div className="w-full max-w-md">
-          <div className="mb-9 flex items-center gap-3 lg:hidden"><div className="flex h-10 w-10 items-center justify-center rounded-8 bg-navy-800 font-display font-extrabold text-white">P+</div><p className="font-display text-lg font-bold text-navy-800">PréstamoPlus</p></div>
+          <div className="mb-9 flex items-center gap-3 lg:hidden"><img src="/branding/logo-prestamos-plus.svg" alt="Préstamos Plus" className="h-10 w-auto max-w-[190px]" /></div>
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-600">Acceso empresarial</p>
           <h2 className="mt-2 font-display text-3xl font-extrabold text-navy-800">Bienvenido de vuelta</h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">Consulta la cartera y continúa donde dejaste tu operación.</p>
