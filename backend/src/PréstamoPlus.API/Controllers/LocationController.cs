@@ -16,15 +16,15 @@ public sealed class LocationController : ControllerBase
     private const string TermsText = """
 Términos de autorización para compartir ubicación durante una gestión de cobro
 
-1. Finalidad. La ubicación se utilizará exclusivamente para coordinar una visita relacionada con un préstamo vigente, vencido o en gestión de cobro del cliente. La autorización no convierte la ubicación en un mecanismo de vigilancia general ni permite consultar la posición del cliente fuera de una gestión activa.
+1. Finalidad. La ubicación se utilizará exclusivamente para coordinar una gestión de cobro relacionada con un préstamo del cliente. La autorización inicial podrá cubrir futuras sesiones de cobro mientras permanezca vigente, pero no convierte la ubicación en un mecanismo de vigilancia general ni permite consultar la posición fuera de una sesión activa.
 
-2. Alcance. La ubicación podrá ser recibida únicamente durante una sesión temporal iniciada por la empresa para una asignación concreta y vinculada a un préstamo y a un cobrador identificado. La sesión tendrá una duración limitada, expirará automáticamente y no se mantendrá activa de forma permanente ni en segundo plano por defecto.
+2. Alcance. La ubicación podrá ser recibida únicamente durante una sesión temporal iniciada por la empresa para una asignación concreta, vinculada a un préstamo y a un cobrador identificado, en una jornada de cobro. La sesión tendrá una duración limitada, expirará automáticamente y no se mantendrá activa de forma permanente ni en segundo plano por defecto.
 
 3. Personas autorizadas. La posición podrá ser consultada por personal de la empresa que tenga permisos operativos y por el cobrador asignado a la gestión correspondiente. No se compartirá con otros clientes, terceros no autorizados ni personas ajenas a la gestión.
 
 4. Información visible. El cliente podrá consultar la finalidad, la versión de estos términos y el estado de su autorización. La aplicación puede solicitar adicionalmente el permiso técnico del sistema operativo. Aceptar estos términos no elimina ese permiso del dispositivo.
 
-5. Voluntariedad y revocación. El cliente puede no aceptar la autorización y puede revocarla desde el portal. La revocación detiene las sesiones activas y evita iniciar nuevas sesiones con ese consentimiento. La revocación no elimina las obligaciones financieras ni los registros mínimos que deban conservarse para demostrar la autorización y su revocación.
+5. Vigencia y revocación. La autorización se registra una sola vez y permanece vigente hasta que el cliente la revoque o cambie materialmente el propósito, alcance, destinatarios o conservación. El cliente puede revocarla desde el portal. La revocación detiene las sesiones activas y evita iniciar nuevas sesiones con ese consentimiento. La revocación no elimina las obligaciones financieras ni los registros mínimos que deban conservarse para demostrar la autorización y su revocación.
 
 6. Conservación y seguridad. Se conservará evidencia de la versión aceptada, el texto presentado, el momento de aceptación, vencimiento, revocación y los accesos realizados. Las coordenadas se conservarán solo durante el período operativo y de auditoría definido por la empresa, con controles de acceso y transmisión segura.
 
@@ -46,12 +46,17 @@ Términos de autorización para compartir ubicación durante una gestión de cob
     {
         if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId) || !Guid.TryParse(User.FindFirst("clientId")?.Value, out var clientId)) return Unauthorized();
         if (request.LoanId.HasValue && !await _db.Loans.AnyAsync(loan => loan.Id == request.LoanId && loan.TenantId == tenantId && loan.ClientId == clientId, cancellationToken)) return NotFound();
+        var existing = await _db.LocationConsentEvidence.AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.ClientId == clientId && item.RevokedAt == null && (item.ExpiresAt == null || item.ExpiresAt > DateTime.UtcNow) && item.TermsVersion == TermsVersion)
+            .OrderByDescending(item => item.GrantedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (existing is not null) return Ok(new { consentId = existing.Id, version = existing.TermsVersion, expiresAt = existing.ExpiresAt, alreadyRegistered = true });
         var consent = new Domain.Entities.LocationConsentEvidence
         {
             Id = Guid.NewGuid(), TenantId = tenantId, ClientId = clientId, LoanId = request.LoanId,
             TermsVersion = TermsVersion, ConsentTextHash = Hash(TermsText),
             Purpose = "Coordinar una visita de cobro", Scope = "Ubicación temporal durante una sesión activa",
-            GrantedAt = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddDays(30),
+            GrantedAt = DateTime.UtcNow, ExpiresAt = null,
             IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(), UserAgent = Request.Headers.UserAgent.ToString(), DeviceId = request.DeviceId
         };
         _db.LocationConsentEvidence.Add(consent);
@@ -78,7 +83,7 @@ Términos de autorización para compartir ubicación durante una gestión de cob
     public async Task<IActionResult> ConsentStatus(CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(User.FindFirst("clientId")?.Value, out var clientId)) return Unauthorized();
-        var consent = await _db.LocationConsentEvidence.AsNoTracking().Where(item => item.ClientId == clientId && item.RevokedAt == null && item.ExpiresAt > DateTime.UtcNow).OrderByDescending(item => item.GrantedAt).FirstOrDefaultAsync(cancellationToken);
+        var consent = await _db.LocationConsentEvidence.AsNoTracking().Where(item => item.ClientId == clientId && item.RevokedAt == null && (item.ExpiresAt == null || item.ExpiresAt > DateTime.UtcNow)).OrderByDescending(item => item.GrantedAt).FirstOrDefaultAsync(cancellationToken);
         return Ok(new { active = consent is not null, consentId = consent?.Id, version = consent?.TermsVersion, expiresAt = consent?.ExpiresAt });
     }
 
@@ -100,7 +105,7 @@ Términos de autorización para compartir ubicación durante una gestión de cob
         if (assignment is null) return NotFound(new { message = "Asignación no encontrada." });
         var loan = await _db.Loans.FirstOrDefaultAsync(item => item.Id == assignment.LoanId && item.TenantId == tenantId, cancellationToken);
         if (loan is null) return NotFound();
-        var consent = await _db.LocationConsentEvidence.Where(item => item.TenantId == tenantId && item.ClientId == loan.ClientId && item.RevokedAt == null && item.ExpiresAt > DateTime.UtcNow).OrderByDescending(item => item.GrantedAt).FirstOrDefaultAsync(cancellationToken);
+        var consent = await _db.LocationConsentEvidence.Where(item => item.TenantId == tenantId && item.ClientId == loan.ClientId && item.RevokedAt == null && (item.ExpiresAt == null || item.ExpiresAt > DateTime.UtcNow)).OrderByDescending(item => item.GrantedAt).FirstOrDefaultAsync(cancellationToken);
         if (consent is null) return Conflict(new { message = "El cliente no tiene un consentimiento de ubicación vigente." });
         var minutes = Math.Clamp(request.Minutes <= 0 ? 30 : request.Minutes, 5, 60);
         var session = new Domain.Entities.LocationShareSession { Id = Guid.NewGuid(), TenantId = tenantId, ClientId = loan.ClientId, LoanId = loan.Id, CollectorId = assignment.CollectorId, ConsentId = consent.Id, StartedAt = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddMinutes(minutes) };
