@@ -1,6 +1,7 @@
 node_modules/
 \.build/
 dist/
+/marketing/dist/
 .env
 .env.local
 .api-port

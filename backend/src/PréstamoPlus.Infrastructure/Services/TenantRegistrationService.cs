@@ -98,10 +98,13 @@ public sealed partial class TenantRegistrationService : ITenantRegistrationServi
             Id = Guid.NewGuid(),
             TenantId = tenantId,
             PlanId = "basic",
-            Status = SubscriptionStatus.Trialing,
+            Status = SubscriptionStatus.Active,
             CurrentPeriodStart = now,
-            CurrentPeriodEnd = now.AddDays(14),
-            TrialEndsAt = now.AddDays(14),
+            CurrentPeriodEnd = now.AddYears(100),
+            TrialEndsAt = null,
+            IsComplimentary = true,
+            ComplimentaryUntil = now.AddYears(100),
+            ComplimentaryNote = "Acceso gratuito vigente",
             CreatedAt = now
         };
         var promotion = await _db.PlatformPromotions.AsNoTracking().FirstOrDefaultAsync(x => x.IsActive && x.AppliesToNewTenants && x.StartsAt <= now && x.EndsAt > now, cancellationToken);

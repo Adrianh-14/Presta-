@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "marketing:build": "node marketing/build.mjs",
+    "build:all": "npm run build && npm run marketing:build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
