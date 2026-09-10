@@ -48,6 +48,10 @@ services:
       Resend__ClientPortalUrl: ${RESEND_CLIENT_PORTAL_URL:-http://localhost:3005/portal/login}
       Security__RealDataApproved: ${SECURITY_REAL_DATA_APPROVED:-false}
       Security__ReleaseApprovalReference: ${SECURITY_RELEASE_APPROVAL_REFERENCE:-}
+      # Bootstrap opcional del superadministrador inicial. Después del primer
+      # despliegue deben eliminarse estas variables del entorno de producción.
+      BootstrapAdmin__Email: ${BootstrapAdmin__Email:-}
+      BootstrapAdmin__Password: ${BootstrapAdmin__Password:-}
     volumes:
       - uploads:/uploads
     depends_on:
