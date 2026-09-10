@@ -36,7 +36,8 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.RefreshToken
             var user = await _unitOfWork.Users.GetByIdAsync(storedToken.UserId);
             if (user is null || !user.IsActive)
                 throw new UnauthorizedAccessException("Usuario no válido");
-            if (!await _tenantAccess.CanAccessAsync(user.TenantId, cancellationToken))
+            var isPlatformAdmin = user.Role is "SuperAdmin" or "PlatformAdmin" or "AdministradorPlataforma";
+            if (!isPlatformAdmin && !await _tenantAccess.CanAccessAsync(user.TenantId, cancellationToken))
                 throw new UnauthorizedAccessException("La cuenta de la empresa está inactiva o su suscripción no está vigente.");
 
             storedToken.RevokedAt = DateTime.UtcNow;

@@ -34,7 +34,10 @@ namespace PréstamoPlus.Application.Features.Auth.Commands.Login
 
             if (!user.IsActive)
                 throw new UnauthorizedAccessException("Cuenta desactivada");
-            if (!await _tenantAccess.CanAccessAsync(user.TenantId, cancellationToken))
+            // Los administradores de plataforma gestionan tenants y suscripciones;
+            // su acceso no debe quedar bloqueado por la suscripción del tenant técnico.
+            var isPlatformAdmin = user.Role is "SuperAdmin" or "PlatformAdmin" or "AdministradorPlataforma";
+            if (!isPlatformAdmin && !await _tenantAccess.CanAccessAsync(user.TenantId, cancellationToken))
                 throw new UnauthorizedAccessException("El acceso de tu empresa está bloqueado porque la cortesía o suscripción venció. Agrega un método de pago con tarjeta para reactivar el servicio.");
 
             user.LastLoginAt = DateTime.UtcNow;
