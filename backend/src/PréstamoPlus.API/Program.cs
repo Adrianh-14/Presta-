@@ -15,6 +15,8 @@ using PréstamoPlus.Infrastructure.DependencyInjection;
 using PréstamoPlus.Infrastructure.Persistence;
 using PréstamoPlus.Infrastructure.Services;
 using PréstamoPlus.Infrastructure.Persistence.SeedData;
+using PréstamoPlus.Domain.Entities;
+using PréstamoPlus.Domain.Entities.Tenancy;
 using PréstamoPlus.API.Configuration;
 using PréstamoPlus.API.Health;
 
@@ -230,6 +232,33 @@ using (var scope = app.Services.CreateScope())
     else
     {
         logger.LogInformation("Seed demo deshabilitado.");
+    }
+
+    // Bootstrap controlado para crear el primer administrador de plataforma en
+    // producción. Solo actúa si se proporcionan ambos secretos y nunca cambia
+    // la contraseña ni el rol de una cuenta existente.
+    var bootstrapEmail = builder.Configuration["BootstrapAdmin:Email"]?.Trim();
+    var bootstrapPassword = builder.Configuration["BootstrapAdmin:Password"];
+    if (!string.IsNullOrWhiteSpace(bootstrapEmail) && !string.IsNullOrWhiteSpace(bootstrapPassword))
+    {
+        var existing = await db.Users.FirstOrDefaultAsync(x => x.Email == bootstrapEmail);
+        if (existing is null)
+        {
+            var tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Slug == "prestamoplus-platform");
+            if (tenant is null)
+            {
+                tenant = new Tenant { Id = Guid.NewGuid(), Nombre = "PréstamoPlus Platform", Slug = "prestamoplus-platform", Pais = "DO" };
+                db.Tenants.Add(tenant);
+            }
+            var passwords = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+            db.Users.Add(new User { Id = Guid.NewGuid(), TenantId = tenant.Id, Email = bootstrapEmail, PasswordHash = passwords.Hash(bootstrapPassword), Nombre = "Administrador de plataforma", Role = "SuperAdmin", IsActive = true });
+            await db.SaveChangesAsync();
+            logger.LogWarning("BootstrapAdmin creó el superadministrador {Email}. Elimina BootstrapAdmin:Password de Dokploy inmediatamente.", bootstrapEmail);
+        }
+        else
+        {
+            logger.LogInformation("BootstrapAdmin omitido: ya existe una cuenta para {Email}.", bootstrapEmail);
+        }
     }
 }
 
