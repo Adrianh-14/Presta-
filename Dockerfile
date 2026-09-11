@@ -9,7 +9,7 @@ COPY src ./src
 COPY public ./public
 RUN npm run build
 COPY marketing ./marketing
-ARG SITE_URL=http://localhost:3005
+ARG SITE_URL=https://prestamosplus.com
 ENV SITE_URL=${SITE_URL}
 RUN node marketing/build.mjs
 
