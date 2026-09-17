@@ -37,7 +37,7 @@ import LocationConsent from './pages/portal/LocationConsent';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen"><p>Cargando...</p></div>;
+  if (loading) return <div className="flex items-center justify-center h-screen" role="status" aria-live="polite"><p>Cargando...</p></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user?.role === 'Cobrador') return <Navigate to="/cobrador" replace />;
   if (['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role)) return <Navigate to="/plataforma" replace />;
@@ -46,7 +46,7 @@ function ProtectedRoute({ children }) {
 
 function PublicRoute({ children }) {
   const { isAuthenticated, user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen"><p>Cargando...</p></div>;
+  if (loading) return <div className="flex items-center justify-center h-screen" role="status" aria-live="polite"><p>Cargando...</p></div>;
   if (!isAuthenticated) return children;
   if (user?.role === 'Cobrador') return <Navigate to="/cobrador" replace />;
   if (['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role)) return <Navigate to="/plataforma" replace />;
@@ -68,7 +68,7 @@ function CollectorRoute({ children }) {
 
 function PlatformRoute({ children }) {
   const { isAuthenticated, user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen"><p>Cargando...</p></div>;
+  if (loading) return <div className="flex items-center justify-center h-screen" role="status" aria-live="polite"><p>Cargando...</p></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role)) return <Navigate to="/admin" replace />;
   return children;
