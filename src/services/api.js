@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 
 let refreshPromise = null;
 
@@ -16,6 +17,9 @@ const refreshAccessToken = (refreshToken) => {
 };
 
 const api = axios.create({
+  // En la web usamos el proxy relativo de nginx; en la app móvil se inyecta
+  // VITE_API_URL para dirigir las peticiones al dominio HTTPS de producción.
+  baseURL: import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'https://prestamosplus.com' : ''),
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
 });
