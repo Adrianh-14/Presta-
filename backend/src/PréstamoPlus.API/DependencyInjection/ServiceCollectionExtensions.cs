@@ -28,6 +28,11 @@ namespace PréstamoPlus.API.DependencyInjection
                     policy.WithOrigins(
                               "https://adrianhendrixdev.lat",
                               "https://www.adrianhendrixdev.lat",
+                              "https://prestamosplus.com",
+                              "https://www.prestamosplus.com",
+                              "capacitor://localhost",
+                              "https://localhost",
+                              "http://localhost",
                               "http://localhost:5173",
                               "http://localhost:5174")
                           .AllowAnyMethod()
