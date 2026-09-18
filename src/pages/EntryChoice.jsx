@@ -8,7 +8,7 @@ export default function EntryChoice({ onSelect }) {
           <img src="/branding/logo-prestamos-plus.svg" alt="Préstamos Plus" className="mx-auto h-12 w-auto max-w-[230px]" />
           <p className="mt-7 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-600">Primer acceso</p>
           <h1 className="mt-2 font-display text-3xl font-extrabold">¿A qué portal quieres ingresar?</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-500">Selecciona el espacio que utilizas. Esta elección quedará guardada en este dispositivo.</p>
+          <p className="mt-3 text-sm leading-6 text-slate-500">Selecciona el espacio que utilizas.</p>
         </div>
         <div className="grid gap-4">
           <button type="button" onClick={() => onSelect('work')} className="group flex items-center gap-4 rounded-16 border border-surface-border bg-white p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-accent-300 hover:shadow-card-lg focus-visible:outline focus-visible:outline-3 focus-visible:outline-accent-300">
