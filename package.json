@@ -8,7 +8,7 @@
     "build": "vite build",
     "marketing:build": "node marketing/build.mjs",
     "build:all": "npm run build && npm run marketing:build",
-    "mobile:sync": "npm run build && cap sync",
+    "mobile:sync": "vite build --mode mobile && cap sync",
     "mobile:android": "npm run mobile:sync && cap open android",
     "lint": "eslint .",
     "preview": "vite preview"
