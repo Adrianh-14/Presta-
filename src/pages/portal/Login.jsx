@@ -9,6 +9,7 @@ import {
   User,
 } from 'lucide-react';
 import { portalService } from '../../services/portalService';
+import { Capacitor } from '@capacitor/core';
 
 const GENERIC_REQUEST_MESSAGE =
   'Si los datos coinciden con una cuenta activa, enviaremos un código de acceso.';
@@ -30,6 +31,7 @@ export default function PortalLogin() {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate();
+  const isNativeApp = Capacitor.isNativePlatform();
 
   const isCodeStep = Boolean(challengeId);
   const maskedIdentifier = useMemo(() => {
@@ -264,9 +266,9 @@ export default function PortalLogin() {
         <p className="mt-4 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
           <ShieldCheck size={14} /> Tu cédula nunca funciona como contraseña.
         </p>
-        <p className="mt-3 text-center text-xs text-slate-400">
+        {!isNativeApp && <p className="mt-3 text-center text-xs text-slate-400">
           ¿Eres empresa o cobrador? <Link to="/login" className="font-semibold text-accent-600 hover:text-accent-700">Volver al acceso general</Link>
-        </p>
+        </p>}
       </div>
     </div>
   );
