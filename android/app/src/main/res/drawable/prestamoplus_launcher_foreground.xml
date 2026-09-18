@@ -4,8 +4,9 @@
     android:height="108dp"
     android:viewportWidth="180"
     android:viewportHeight="180">
-    <path android:fillColor="#006BFF" android:pathData="M47,42h54c32,0 53,18 53,46s-21,47 -53,47H78v25H47zM78,69v39h22c15,0 23,-7 23,-20 0,-12 -8,-19 -23,-19z" />
-    <path android:fillColor="@android:color/transparent" android:strokeColor="#13A995" android:strokeWidth="12" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M62,127L87,102L104,116L135,78" />
-    <path android:fillColor="@android:color/transparent" android:strokeColor="#13A995" android:strokeWidth="10" android:strokeLineCap="round" android:pathData="M124,77h15v15" />
-    <path android:fillColor="@android:color/transparent" android:strokeColor="#F5F8FB" android:strokeWidth="8" android:strokeLineCap="round" android:pathData="M28,55h40M28,76h28M28,97h20" />
+    <!-- Clean diagonal P: complete silhouette with generous padding for adaptive icons. -->
+    <path android:fillColor="#006BFF" android:pathData="M38,151L61,38H109C139,38 158,55 158,82C158,108 140,124 111,124H88L83,151H38ZM88,65L83,99H109C122,99 130,93 130,82C130,71 122,65 109,65H88Z" />
+    <!-- Single teal growth arrow, kept separate and uncluttered. -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#13A995" android:strokeWidth="11" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M56,132C75,121 91,109 108,93" />
+    <path android:fillColor="#13A995" android:pathData="M101,91L124,77L120,104L111,96L104,106Z" />
 </vector>
