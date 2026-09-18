@@ -47,6 +47,7 @@ function ProtectedRoute({ children }) {
 function PublicRoute({ children }) {
   const { isAuthenticated, user, loading } = useAuth();
   if (loading) return <div className="flex items-center justify-center h-screen" role="status" aria-live="polite"><p>Cargando...</p></div>;
+  if (!isAuthenticated && localStorage.getItem('clientToken')) return <Navigate to="/portal" replace />;
   if (!isAuthenticated) return children;
   if (user?.role === 'Cobrador') return <Navigate to="/cobrador" replace />;
   if (['SuperAdmin', 'PlatformAdmin', 'AdministradorPlataforma'].includes(user?.role)) return <Navigate to="/plataforma" replace />;

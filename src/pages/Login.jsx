@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { authService } from '../services/authService';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, User } from 'lucide-react';
 
 export default function Login() {
   const { login } = useAuth();
@@ -78,6 +78,17 @@ export default function Login() {
             <button type="button" onClick={() => { setShowReset(true); setResetSent(false); }} className="-mt-2 text-left text-sm font-semibold text-accent-600 hover:text-accent-700">¿Olvidaste tu contraseña?</button>
             <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-8 bg-navy-800 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-navy-700 disabled:cursor-wait disabled:opacity-60">{loading ? 'Validando acceso…' : <>Entrar a mi cuenta <ArrowRight size={17} /></>}</button>
           </form>
+
+          <div className="mt-5 rounded-12 border border-accent-100 bg-accent-50/50 p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-8 bg-white text-accent-600 shadow-sm"><User size={17} /></div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-navy-700">¿Eres cliente?</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Accede a tu portal para consultar préstamos, cuotas y pagos con tu cédula.</p>
+                <Link to="/portal/login" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-accent-600 hover:text-accent-700">Entrar al portal de cliente <ArrowRight size={14} /></Link>
+              </div>
+            </div>
+          </div>
 
           {showReset && <div className="mt-5 rounded-12 border border-accent-100 bg-accent-50 p-4"><p className="font-semibold text-navy-800">Recuperar contraseña</p>{resetSent ? <p className="mt-2 text-sm text-slate-600">Si el correo existe, recibirás un enlace para crear una nueva contraseña.</p> : <><p className="mt-1 text-xs text-slate-500">Te enviaremos un enlace seguro con vigencia de 30 minutos.</p><button type="button" onClick={handleReset} disabled={resetLoading} className="mt-3 rounded-8 bg-accent-600 px-3 py-2 text-sm font-bold text-white">{resetLoading ? 'Enviando…' : 'Enviar enlace'}</button></>}</div>}
 

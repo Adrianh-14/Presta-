@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -263,6 +263,9 @@ export default function PortalLogin() {
 
         <p className="mt-4 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
           <ShieldCheck size={14} /> Tu cédula nunca funciona como contraseña.
+        </p>
+        <p className="mt-3 text-center text-xs text-slate-400">
+          ¿Eres empresa o cobrador? <Link to="/login" className="font-semibold text-accent-600 hover:text-accent-700">Volver al acceso general</Link>
         </p>
       </div>
     </div>
