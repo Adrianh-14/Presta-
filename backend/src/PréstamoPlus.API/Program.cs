@@ -302,6 +302,9 @@ app.MapControllers();
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
+// Alias bajo /api para facilitar las comprobaciones desde el frontend y la app móvil.
+app.MapHealthChecks("/api/health").AllowAnonymous();
+app.MapHealthChecks("/api/health/ready").AllowAnonymous();
 
 app.Run();
 
