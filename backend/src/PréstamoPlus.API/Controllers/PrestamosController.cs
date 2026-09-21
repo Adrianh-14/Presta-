@@ -79,9 +79,17 @@ namespace PréstamoPlus.API.Controllers
         [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateDirect([FromBody] CreateDirectLoanRequest request)
         {
+            // El tenant siempre debe venir de la sesión autenticada. No confiamos
+            // en el TenantId enviado por el navegador: evita crear el préstamo
+            // contra otra cartera y hace que la validación de capital use la
+            // misma empresa que ve el administrador en pantalla.
+            if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var authenticatedTenantId))
+                return Forbid();
+
             try
             {
-                var result = await _mediator.Send(new CreateDirectLoanCommand(request));
+                var scopedRequest = request with { TenantId = authenticatedTenantId };
+                var result = await _mediator.Send(new CreateDirectLoanCommand(scopedRequest));
                 return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("Capital insuficiente", StringComparison.OrdinalIgnoreCase))

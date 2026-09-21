@@ -7,6 +7,7 @@ import { solicitudService } from '../../services/solicitudService';
 import { useAuth } from '../../context/AuthContext';
 import CurrencyFlag from '../../components/CurrencyFlag';
 import { getCurrency } from '../../data/currencies';
+import { modalidadLabel } from '../../utils/loanModalidad';
 
 function getTenantIdFromToken() {
   try {
@@ -33,7 +34,7 @@ export default function Solicitudes() {
   const qrRef = useRef(null);
 
   const tenantId = useMemo(() => user?.tenantId || getTenantIdFromToken(), [user]);
-  const solicitudUrl = tenantId ? `${window.location.origin}/solicitud?tenant=${tenantId}` : '';
+  const solicitudUrl = tenantId ? `${window.location.origin}/solicitud?tenant=${tenantId}&v=2` : '';
 
   const handleCopyLink = async () => {
     if (!solicitudUrl) return;
@@ -107,7 +108,7 @@ export default function Solicitudes() {
   };
 
   const estadoToLabel = (estado) => {
-    const map = { 0: 'pendiente', 1: 'procesando', 2: 'aprobada', 3: 'negada', 4: 'cancelada' };
+    const map = { 0: 'pendiente', 1: 'procesando', 2: 'aprobada', 3: 'negada', 4: 'cancelada', 5: 'contraoferta', 6: 'cliente aprobó' };
     const value = map[estado] || String(estado || '').toLowerCase();
     return value === 'enrevision' || value === 'en_revision' ? 'procesando' : value;
   };
@@ -119,23 +120,41 @@ export default function Solicitudes() {
 
   const handleAprobar = async (id, approvalTerms) => {
     try {
+      setActionError('');
       await solicitudService.updateEstado(id, 'Aprobada', approvalTerms);
       setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'aprobada' } : s)));
       setSelectedSolicitud(null);
     } catch (err) {
       console.error('Error approving:', err);
+      setActionError(err.response?.status === 403
+        ? 'Tu sesión de aprobación expiró. Cierra sesión, vuelve a iniciar sesión y luego formaliza el préstamo.'
+        : (err.response?.data?.message || 'No se pudo formalizar el préstamo.'));
     }
   };
 
   const handleProcesar = async (id, instrucciones, terms = {}) => {
     try {
       setActionError('');
-      await solicitudService.updateEstado(id, 'Procesando', { instrucciones, ...terms });
-      setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'procesando' } : s)));
-      setSelectedSolicitud((prev) => prev ? { ...prev, estado: 'procesando' } : null);
+      await solicitudService.updateEstado(id, 'Contraoferta', { instrucciones, ...terms });
+      setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'contraoferta' } : s)));
+      setSelectedSolicitud((prev) => prev ? { ...prev, estado: 'contraoferta' } : null);
     } catch (err) {
       console.error('Error processing:', err);
       setActionError(err.response?.status === 403 ? 'Tu autorización para aprobar solicitudes expiró. Vuelve a iniciar sesión una vez y podrás continuar con el lote.' : (err.response?.data?.message || 'No se pudo procesar la solicitud.'));
+    }
+  };
+
+  const handleResendCounterOffer = async (id, terms = {}) => {
+    try {
+      setActionError('');
+      const updated = await solicitudService.resendCounterOffer(id, terms);
+      setActionError('Contraoferta reenviada al correo del cliente.');
+      if (updated?.solicitud) {
+        setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated.solicitud, estado: 'contraoferta' } : s)));
+        setSelectedSolicitud((prev) => prev?.id === id ? { ...prev, ...updated.solicitud, estado: 'contraoferta' } : prev);
+      }
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'No se pudo reenviar la contraoferta.');
     }
   };
 
@@ -241,7 +260,7 @@ export default function Solicitudes() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Tipo</p>
-                <p className="font-semibold text-gray-900">{s.tipoPrestamo === 'personal' || s.tipoPrestamo === 0 ? 'Personal' : 'Garantía'}</p>
+                <p className="font-semibold text-gray-900">{s.tipoPrestamo === 'personal' || s.tipoPrestamo === 0 ? 'Personal' : 'Garantía'} · {modalidadLabel(s.modalidad)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Cuota estimada</p>
@@ -262,6 +281,7 @@ export default function Solicitudes() {
           onClose={() => setSelectedSolicitud(null)}
           onApprove={handleAprobar}
           onProcess={handleProcesar}
+          onResendCounterOffer={handleResendCounterOffer}
           onReject={handleRechazar}
         />
       )}

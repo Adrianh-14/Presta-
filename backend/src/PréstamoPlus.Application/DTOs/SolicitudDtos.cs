@@ -113,12 +113,16 @@ namespace PréstamoPlus.Application.DTOs
         public int Plazo { get; init; }
         public UnidadPlazo UnidadPlazo { get; init; }
         public FrecuenciaPago FrecuenciaPago { get; init; }
+        public FrecuenciaInteres FrecuenciaInteres { get; init; } = FrecuenciaInteres.Mensual;
+        public bool RecalcularInteresSobreSaldo { get; init; }
+        public bool HasClientDecision { get; init; }
         public decimal GastoCierrePorcentaje { get; init; }
         public decimal CuotaEstimada { get; init; }
         public decimal TotalPagar { get; init; }
         public decimal TotalIntereses { get; init; }
         public EstadoSolicitud Estado { get; init; }
         public TipoPrestamo TipoPrestamo { get; init; }
+        public ModalidadPrestamo Modalidad { get; init; }
         public DateTime FechaSolicitud { get; init; }
         public ClientDto Client { get; init; } = null!;
         public WorkInformationDto? WorkInformation { get; init; }
@@ -143,8 +147,11 @@ namespace PréstamoPlus.Application.DTOs
         public int Plazo { get; init; }
         public UnidadPlazo UnidadPlazo { get; init; }
         public FrecuenciaPago FrecuenciaPago { get; init; }
+        public FrecuenciaInteres FrecuenciaInteres { get; init; } = FrecuenciaInteres.Mensual;
         public decimal GastoCierrePorcentaje { get; init; }
         public TipoPrestamo TipoPrestamo { get; init; }
+        public ModalidadPrestamo Modalidad { get; init; } = ModalidadPrestamo.InteresPeriodicoSobreSaldo;
+        public bool RecalcularInteresSobreSaldo { get; init; }
     }
 
     public record LoanDto
@@ -164,7 +171,10 @@ namespace PréstamoPlus.Application.DTOs
         public decimal SaldoPendiente { get; init; }
         public EstadoPrestamo Estado { get; init; }
         public TipoPrestamo Tipo { get; init; }
+        public ModalidadPrestamo Modalidad { get; init; }
         public FrecuenciaPago FrecuenciaPago { get; init; }
+        public FrecuenciaInteres FrecuenciaInteres { get; init; } = FrecuenciaInteres.Mensual;
+        public bool RecalcularInteresSobreSaldo { get; init; }
         public DateTime FechaInicio { get; init; }
         public DateTime FechaVencimiento { get; init; }
     }
@@ -181,6 +191,9 @@ namespace PréstamoPlus.Application.DTOs
         public int? Plazo { get; init; }
         public UnidadPlazo? UnidadPlazo { get; init; }
         public FrecuenciaPago? FrecuenciaPago { get; init; }
+        public FrecuenciaInteres? FrecuenciaInteres { get; init; }
+        public ModalidadPrestamo? Modalidad { get; init; }
+        public bool? RecalcularInteresSobreSaldo { get; init; }
     }
 
     public record AmortizationRowDto

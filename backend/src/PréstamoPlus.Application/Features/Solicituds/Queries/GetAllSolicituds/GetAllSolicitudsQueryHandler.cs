@@ -28,12 +28,16 @@ namespace PréstamoPlus.Application.Features.Solicituds.Queries.GetAllSolicituds
                 Plazo = loan.Plazo,
                 UnidadPlazo = loan.UnidadPlazo,
                 FrecuenciaPago = loan.FrecuenciaPago,
+                FrecuenciaInteres = loan.FrecuenciaInteres,
+                RecalcularInteresSobreSaldo = loan.RecalcularInteresSobreSaldo,
+                HasClientDecision = !string.IsNullOrWhiteSpace(loan.ClientDecisionToken),
                 GastoCierrePorcentaje = loan.GastoCierrePorcentaje,
                 CuotaEstimada = loan.CuotaEstimada,
                 TotalPagar = loan.TotalPagar,
                 TotalIntereses = loan.TotalIntereses,
                 Estado = loan.Estado,
                 TipoPrestamo = loan.TipoPrestamo,
+                Modalidad = loan.Modalidad,
                 FechaSolicitud = loan.FechaSolicitud,
                 Client = new ClientDto
                 {

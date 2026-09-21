@@ -8,6 +8,7 @@ import Clientes from './pages/admin/Clientes';
 import Prestamos from './pages/admin/Prestamos';
 import Solicitudes from './pages/admin/Solicitudes';
 import Solicitud from './pages/client/Solicitud';
+import SolicitudDecision from './pages/client/SolicitudDecision';
 import NuevoPrestamo from './pages/admin/NuevoPrestamo';
 import Login from './pages/Login';
 import PasswordReset from './pages/PasswordReset';
@@ -117,6 +118,7 @@ function AppRoutes() {
       <Route path="/recuperar-contrasena" element={<PasswordReset />} />
       <Route path="/registro" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/solicitud" element={<Solicitud />} />
+      <Route path="/solicitud/decision" element={<SolicitudDecision />} />
       <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="clientes" element={<Clientes />} />

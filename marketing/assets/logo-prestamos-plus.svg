@@ -1,17 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-labelledby="title desc">
-  <title id="title">PréstamoPlus</title>
-  <desc id="desc">Logotipo horizontal de PréstamoPlus con P diagonal y flecha de crecimiento</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071B2E"/><stop offset="1" stop-color="#04111F"/></linearGradient>
-    <linearGradient id="blue" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#006BFF"/><stop offset="1" stop-color="#28A4FF"/></linearGradient>
-    <linearGradient id="teal" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#13A995"/><stop offset="1" stop-color="#39D9C4"/></linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  </defs>
-  <rect width="180" height="180" rx="38" fill="url(#bg)"/>
-  <path d="M39 149 61 39h49c30 0 48 17 48 43 0 27-18 43-47 43H88l-5 24H39Zm49-84-6 34h27c13 0 21-6 21-17 0-11-8-17-21-17H88Z" fill="url(#blue)" filter="url(#glow)"/>
-  <path d="M56 132c18-10 36-23 53-40" fill="none" stroke="url(#teal)" stroke-width="10" stroke-linecap="round"/>
-  <path d="m102 91 23-14-4 27-9-8-8 10-10-9 8-6Z" fill="url(#teal)"/>
-  <text x="215" y="105" font-family="Manrope, Inter, Arial, sans-serif" font-size="58" font-weight="750" fill="#071B2E">Préstamo</text>
-  <text x="538" y="105" font-family="Manrope, Inter, Arial, sans-serif" font-size="58" font-weight="750" fill="#006BFF">Plus</text>
-  <text x="218" y="139" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="500" letter-spacing=".7" fill="#526477">Cada peso prestado. Cada cuota. Bajo control.</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-labelledby="title desc"><title id="title">PréstamoPlus</title><desc id="desc">Logotipo de PréstamoPlus con la P diagonal y flecha turquesa</desc><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071b31"/><stop offset="1" stop-color="#101114"/></linearGradient><linearGradient id="p" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#197cff"/><stop offset=".55" stop-color="#0875ff"/><stop offset="1" stop-color="#32b5ef"/></linearGradient><linearGradient id="a" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#18c8c0"/><stop offset="1" stop-color="#40e3d5"/></linearGradient></defs><rect x="4" y="4" width="172" height="172" rx="34" fill="url(#bg)" stroke="#062f62" stroke-width="4"/><path d="M45 145 70 39h39c26 0 44 14 44 36 0 23-18 37-44 37H91l-7 33Zm44-44h19c11 0 18-8 18-21 0-12-7-19-18-19h-9Z" fill="url(#p)"/><path d="m132 51 12-12m-12 12h-11m11 0v11" fill="none" stroke="url(#a)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><text x="215" y="104" font-family="Manrope,Inter,Arial,sans-serif" font-size="58" font-weight="750" fill="#071b31">Préstamo</text><text x="500" y="104" font-family="Manrope,Inter,Arial,sans-serif" font-size="58" font-weight="750" fill="#0875ff">Plus</text><text x="218" y="139" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="500" letter-spacing=".7" fill="#526477">Cada peso prestado. Cada cuota. Bajo control.</text></svg>

@@ -24,6 +24,15 @@ namespace PréstamoPlus.Domain.Enums
         Mensual = 3
     }
 
+    /// <summary>Frecuencia a la que se expresa la tasa introducida por el usuario.</summary>
+    public enum FrecuenciaInteres
+    {
+        Diaria = 0,
+        Semanal = 1,
+        Quincenal = 2,
+        Mensual = 3
+    }
+
     public enum EstadoSolicitud
     {
         Pendiente = 0,
@@ -32,7 +41,9 @@ namespace PréstamoPlus.Domain.Enums
         Aprobada = 2,
         Negada = 3,
         Rechazada = Negada,
-        Cancelada = 4
+        Cancelada = 4,
+        Contraoferta = 5,
+        ClienteAprobada = 6
     }
 
     public enum EstadoCliente
@@ -55,6 +66,16 @@ namespace PréstamoPlus.Domain.Enums
     {
         Personal = 0,
         Garantia = 1
+    }
+
+    /// <summary>
+    /// Defines how scheduled payments are calculated. This is intentionally
+    /// separate from TipoPrestamo (personal/garantía).
+    /// </summary>
+    public enum ModalidadPrestamo
+    {
+        AmortizacionFrancesa = 0,
+        InteresPeriodicoSobreSaldo = 1
     }
 
     public enum TipoCuentaBancaria

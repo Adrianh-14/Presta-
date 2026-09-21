@@ -41,7 +41,17 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
                 .HasConversion<string>()
                 .HasMaxLength(20);
 
+            builder.Property(l => l.Modalidad)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(40);
+
             builder.Property(l => l.FrecuenciaPago)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            builder.Property(l => l.FrecuenciaInteres)
                 .IsRequired()
                 .HasConversion<string>()
                 .HasMaxLength(20);

@@ -16,5 +16,8 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
         decimal? GastoCierrePorcentaje = null,
         int? Plazo = null,
         UnidadPlazo? UnidadPlazo = null,
-        FrecuenciaPago? FrecuenciaPago = null) : IRequest<LoanApplicationDto?>;
+        FrecuenciaPago? FrecuenciaPago = null,
+        FrecuenciaInteres? FrecuenciaInteres = null,
+        ModalidadPrestamo? Modalidad = null,
+        bool? RecalcularInteresSobreSaldo = null) : IRequest<LoanApplicationDto?>;
 }

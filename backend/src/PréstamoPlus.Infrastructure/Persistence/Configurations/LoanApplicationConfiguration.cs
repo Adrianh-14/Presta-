@@ -33,6 +33,11 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
                 .HasConversion<string>()
                 .HasMaxLength(20);
 
+            builder.Property(l => l.FrecuenciaInteres)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
             builder.Property(l => l.GastoCierrePorcentaje)
                 .IsRequired()
                 .HasColumnType("decimal(5,2)");
@@ -58,6 +63,11 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasConversion<string>()
                 .HasMaxLength(20);
+
+            builder.Property(l => l.Modalidad)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(40);
 
             builder.Property(l => l.FechaSolicitud)
                 .IsRequired();

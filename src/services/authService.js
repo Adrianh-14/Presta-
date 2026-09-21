@@ -10,6 +10,8 @@ export const authService = {
   },
   requestPasswordReset: async (email) => (await api.post('/api/auth/password-reset/request', { email })).data,
   confirmPasswordReset: async (token, newPassword) => (await api.post('/api/auth/password-reset/confirm', { token, newPassword })).data,
+  requestEmailVerification: async (email, purpose) => (await api.post('/api/auth/email-verification/request', { email, purpose })).data,
+  confirmEmailVerification: async (email, purpose, code) => (await api.post('/api/auth/email-verification/confirm', { email, purpose, code })).data,
 
   register: async (email, password, nombre, role = 'Client') => {
     const { data } = await api.post('/api/auth/register', { email, password, nombre, role });

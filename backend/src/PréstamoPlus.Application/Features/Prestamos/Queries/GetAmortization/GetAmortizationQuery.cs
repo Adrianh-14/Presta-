@@ -79,7 +79,12 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
             {
                 var saldoInicial = saldo;
                 var interes = Math.Round(saldo * ratePerPeriod, 2);
-                var capital = Math.Round(cuotaPorPeriodo - interes, 2);
+                var capital = loan.Modalidad == Domain.Enums.ModalidadPrestamo.InteresPeriodicoSobreSaldo
+                    ? (i < totalPayments ? 0m : Math.Round(saldo, 2))
+                    : Math.Round(cuotaPorPeriodo - interes, 2);
+                var cuota = loan.Modalidad == Domain.Enums.ModalidadPrestamo.InteresPeriodicoSobreSaldo && i == totalPayments
+                    ? Math.Round(interes + capital, 2)
+                    : cuotaPorPeriodo;
                 saldo -= capital;
 
                 var fechaPago = CalculatePaymentDate(loan.FechaInicio, i, loan.FrecuenciaPago);
@@ -96,7 +101,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
                 {
                     Numero = i,
                     FechaPago = fechaPago,
-                    Cuota = Math.Round(cuotaPorPeriodo, 2),
+                    Cuota = Math.Round(cuota, 2),
                     Capital = capital,
                     Interes = interes,
                     SaldoInicial = Math.Round(saldoInicial, 2),

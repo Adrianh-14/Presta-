@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { QrCode, User, Calculator, DollarSign, ChevronDown, ChevronUp, Check, AlertTriangle, Search, RefreshCw, UserPlus, ArrowRight, Printer } from 'lucide-react';
 import { prestamoService } from '../../services/prestamoService';
 import { clientService } from '../../services/clientService';
-import { generateAmortizationTable } from '../../utils/amortization';
+import { generateAmortizationTable, generateInterestOnlyTable } from '../../utils/amortization';
 import { printAmortization } from '../../utils/printAmortization';
 import { useAuth } from '../../context/AuthContext';
 import { CURRENCY_CATALOG } from '../../data/currencies';
@@ -30,8 +30,11 @@ export default function NuevoPrestamo() {
   const [tasa, setTasa] = useState('2.5');
   const [plazo, setPlazo] = useState('6');
   const [frecuencia, setFrecuencia] = useState('quincenal');
+  const [frecuenciaInteres, setFrecuenciaInteres] = useState('mensual');
   const [cierre, setCierre] = useState('3');
   const [tipoPrestamo, setTipoPrestamo] = useState(0);
+  const [modalidad, setModalidad] = useState(0);
+  const [recalcularInteresSobreSaldo, setRecalcularInteresSobreSaldo] = useState(false);
 
   // Results
   const [results, setResults] = useState(null);
@@ -54,7 +57,7 @@ export default function NuevoPrestamo() {
     }).catch(() => {});
   }, []);
   // Este QR representa una solicitud completa: el cliente debe aportar su garantía.
-  const qrUrl = `${window.location.origin}/solicitud${tenantId ? `?tenant=${tenantId}` : ''}`;
+  const qrUrl = `${window.location.origin}/solicitud${tenantId ? `?tenant=${tenantId}&v=2` : '?v=2'}`;
 
   const doCalc = useCallback(() => {
     const amount = getAmount();
@@ -62,11 +65,16 @@ export default function NuevoPrestamo() {
     if (amount <= 0 || term <= 0) { setResults(null); return; }
 
     const principal = amount * (1 + (parseFloat(cierre) || 0) / 100);
-    const rateMonth = (parseFloat(tasa) || 0) / 100;
+    const rateMonth = ((parseFloat(tasa) || 0) / 100) * (periodsPerFreq[frecuenciaInteres] || 1);
     const pp = periodsPerFreq[frecuencia] || 1;
     const r = rateMonth / pp;
     const n = term * pp;
 
+    if (modalidad === 1) {
+      const cuota = principal * r;
+      setResults({ cuota: Math.round(cuota * 100) / 100, totalPaid: Math.round((principal + cuota * n) * 100) / 100, totalInterest: Math.round(cuota * n * 100) / 100, periods: n, principal });
+      return;
+    }
     if (r <= 0) {
       const cuota = principal / n;
       setResults({ cuota: Math.round(cuota * 100) / 100, totalPaid: principal, totalInterest: 0, periods: n, principal });
@@ -81,11 +89,13 @@ export default function NuevoPrestamo() {
       periods: n,
       principal: Math.round(principal * 100) / 100,
     });
-  }, [getAmount, cierre, tasa, plazo, frecuencia]);
+  }, [getAmount, cierre, tasa, plazo, frecuencia, frecuenciaInteres, modalidad]);
 
   useEffect(() => { const t = setTimeout(doCalc, 300); return () => clearTimeout(t); }, [doCalc]);
 
-  const amortTable = results ? generateAmortizationTable(results.principal, parseFloat(tasa) * 12 || 30, parseInt(plazo) || 6, frecuencia, new Date().toISOString().split('T')[0], results.cuota) : [];
+  const amortTable = results ? (modalidad === 1
+    ? generateInterestOnlyTable(results.principal, (parseFloat(tasa) * (periodsPerFreq[frecuenciaInteres] || 1) * 12) || 30, parseInt(plazo) || 6, frecuencia, new Date().toISOString().split('T')[0])
+    : generateAmortizationTable(results.principal, (parseFloat(tasa) * (periodsPerFreq[frecuenciaInteres] || 1) * 12) || 30, parseInt(plazo) || 6, frecuencia, new Date().toISOString().split('T')[0], results.cuota)) : [];
 
   const searchClient = async () => {
     if (!searchCedula.trim()) return;
@@ -120,13 +130,20 @@ export default function NuevoPrestamo() {
         tasaMensual: parseFloat(tasa) || 2.5,
         plazo: parseInt(plazo) || 6,
         frecuenciaPago: freqMap[frecuencia] ?? 2,
+        frecuenciaInteres: freqMap[frecuenciaInteres] ?? 3,
         gastoCierrePorcentaje: parseFloat(cierre) || 3,
         tipoPrestamo,
+        modalidad,
+        recalcularInteresSobreSaldo,
         tenantId: null,
       });
       setCreated(data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al crear el préstamo');
+      const status = err.response?.status;
+      const message = err.response?.data?.message;
+      setError(status === 403
+        ? 'Tu sesión protegida expiró. Vuelve a iniciar sesión para crear el préstamo.'
+        : message || 'No se pudo crear el préstamo. Verifica los datos y el capital disponible.');
     } finally {
       setCreating(false);
     }
@@ -292,7 +309,7 @@ export default function NuevoPrestamo() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tasa mensual (%)</label>
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tasa (%)</label>
                     <input type="number" step="0.1" value={tasa} onChange={e => setTasa(e.target.value)} className="w-full mt-1 px-3 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none" />
                   </div>
                   <div>
@@ -310,6 +327,13 @@ export default function NuevoPrestamo() {
                     </select>
                   </div>
                   <div>
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Frecuencia de la tasa</label>
+                    <select value={frecuenciaInteres} onChange={e => setFrecuenciaInteres(e.target.value)} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none bg-white">
+                      {Object.entries(freqNames).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setFrecuenciaInteres(frecuencia)} className="mt-1 text-[11px] text-accent-600 hover:underline">Igualar a frecuencia de pago</button>
+                  </div>
+                  <div>
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cierre (%)</label>
                     <input type="number" step="0.5" value={cierre} onChange={e => setCierre(e.target.value)} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none" />
                   </div>
@@ -319,6 +343,15 @@ export default function NuevoPrestamo() {
                       <option value={0}>Personal</option>
                       <option value={1}>Garantía</option>
                     </select>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Modalidad de pago</label>
+                    <select value={modalidad} onChange={e => setModalidad(parseInt(e.target.value))} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none bg-white">
+                      <option value={0}>Amortización francesa</option>
+                      <option value={1}>Interés sobre saldo</option>
+                    </select>
+                    <p className="mt-1 text-[11px] text-slate-400">{modalidad === 1 ? 'Paga intereses por período; el capital se abona cuando el cliente decida o al vencimiento.' : 'Capital e intereses se distribuyen en cuotas fijas.'}</p>
+                    {modalidad === 1 && <label className="mt-3 flex items-start gap-2 text-xs text-slate-600"><input type="checkbox" checked={recalcularInteresSobreSaldo} onChange={e => setRecalcularInteresSobreSaldo(e.target.checked)} className="mt-0.5 accent-accent-600" /><span><strong>Recalcular sobre saldo</strong><br /><span className="text-[11px] text-slate-400">Desactivado: conserva el interés del capital original.</span></span></label>}
                   </div>
                 </div>
               </div>
@@ -374,7 +407,7 @@ export default function NuevoPrestamo() {
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
                 <button onClick={() => setTableVisible(!tableVisible)} className="flex items-center gap-2 text-accent-500 text-sm font-semibold hover:text-accent-600 transition-colors">
                   {tableVisible ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  {tableVisible ? 'Ocultar tabla de amortización' : 'Ver tabla de amortización'}
+                  {tableVisible ? 'Ocultar calendario de pagos' : (modalidad === 1 ? 'Ver calendario de intereses' : 'Ver tabla de amortización')}
                 </button>
                 <button
                   type="button"

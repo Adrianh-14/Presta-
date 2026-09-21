@@ -5,7 +5,7 @@ export default function EntryChoice({ onSelect }) {
     <main className="min-h-screen bg-surface-canvas px-5 py-10 text-navy-800 sm:flex sm:items-center sm:justify-center">
       <section className="mx-auto w-full max-w-lg">
         <div className="mb-8 text-center">
-          <img src="/branding/logo-prestamos-plus.svg" alt="Préstamos Plus" className="mx-auto h-12 w-auto max-w-[230px]" />
+          <div className="flex items-center justify-center gap-3"><img src="/branding/icono-prestamos-plus.png" alt="Préstamos Plus" className="h-12 w-12 rounded-12 object-cover" /><div className="text-left"><p className="font-display text-xl font-extrabold text-navy-800">PréstamoPlus</p><p className="text-[9px] uppercase tracking-[0.12em] text-slate-500">Control de cartera</p></div></div>
           <p className="mt-7 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-600">Primer acceso</p>
           <h1 className="mt-2 font-display text-3xl font-extrabold">¿A qué portal quieres ingresar?</h1>
           <p className="mt-3 text-sm leading-6 text-slate-500">Selecciona el espacio que utilizas.</p>

@@ -47,6 +47,10 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const requestUrl = originalRequest?.url || '';
     const isAuthRequest = requestUrl.includes('/api/auth/');
+    // Las rutas públicas (por ejemplo, el formulario de solicitud compartido
+    // por QR) no deben enviar al usuario al login si existe un token viejo o
+    // inválido en localStorage. La página debe poder abrirse sin sesión.
+    const isPublicRequest = requestUrl.includes('/api/tenant/public/');
 
     const clearSessionAndRedirect = () => {
       const isClientSession = !!localStorage.getItem('clientToken');
@@ -65,7 +69,7 @@ api.interceptors.response.use(
       }
     };
 
-    if (status === 401 && !originalRequest._retry && !isAuthRequest) {
+    if (status === 401 && !originalRequest._retry && !isAuthRequest && !isPublicRequest) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refreshToken');
       const clientToken = localStorage.getItem('clientToken');

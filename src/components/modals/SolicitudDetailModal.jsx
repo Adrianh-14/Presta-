@@ -4,6 +4,7 @@ import StatusBadge from '../StatusBadge';
 import MediaViewer from '../MediaViewer';
 import CurrencyFlag from '../CurrencyFlag';
 import { getCurrency } from '../../data/currencies';
+import { isInterestPeriodic } from '../../utils/loanModalidad';
 
 const frecuenciaLabels = { 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual', diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual' };
 const tipoEmpleoLabels = { 0: 'Formal', 1: 'Informal', 2: 'Independiente', 3: 'Jubilado' };
@@ -11,7 +12,7 @@ const relacionLabels = { 0: 'Familiar', 1: 'Amigo', 2: 'Compañero', 3: 'Otro' }
 const tipoCuentaLabels = { 0: 'Corriente', 1: 'Ahorro', 2: 'Nómina' };
 const money = (value, currency = 'DOP') => new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(Number(value || 0));
 
-export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject, onProcess }) {
+export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject, onProcess, onResendCounterOffer }) {
   const [instrucciones, setInstrucciones] = useState('');
   const [fechaInicio, setFechaInicio] = useState(() => {
     const d = new Date();
@@ -28,6 +29,10 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   const [plazoAprobado, setPlazoAprobado] = useState(() => String(solicitud?.plazo ?? ''));
   const [unidadPlazoAprobada, setUnidadPlazoAprobada] = useState(() => Number(solicitud?.unidadPlazo ?? 0));
   const [frecuenciaAprobada, setFrecuenciaAprobada] = useState(() => Number(solicitud?.frecuenciaPago ?? 3));
+  const [frecuenciaInteresAprobada, setFrecuenciaInteresAprobada] = useState(() => Number(solicitud?.frecuenciaInteres ?? 3));
+  const [modalidadAprobada, setModalidadAprobada] = useState(() => solicitud?.modalidad == null
+    ? 1
+    : (isInterestPeriodic(solicitud.modalidad) ? 1 : 0));
 
   if (!solicitud) return null;
 
@@ -38,7 +43,9 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   const bank = solicitud.bankAccount;
   const estadoRaw = String(solicitud.estado ?? '').toLowerCase();
   const isPending = solicitud.estado === 0 || estadoRaw === 'pendiente';
-  const isProcessing = solicitud.estado === 1 || estadoRaw === 'procesando' || estadoRaw === 'enrevision' || estadoRaw === 'en_revision';
+  const isProcessing = solicitud.estado === 1 || solicitud.estado === 5 || solicitud.estado === 6 || estadoRaw === 'procesando' || estadoRaw === 'contraoferta' || estadoRaw === 'clienteaprobada' || estadoRaw === 'cliente aprobó' || estadoRaw === 'enrevision' || estadoRaw === 'en_revision';
+  const isClientApproved = solicitud.estado === 6 || estadoRaw === 'clienteaprobada' || estadoRaw === 'cliente aprobó';
+  const hasCounterOffer = solicitud.hasClientDecision === true || solicitud.hasClientDecision === 'true';
   const montoNumero = Number(montoAprobado) || 0;
   const moneda = String(solicitud.moneda || 'DOP').toUpperCase();
   const currency = getCurrency(moneda);
@@ -49,14 +56,19 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   const periodsPerMonth = { 0: 30, 1: 4, 2: 2, 3: 1 }[frecuenciaAprobada] || 1;
   const totalPeriods = plazoMeses * periodsPerMonth;
   const principalAprobado = montoNumero * (1 + cierreNumero / 100);
-  const ratePerPeriod = tasaNumero / 100 / periodsPerMonth;
+  const interestPeriodsPerMonth = { 0: 30, 1: 4, 2: 2, 3: 1 }[frecuenciaInteresAprobada] || 1;
+  const ratePerPeriod = (tasaNumero / 100 * interestPeriodsPerMonth) / periodsPerMonth;
   const factor = ratePerPeriod > 0 && totalPeriods > 0 ? Math.pow(1 + ratePerPeriod, totalPeriods) : 0;
   const cuotaAprobada = totalPeriods <= 0 || principalAprobado <= 0
     ? 0
+    : modalidadAprobada === 1
+      ? principalAprobado * ratePerPeriod
     : ratePerPeriod <= 0
       ? principalAprobado / totalPeriods
       : principalAprobado * (ratePerPeriod * factor) / (factor - 1);
-  const totalAprobado = cuotaAprobada * totalPeriods;
+  const totalAprobado = modalidadAprobada === 1
+    ? principalAprobado + cuotaAprobada * totalPeriods
+    : cuotaAprobada * totalPeriods;
   const termsAreValid = montoNumero > 0
     && tasaNumero >= 0
     && cierreNumero >= 0
@@ -351,10 +363,12 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               </div>
               <div className="grid grid-cols-1 gap-4 rounded-xl border border-accent-100 bg-accent-50/40 p-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">Monto a facilitar<input type="number" min="0.01" step="0.01" value={montoAprobado} onChange={(e) => setMontoAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /><span className="mt-1 block text-xs font-normal text-gray-500">Solicitó {money(solicitud.montoSolicitado, moneda)}</span></label>
-                <label className="text-sm font-medium text-gray-700">Tasa mensual (%)<input type="number" min="0" step="0.01" value={tasaAprobada} onChange={(e) => setTasaAprobada(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /></label>
+                <label className="text-sm font-medium text-gray-700">Tasa (%)<input type="number" min="0" step="0.01" value={tasaAprobada} onChange={(e) => setTasaAprobada(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /></label>
                 <label className="text-sm font-medium text-gray-700">Gasto de cierre (%)<input type="number" min="0" step="0.01" value={gastoCierreAprobado} onChange={(e) => setGastoCierreAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /></label>
                 <div className="grid grid-cols-[1fr_auto] gap-2"><label className="text-sm font-medium text-gray-700">Plazo<input type="number" min="1" step="1" value={plazoAprobado} onChange={(e) => setPlazoAprobado(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" /></label><label className="text-sm font-medium text-gray-700">Unidad<select value={unidadPlazoAprobada} onChange={(e) => setUnidadPlazoAprobada(Number(e.target.value))} className="mt-1.5 rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Meses</option><option value={1}>Años</option></select></label></div>
-                <label className="text-sm font-medium text-gray-700 sm:col-span-2">Frecuencia de pago<select value={frecuenciaAprobada} onChange={(e) => setFrecuenciaAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Diaria</option><option value={1}>Semanal</option><option value={2}>Quincenal</option><option value={3}>Mensual</option></select></label>
+                <label className="text-sm font-medium text-gray-700">Frecuencia de pago<select value={frecuenciaAprobada} onChange={(e) => setFrecuenciaAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Diaria</option><option value={1}>Semanal</option><option value={2}>Quincenal</option><option value={3}>Mensual</option></select></label>
+                <label className="text-sm font-medium text-gray-700">Frecuencia de la tasa<select value={frecuenciaInteresAprobada} onChange={(e) => setFrecuenciaInteresAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Diaria</option><option value={1}>Semanal</option><option value={2}>Quincenal</option><option value={3}>Mensual</option></select><button type="button" onClick={() => setFrecuenciaInteresAprobada(frecuenciaAprobada)} className="mt-1 text-xs text-accent-600 hover:underline">Igualar a pago</button></label>
+                <label className="text-sm font-medium text-gray-700 sm:col-span-2">Modalidad de pago<select value={modalidadAprobada} onChange={(e) => setModalidadAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Amortización francesa</option><option value={1}>Interés periódico sobre saldo</option></select><span className="mt-1 block text-xs font-normal text-gray-500">En interés sobre saldo, se cobra el interés de cada período y el capital puede abonarse en cualquier momento. El préstamo continúa mientras exista saldo.</span></label>
               </div>
               <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
                 <div className="p-3 text-center"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Cuota estimada</p><p className="mt-1 font-bold text-accent-700">{money(cuotaAprobada, moneda)}</p></div>
@@ -362,7 +376,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                 <div className="p-3 text-center"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Interés total</p><p className="mt-1 font-bold text-amber-600">{money(Math.max(0, totalAprobado - principalAprobado), moneda)}</p></div>
               </div>
               <button
-                onClick={() => onProcess(solicitud.id, instrucciones.trim() || null, { montoAprobado: montoNumero, tasaInteresMensual: tasaNumero, gastoCierrePorcentaje: cierreNumero, plazo: plazoNumero, unidadPlazo: unidadPlazoAprobada, frecuenciaPago: frecuenciaAprobada })}
+                onClick={() => onProcess(solicitud.id, instrucciones.trim() || null, { montoAprobado: montoNumero, tasaInteresMensual: tasaNumero, gastoCierrePorcentaje: cierreNumero, plazo: plazoNumero, unidadPlazo: unidadPlazoAprobada, frecuenciaPago: frecuenciaAprobada, frecuenciaInteres: frecuenciaInteresAprobada, modalidad: modalidadAprobada })}
                 disabled={!montoNumero || tasaNumero < 0 || cierreNumero < 0 || !plazoNumero}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors font-medium"
               >
@@ -382,10 +396,11 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               <div className="flex items-center gap-2">
                 <SlidersHorizontal size={18} className="text-accent-600" />
                 <div>
-                  <h3 className="font-semibold text-gray-900">Condiciones aprobadas</h3>
-                  <p className="text-xs text-gray-500">Conserva la propuesta o prepara una contraoferta.</p>
+                  <h3 className="font-semibold text-gray-900">{isClientApproved ? 'Cliente aprobó las condiciones' : 'Condiciones enviadas al cliente'}</h3>
+                  <p className="text-xs text-gray-500">{isClientApproved ? 'Revisa las fechas y formaliza el préstamo cuando corresponda.' : 'El cliente debe aceptar o rechazar la propuesta desde el enlace recibido por correo.'}</p>
                 </div>
               </div>
+              {(hasCounterOffer || solicitud.estado === 5 || estadoRaw === 'contraoferta' || estadoRaw === 'procesando') && !isClientApproved ? <button type="button" onClick={() => onResendCounterOffer?.(solicitud.id, { montoAprobado: montoNumero, tasaInteresMensual: tasaNumero, gastoCierrePorcentaje: cierreNumero, plazo: plazoNumero, unidadPlazo: unidadPlazoAprobada, frecuenciaPago: frecuenciaAprobada, frecuenciaInteres: frecuenciaInteresAprobada, modalidad: modalidadAprobada })} className="w-full rounded-lg border border-accent-200 bg-white px-4 py-2.5 font-semibold text-accent-700 hover:bg-accent-50">Reenviar contraoferta al cliente</button> : null}
 
               <div className="grid grid-cols-1 gap-4 rounded-xl border border-accent-100 bg-accent-50/40 p-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-gray-700">
@@ -394,7 +409,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                   <span className="mt-1 block text-xs font-normal text-gray-500">Solicitó {money(solicitud.montoSolicitado, moneda)}</span>
                 </label>
                 <label className="text-sm font-medium text-gray-700">
-                  Tasa mensual (%)
+                  Tasa (%)
                   <input type="number" min="0" step="0.01" value={tasaAprobada} onChange={(e) => setTasaAprobada(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
                 </label>
                 <label className="text-sm font-medium text-gray-700">
@@ -424,6 +439,18 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                   </select>
                 </label>
                 <label className="text-sm font-medium text-gray-700">
+                  Frecuencia de la tasa
+                  <select value={frecuenciaInteresAprobada} onChange={(e) => setFrecuenciaInteresAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500"><option value={0}>Diaria</option><option value={1}>Semanal</option><option value={2}>Quincenal</option><option value={3}>Mensual</option></select>
+                  <button type="button" onClick={() => setFrecuenciaInteresAprobada(frecuenciaAprobada)} className="mt-1 text-xs text-accent-600 hover:underline">Igualar a pago</button>
+                </label>
+                <label className="text-sm font-medium text-gray-700">
+                  Modalidad de pago
+                  <select value={modalidadAprobada} onChange={(e) => setModalidadAprobada(Number(e.target.value))} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500">
+                    <option value={0}>Amortización francesa</option>
+                    <option value={1}>Interés periódico sobre saldo</option>
+                  </select>
+                </label>
+                <label className="text-sm font-medium text-gray-700">
                   Fecha del contrato
                   <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-accent-500 focus:ring-2 focus:ring-accent-500" />
                 </label>
@@ -450,7 +477,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               </div>
 
               {!termsAreValid && <p className="text-sm text-red-600">Completa condiciones válidas y revisa las fechas de pago.</p>}
-              <div className="flex gap-3">
+              {isClientApproved && <div className="flex gap-3">
                 <button
                   disabled={!termsAreValid}
                   onClick={() => onApprove(solicitud.id, {
@@ -462,10 +489,12 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                     plazo: plazoNumero,
                     unidadPlazo: unidadPlazoAprobada,
                     frecuenciaPago: frecuenciaAprobada,
+                    frecuenciaInteres: frecuenciaInteresAprobada,
+                    modalidad: modalidadAprobada,
                   })}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Check size={20} /> Aprobar con estas condiciones
+                    <Check size={20} /> Formalizar préstamo
                 </button>
                 <button
                   onClick={() => onReject(solicitud.id)}
@@ -473,7 +502,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                 >
                   <XIcon size={20} /> Rechazar
                 </button>
-              </div>
+              </div>}
             </div>
           )}
         </div>

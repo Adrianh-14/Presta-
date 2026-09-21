@@ -18,12 +18,21 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const isNativeApp = Capacitor.isNativePlatform();
 
   const handleReset = async () => {
+    const normalizedEmail = resetEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setResetError('Escribe tu correo de trabajo para continuar.');
+      return;
+    }
     setResetLoading(true);
-    try { await authService.requestPasswordReset(email.trim()); setResetSent(true); }
+    setResetError('');
+    try { await authService.requestPasswordReset(normalizedEmail); setResetSent(true); }
+    catch (requestError) { setResetError(requestError.response?.data?.message || 'No pudimos procesar la solicitud. Intenta nuevamente.'); }
     finally { setResetLoading(false); }
   };
 
@@ -47,7 +56,7 @@ export default function Login() {
       <section className="financial-grid relative hidden min-h-screen overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-20">
         <div className="absolute right-[-8rem] top-28 h-72 w-72 rounded-full border-[50px] border-accent-400/10" />
         <div className="relative flex items-center gap-3">
-          <img src="/branding/icono-prestamos-plus.svg" alt="Préstamos Plus" className="h-10 w-10 rounded-8 object-contain" />
+          <img src="/branding/icono-prestamos-plus.png" alt="Préstamos Plus" className="h-10 w-10 rounded-8 object-contain" />
           <div><p className="font-display text-lg font-bold">PréstamoPlus</p><p className="text-[10px] uppercase tracking-[0.22em] text-accent-200">Control de cartera</p></div>
         </div>
         <div className="relative max-w-xl">
@@ -63,7 +72,7 @@ export default function Login() {
 
       <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-10">
         <div className="w-full max-w-md">
-          <div className="mb-9 flex items-center gap-3 lg:hidden"><img src="/branding/logo-prestamos-plus.svg" alt="Préstamos Plus" className="h-10 w-auto max-w-[190px]" /></div>
+          <div className="mb-9 flex items-center gap-3 lg:hidden"><img src="/branding/icono-prestamos-plus.png" alt="Préstamos Plus" className="h-10 w-10 rounded-8 object-contain" /><div><p className="font-display text-lg font-bold text-navy-800">PréstamoPlus</p><p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">Control de cartera</p></div></div>
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-600">Acceso empresarial</p>
           <h2 className="mt-2 font-display text-3xl font-extrabold text-navy-800">Bienvenido de vuelta</h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">Consulta la cartera y continúa donde dejaste tu operación.</p>
@@ -77,7 +86,7 @@ export default function Login() {
             <label className="block text-sm font-semibold text-navy-700">Contraseña
               <span className="relative mt-2 block"><LockKeyhole className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} /><input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="auth-input px-10" placeholder="Tu contraseña" required /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-navy-600">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span>
             </label>
-            <button type="button" onClick={() => { setShowReset(true); setResetSent(false); }} className="-mt-2 text-left text-sm font-semibold text-accent-600 hover:text-accent-700">¿Olvidaste tu contraseña?</button>
+            <button type="button" onClick={() => { setShowReset(true); setResetSent(false); setResetError(''); setResetEmail(email.trim()); }} className="-mt-2 text-left text-sm font-semibold text-accent-600 hover:text-accent-700">¿Olvidaste tu contraseña?</button>
             <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-8 bg-navy-800 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-navy-700 disabled:cursor-wait disabled:opacity-60">{loading ? 'Validando acceso…' : <>Entrar a mi cuenta <ArrowRight size={17} /></>}</button>
           </form>
 
@@ -92,7 +101,19 @@ export default function Login() {
             </div>
           </div>}
 
-          {showReset && <div className="mt-5 rounded-12 border border-accent-100 bg-accent-50 p-4"><p className="font-semibold text-navy-800">Recuperar contraseña</p>{resetSent ? <p className="mt-2 text-sm text-slate-600">Si el correo existe, recibirás un enlace para crear una nueva contraseña.</p> : <><p className="mt-1 text-xs text-slate-500">Te enviaremos un enlace seguro con vigencia de 30 minutos.</p><button type="button" onClick={handleReset} disabled={resetLoading} className="mt-3 rounded-8 bg-accent-600 px-3 py-2 text-sm font-bold text-white">{resetLoading ? 'Enviando…' : 'Enviar enlace'}</button></>}</div>}
+          {showReset && <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/50 px-5 py-8" role="dialog" aria-modal="true" aria-labelledby="reset-title" onClick={(event) => { if (event.target === event.currentTarget) setShowReset(false); }}>
+            <div className="w-full max-w-md rounded-16 bg-white p-6 shadow-card-lg">
+              <div className="flex items-start justify-between gap-4">
+                <div><p id="reset-title" className="font-display text-xl font-extrabold text-navy-800">Recuperar contraseña</p><p className="mt-1 text-sm text-slate-500">Te enviaremos un enlace seguro con vigencia de 30 minutos.</p></div>
+                <button type="button" onClick={() => setShowReset(false)} aria-label="Cerrar recuperación" className="rounded-8 px-2 text-2xl leading-none text-slate-400 hover:bg-slate-100 hover:text-navy-700">×</button>
+              </div>
+              {resetSent ? <div className="mt-6 rounded-8 bg-success-50 p-4 text-sm text-success-700">Si el correo existe, recibirás un enlace para crear una nueva contraseña.<button type="button" onClick={() => setShowReset(false)} className="mt-4 block font-bold text-success-800 underline">Volver al inicio de sesión</button></div> : <>
+                <label className="mt-6 block text-sm font-semibold text-navy-700">Correo de trabajo<input type="email" autoComplete="email" value={resetEmail} onChange={(event) => { setResetEmail(event.target.value); setResetError(''); }} placeholder="nombre@empresa.com" required className="auth-input mt-2" /></label>
+                {resetError && <p role="alert" className="mt-2 text-sm text-danger-600">{resetError}</p>}
+                <button type="button" onClick={handleReset} disabled={resetLoading} className="mt-5 w-full rounded-8 bg-accent-600 px-3 py-3 text-sm font-bold text-white disabled:opacity-60">{resetLoading ? 'Enviando…' : 'Enviar enlace'}</button>
+              </>}
+            </div>
+          </div>}
 
           <div className="mt-7 rounded-12 border border-surface-border bg-white p-4"><div className="flex gap-3"><ShieldCheck size={19} className="mt-0.5 shrink-0 text-success-600" /><div><p className="text-sm font-semibold text-navy-700">¿Tu empresa aún no tiene cuenta?</p><p className="mt-1 text-xs leading-5 text-slate-500">Crea el espacio de trabajo y comienza una prueba de 14 días.</p><Link to="/registro" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-accent-600 hover:text-accent-700">Registrar mi empresa <ArrowRight size={14} /></Link></div></div></div>
         </div>

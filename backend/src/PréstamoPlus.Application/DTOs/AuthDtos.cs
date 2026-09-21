@@ -67,4 +67,6 @@ namespace PréstamoPlus.Application.DTOs
 
     public record PasswordResetRequest { public string Email { get; init; } = string.Empty; }
     public record PasswordResetConfirmRequest { public string Token { get; init; } = string.Empty; public string NewPassword { get; init; } = string.Empty; }
+    public record EmailVerificationRequest { public string Email { get; init; } = string.Empty; public string Purpose { get; init; } = string.Empty; }
+    public record EmailVerificationConfirmRequest { public string Email { get; init; } = string.Empty; public string Purpose { get; init; } = string.Empty; public string Code { get; init; } = string.Empty; }
 }

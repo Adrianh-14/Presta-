@@ -62,7 +62,9 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
         onClose();
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al crear el pago');
+      setError(err.response?.status === 403
+        ? 'Tu sesión de autorización para registrar pagos expiró. Cierra sesión, vuelve a iniciar sesión y registra el pago nuevamente.'
+        : (err.response?.data?.message || 'Error al crear el pago'));
     } finally {
       setLoading(false);
     }

@@ -20,6 +20,8 @@ namespace PréstamoPlus.Application.Common
                 .Replace("\r\n", "<br>")
                 .Replace("\n", "<br>");
             var portalUrl = WebUtility.HtmlEncode(clientPortalUrl ?? "http://localhost:5173/portal/login");
+            var decisionBaseUrl = (clientPortalUrl ?? "http://localhost:5173/portal/login").Replace("/portal/login", string.Empty).TrimEnd('/');
+            var decisionUrl = WebUtility.HtmlEncode($"{decisionBaseUrl}/solicitud/decision?id={solicitud.Id}&token={WebUtility.UrlEncode(solicitud.ClientDecisionToken ?? string.Empty)}");
 
             var (subject, title, message, accent) = estado switch
             {
@@ -28,6 +30,16 @@ namespace PréstamoPlus.Application.Common
                     "Solicitud en revisión",
                     "Nuestro equipo comenzó a revisar la información de tu solicitud.",
                     "#006bff"),
+                EstadoSolicitud.Contraoferta => (
+                    "Tienes condiciones nuevas para tu solicitud",
+                    "Confirma las condiciones de tu préstamo",
+                    "La empresa revisó tu solicitud y preparó una propuesta. Revísala y acepta o rechaza desde el enlace seguro.",
+                    "#006bff"),
+                EstadoSolicitud.ClienteAprobada => (
+                    "Recibimos tu aprobación",
+                    "Condiciones aprobadas",
+                    "Tu aprobación fue recibida. La empresa realizará la formalización final del préstamo.",
+                    "#047857"),
                 EstadoSolicitud.Aprobada => (
                     "Tu solicitud fue aprobada",
                     "Solicitud aprobada",
@@ -50,7 +62,7 @@ namespace PréstamoPlus.Application.Common
                     "#d97706")
             };
 
-            var instructionsBlock = estado == EstadoSolicitud.Procesando && !string.IsNullOrWhiteSpace(instrucciones)
+            var instructionsBlock = (estado == EstadoSolicitud.Procesando || estado == EstadoSolicitud.Contraoferta) && !string.IsNullOrWhiteSpace(instrucciones)
                 ? $"""
                     <div style="margin:24px 0;padding:16px;border-left:4px solid #006bff;background:#eff6ff;">
                       <strong style="display:block;margin-bottom:8px;color:#0b3558;">Instrucciones para continuar</strong>
@@ -71,6 +83,7 @@ namespace PréstamoPlus.Application.Common
                       <p style="line-height:1.6;margin:0 0 16px;">Hola {nombre},</p>
                       <p style="line-height:1.6;margin:0;">{message}</p>
                       {instructionsBlock}
+                      {(estado == EstadoSolicitud.Contraoferta ? $"<div style=\"margin-top:24px;padding:16px;border:1px solid #bfdbfe;background:#eff6ff;\"><strong>Condiciones propuestas</strong><br/>Monto: {WebUtility.HtmlEncode(solicitud.Moneda)} {monto}<br/>Cuota estimada: {WebUtility.HtmlEncode(solicitud.Moneda)} {solicitud.CuotaEstimada:N2}<br/>Frecuencia de pago: {WebUtility.HtmlEncode(solicitud.FrecuenciaPago.ToString())}<br/>Frecuencia de la tasa: {WebUtility.HtmlEncode(solicitud.FrecuenciaInteres.ToString())}<br/>Tasa: {solicitud.TasaInteresMensual:N2}%<br/>Plazo: {solicitud.Plazo} {solicitud.UnidadPlazo}<br/><br/><a href=\"{decisionUrl}\" style=\"display:inline-block;padding:13px 22px;background:#006bff;color:#ffffff;text-decoration:none;font-weight:700;\">Revisar y responder</a></div>" : string.Empty)}
                       <table style="width:100%;margin-top:24px;border-collapse:collapse;background:#f8f9fb;">
                         <tr><td style="padding:12px;color:#64748b;">Referencia</td><td style="padding:12px;text-align:right;font-weight:700;">{referencia}</td></tr>
                         <tr><td style="padding:12px;color:#64748b;">Monto solicitado</td><td style="padding:12px;text-align:right;font-weight:700;">{WebUtility.HtmlEncode(solicitud.Moneda)} {monto}</td></tr>

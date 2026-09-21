@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { portalService } from '../../services/portalService';
 import StatusBadge from '../../components/StatusBadge';
+import { isInterestPeriodic } from '../../utils/loanModalidad';
 
 const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
 const freqPeriodsPerMonth = { mensual: 1, quincenal: 2, semanal: 4, diaria: 30, Mensual: 1, Quincenal: 2, Semanal: 4, Diaria: 30, 0: 30, 1: 4, 2: 2, 3: 1 };
@@ -92,7 +93,7 @@ export default function PortalLoanDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8">
         <div className="bg-white rounded-12 border border-surface-border shadow-card p-6">
-          <h3 className="text-base font-bold text-navy-500 mb-4">Tabla de Amortización</h3>
+          <h3 className="text-base font-bold text-navy-500 mb-4">{isInterestPeriodic(loan?.modalidad) ? 'Calendario de intereses y capital' : 'Tabla de Amortización'}</h3>
           <div className="overflow-x-auto max-h-[420px] scrollbar-thin">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-surface-canvas">

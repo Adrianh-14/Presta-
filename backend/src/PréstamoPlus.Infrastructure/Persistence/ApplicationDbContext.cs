@@ -28,6 +28,7 @@ namespace PréstamoPlus.Infrastructure.Persistence
         public DbSet<User> Users => Set<User>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+        public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
         public DbSet<ClientOtpChallenge> ClientOtpChallenges => Set<ClientOtpChallenge>();
         public DbSet<ClientSession> ClientSessions => Set<ClientSession>();
         public DbSet<ClientAuthenticationEvent> ClientAuthenticationEvents => Set<ClientAuthenticationEvent>();

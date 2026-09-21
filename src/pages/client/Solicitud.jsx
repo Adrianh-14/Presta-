@@ -6,6 +6,7 @@ import { solicitudService } from '../../services/solicitudService';
 import { clientService } from '../../services/clientService';
 import { CURRENCY_CATALOG } from '../../data/currencies';
 import { tenantService } from '../../services/tenantService';
+import { authService } from '../../services/authService';
 
 const mode = new URLSearchParams(window.location.search).get('mode');
 const isClientMode = mode === 'client';
@@ -41,12 +42,12 @@ function getFrequencyName(frequency) {
   return names[frequency] || frequency;
 }
 
-function calculateLoanPayment(amount, closingCostPercent, monthlyRate, term, termUnit, frequency) {
+function calculateLoanPayment(amount, closingCostPercent, rate, term, termUnit, frequency, interestFrequency = 'monthly', modalidad = 1) {
   const closingCostAmount = amount * (closingCostPercent / 100);
   const principal = amount + closingCostAmount;
 
-  // Tasa mensual directa
-  const monthlyRateDecimal = (parseFloat(monthlyRate) || 2.5) / 100;
+  const ratePeriods = { daily: 30, weekly: 4, biweekly: 2, monthly: 1 };
+  const monthlyRateDecimal = ((parseFloat(rate) || 2.5) / 100) * (ratePeriods[interestFrequency] || 1);
   
   // Calcular tasa por período según frecuencia de pago
   let periodRate;
@@ -73,6 +74,18 @@ function calculateLoanPayment(amount, closingCostPercent, monthlyRate, term, ter
   }
 
   if (periods <= 0 || principal <= 0) return { payment: 0, totalPaid: 0, totalInterest: 0, periods: 0 };
+
+  if (modalidad === 1) {
+    const interest = principal * periodRate;
+    return {
+      payment: Math.round(interest * 100) / 100,
+      totalPaid: Math.round((principal + interest * periods) * 100) / 100,
+      totalInterest: Math.round(interest * periods * 100) / 100,
+      periods: Math.round(periods),
+      closingCostAmount: Math.round(closingCostAmount * 100) / 100,
+      modalidad,
+    };
+  }
 
   if (periodRate <= 0) {
     const payment = principal / periods;
@@ -117,6 +130,12 @@ export default function Solicitud() {
     return savedStep >= 1 && savedStep <= maxStep ? savedStep : 1;
   });
   const [submitted, setSubmitted] = useState(false);
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailVerificationLoading, setEmailVerificationLoading] = useState(false);
+  const [emailVerificationError, setEmailVerificationError] = useState('');
+  const emailVerificationEmailRef = useRef('');
   const [videoBlob, setVideoBlob] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   const [videoPoster, setVideoPoster] = useState(null);
@@ -158,6 +177,8 @@ export default function Solicitud() {
   const [calcTerm, setCalcTerm] = useState('4');
   const [calcTermUnit, setCalcTermUnit] = useState('months');
   const [calcFrequency, setCalcFrequency] = useState('biweekly');
+  const [calcInterestFrequency, setCalcInterestFrequency] = useState('monthly');
+  const [recalcularInteresSobreSaldo, setRecalcularInteresSobreSaldo] = useState(false);
   const [calcResults, setCalcResults] = useState(null);
 
   const { register, handleSubmit, formState: { errors }, trigger, watch, reset } = useForm({
@@ -205,7 +226,16 @@ export default function Solicitud() {
   }, [readSavedDraft, reset]);
 
   useEffect(() => {
+    const lastEmailRef = emailVerificationEmailRef;
     const subscription = watch((values) => {
+      const normalizedEmail = String(values.email || '').trim().toLowerCase();
+      if (lastEmailRef.current && normalizedEmail !== lastEmailRef.current) {
+        setEmailVerified(false);
+        setEmailCodeSent(false);
+        setEmailCode('');
+        setEmailVerificationError('');
+      }
+      lastEmailRef.current = normalizedEmail;
       sessionStorage.setItem(draftStorageKey, JSON.stringify({ step: currentStep, values }));
     });
     return () => subscription.unsubscribe();
@@ -228,9 +258,9 @@ export default function Solicitud() {
       return;
     }
 
-    const results = calculateLoanPayment(amount, calcClosingCost, calcRate, term, calcTermUnit, calcFrequency);
+    const results = calculateLoanPayment(amount, calcClosingCost, calcRate, term, calcTermUnit, calcFrequency, calcInterestFrequency, 1);
     setCalcResults(results);
-  }, [calcAmount, calcClosingCost, calcRate, calcTerm, calcTermUnit, calcFrequency]);
+  }, [calcAmount, calcClosingCost, calcRate, calcTerm, calcTermUnit, calcFrequency, calcInterestFrequency]);
 
   useEffect(() => {
     const timeout = setTimeout(doCalc, 300);
@@ -657,6 +687,24 @@ export default function Solicitud() {
     e.preventDefault();
     e.stopPropagation();
     const isValid = await validateStep();
+    if (isValid && currentStep === 1 && !emailVerified) {
+      const email = String(watch('email') || '').trim().toLowerCase();
+      setEmailVerificationLoading(true);
+      setEmailVerificationError('');
+      try {
+        if (!emailCodeSent) {
+          await authService.requestEmailVerification(email, 'client-registration');
+          setEmailCodeSent(true);
+          setEmailVerificationError('Te enviamos un código. Escríbelo para continuar.');
+        } else {
+          await authService.confirmEmailVerification(email, 'client-registration', emailCode.trim());
+          setEmailVerified(true);
+          setEmailVerificationError('Correo verificado correctamente.');
+        }
+      } catch (requestError) { setEmailVerificationError(requestError.response?.data?.message || 'No pudimos verificar el correo.'); }
+      finally { setEmailVerificationLoading(false); }
+      return;
+    }
     if (isValid) {
       setCurrentStep(prev => Math.min(prev + 1, maxStep));
     }
@@ -743,8 +791,11 @@ export default function Solicitud() {
         plazo: parseInt(calcTerm) || 4,
         unidadPlazo: 0,
         frecuenciaPago: calcFrequency === 'daily' ? 0 : calcFrequency === 'weekly' ? 1 : calcFrequency === 'biweekly' ? 2 : 3,
+        frecuenciaInteres: calcInterestFrequency === 'daily' ? 0 : calcInterestFrequency === 'weekly' ? 1 : calcInterestFrequency === 'biweekly' ? 2 : 3,
         gastoCierrePorcentaje: parseFloat(calcClosingCost) || 3,
         tipoPrestamo: 1,
+        modalidad: 1,
+        recalcularInteresSobreSaldo,
       };
 
       const clientPayload = {
@@ -891,6 +942,8 @@ export default function Solicitud() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                   <input {...register('email', { required: 'El email es requerido', pattern: { value: /^\S+@\S+$/i, message: 'Email inválido' } })} type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500" placeholder="tu@email.com" />
                   {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+                  {emailVerified ? <p className="mt-1 text-sm font-semibold text-green-600">✓ Correo verificado</p> : emailCodeSent && <><input inputMode="numeric" maxLength={6} value={emailCode} onChange={(event) => { setEmailCode(event.target.value.replace(/\D/g, '')); setEmailVerificationError(''); }} className="w-full mt-3 px-4 py-3 border border-accent-300 rounded-lg" placeholder="Código de 6 dígitos" /><p className="text-xs text-slate-500 mt-1">Revisa tu correo y escribe el código recibido.</p></>}
+                  {emailVerificationError && <p className={`text-sm mt-1 ${emailVerified ? 'text-green-600' : 'text-amber-600'}`}>{emailVerificationError}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono *</label>
@@ -1331,7 +1384,7 @@ export default function Solicitud() {
           {currentStep === 6 && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Calcula tu Préstamo</h2>
-              <p className="text-gray-500 mb-6">Ingresa el monto y el interés mensual que deseas.</p>
+              <p className="text-gray-500 mb-6">Ingresa la tasa y especifica cada cuánto se aplica. Si es mensual y pagas quincenal, se divide entre dos como siempre.</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
@@ -1345,7 +1398,7 @@ export default function Solicitud() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Interés mensual (%) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tasa de interés (%) *</label>
                   <input
                     type="number"
                     step="0.1"
@@ -1390,6 +1443,13 @@ export default function Solicitud() {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Frecuencia de la tasa</label>
+                  <select value={calcInterestFrequency} onChange={(e) => setCalcInterestFrequency(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500">
+                    <option value="daily">Diaria</option><option value="weekly">Semanal</option><option value="biweekly">Quincenal</option><option value="monthly">Mensual</option>
+                  </select>
+                  <button type="button" onClick={() => setCalcInterestFrequency(calcFrequency)} className="mt-1 text-xs font-medium text-accent-600 hover:underline">Igualar a frecuencia de pago</button>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Gasto de cierre (%)</label>
                   <input
                     type="number"
@@ -1401,6 +1461,11 @@ export default function Solicitud() {
                   />
                 </div>
               </div>
+
+              <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                <input type="checkbox" checked={recalcularInteresSobreSaldo} onChange={e => setRecalcularInteresSobreSaldo(e.target.checked)} className="mt-1" />
+                <span><strong>Recalcular intereses sobre el saldo</strong><br /><span className="text-xs text-gray-500">Desactivado: el interés se mantiene calculado sobre el capital original.</span></span>
+              </label>
 
               {calcResults && calcResults.payment > 0 && (
                 <div className="mt-8">
@@ -1432,6 +1497,7 @@ export default function Solicitud() {
               <input type="hidden" {...register('montoSolicitado')} value={calcAmount.replace(/,/g, '')} />
               <input type="hidden" {...register('plazoMeses')} value={calcTerm} />
               <input type="hidden" {...register('tipoPrestamo')} value="personal" />
+              <input type="hidden" {...register('modalidad')} value="InteresPeriodicoSobreSaldo" />
               <input type="hidden" {...register('cuotaEstimada')} value={calcResults?.payment || ''} />
             </div>
           )}
@@ -1453,8 +1519,8 @@ export default function Solicitud() {
             ) : <div />}
 
             {currentStep < maxStep ? (
-              <button type="button" onClick={(e) => nextStep(e)} className="flex items-center gap-2 px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors">
-                Siguiente
+              <button type="button" onClick={(e) => nextStep(e)} disabled={emailVerificationLoading} className="flex items-center gap-2 px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors disabled:opacity-60">
+                {emailVerificationLoading ? 'Verificando…' : currentStep === 1 && !emailVerified ? (emailCodeSent ? 'Verificar correo' : 'Enviar código') : 'Siguiente'}
                 <ChevronRight size={20} />
               </button>
             ) : (

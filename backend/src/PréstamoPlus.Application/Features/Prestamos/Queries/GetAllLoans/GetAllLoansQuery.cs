@@ -47,7 +47,10 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAllLoans
                 SaldoPendiente = l.SaldoPendiente,
                 Estado = l.Estado,
                 Tipo = l.Tipo,
+                Modalidad = l.Modalidad,
                 FrecuenciaPago = l.FrecuenciaPago,
+                FrecuenciaInteres = l.FrecuenciaInteres,
+                RecalcularInteresSobreSaldo = l.RecalcularInteresSobreSaldo,
                 FechaInicio = l.FechaInicio,
                 FechaVencimiento = l.FechaVencimiento
             }).ToList();

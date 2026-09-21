@@ -16,7 +16,11 @@ namespace PréstamoPlus.Domain.Entities
         public decimal SaldoPendiente { get; set; }
         public EstadoPrestamo Estado { get; set; } = EstadoPrestamo.Activo;
         public TipoPrestamo Tipo { get; set; }
+        public ModalidadPrestamo Modalidad { get; set; } = ModalidadPrestamo.AmortizacionFrancesa;
         public FrecuenciaPago FrecuenciaPago { get; set; } = FrecuenciaPago.Mensual;
+        public FrecuenciaInteres FrecuenciaInteres { get; set; } = FrecuenciaInteres.Mensual;
+        /// <summary>When true, future interest is recalculated after capital abonos; false keeps interest based on original capital.</summary>
+        public bool RecalcularInteresSobreSaldo { get; set; }
         public DateTime FechaInicio { get; set; }
         public DateTime FechaVencimiento { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

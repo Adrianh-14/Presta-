@@ -19,8 +19,11 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
         public decimal TasaMensual { get; init; }
         public int Plazo { get; init; }
         public FrecuenciaPago FrecuenciaPago { get; init; }
+        public FrecuenciaInteres FrecuenciaInteres { get; init; } = FrecuenciaInteres.Mensual;
+        public bool RecalcularInteresSobreSaldo { get; init; }
         public decimal GastoCierrePorcentaje { get; init; }
         public TipoPrestamo TipoPrestamo { get; init; }
+        public ModalidadPrestamo Modalidad { get; init; } = ModalidadPrestamo.AmortizacionFrancesa;
         public Guid? TenantId { get; init; }
     }
 
@@ -45,15 +48,20 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
 
         public async Task<LoanDto> Handle(CreateDirectLoanCommand command, CancellationToken cancellationToken)
         {
-            var req = command.Request;
-            var moneda = NormalizeCurrency(req.Moneda);
-            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                var req = command.Request;
+                var moneda = NormalizeCurrency(req.Moneda);
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-            try
-            {
-                var existingClients = await _unitOfWork.Clients.ListAsync(cancellationToken);
-                var client = existingClients.FirstOrDefault(c => c.Cedula == req.Cedula);
-                var tenantId = req.TenantId ?? client?.TenantId ?? Guid.Empty;
+                try
+                {
+                    var existingClients = await _unitOfWork.Clients.ListAsync(cancellationToken);
+                var tenantId = req.TenantId ?? Guid.Empty;
+                var client = existingClients.FirstOrDefault(c => c.Cedula == req.Cedula &&
+                    (tenantId == Guid.Empty || c.TenantId == tenantId));
+                tenantId = tenantId == Guid.Empty ? client?.TenantId ?? Guid.Empty : tenantId;
+
+                if (tenantId == Guid.Empty)
+                    throw new InvalidOperationException("No se pudo determinar la empresa de la sesión.");
 
                 if (client is null)
                 {
@@ -74,26 +82,15 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                 var plazoMeses = req.Plazo;
                 var principal = req.Monto + (req.Monto * req.GastoCierrePorcentaje / 100);
                 await _capitalGuard.EnsureCanDisburseAsync(tenantId, moneda, req.Monto, cancellationToken);
-                var tasaDecimal = req.TasaMensual / 100;
-
-                var totalPeriods = req.FrecuenciaPago switch
-                {
-                    FrecuenciaPago.Diaria => plazoMeses * 30,
-                    FrecuenciaPago.Semanal => plazoMeses * 4,
-                    FrecuenciaPago.Quincenal => plazoMeses * 2,
-                    _ => plazoMeses
-                };
-
-                var ratePerPeriod = req.FrecuenciaPago switch
-                {
-                    FrecuenciaPago.Diaria => tasaDecimal / 30,
-                    FrecuenciaPago.Semanal => tasaDecimal / 4,
-                    FrecuenciaPago.Quincenal => tasaDecimal / 2,
-                    _ => tasaDecimal
-                };
+                var totalPeriods = (int)(plazoMeses * InterestRateCalculator.PeriodsPerMonth(req.FrecuenciaPago));
+                var ratePerPeriod = InterestRateCalculator.RatePerPaymentPeriod(req.TasaMensual, req.FrecuenciaInteres, req.FrecuenciaPago);
 
                 decimal cuota;
-                if (ratePerPeriod <= 0)
+                if (req.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo)
+                {
+                    cuota = Math.Round(principal * ratePerPeriod, 2);
+                }
+                else if (ratePerPeriod <= 0)
                 {
                     cuota = principal / totalPeriods;
                 }
@@ -105,7 +102,9 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                 cuota = Math.Round(cuota, 2);
 
                 var fechaInicio = DateTime.UtcNow;
-                var totalPagar = Math.Round(cuota * totalPeriods, 2);
+                var totalPagar = req.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo
+                    ? Math.Round(principal + (cuota * Math.Max(0, totalPeriods - 1)) + Math.Round(principal * ratePerPeriod, 2), 2)
+                    : Math.Round(cuota * totalPeriods, 2);
                 var loanApplication = new LoanApplication
                 {
                     Id = Guid.NewGuid(),
@@ -117,12 +116,15 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     Plazo = plazoMeses,
                     UnidadPlazo = UnidadPlazo.Meses,
                     FrecuenciaPago = req.FrecuenciaPago,
+                    FrecuenciaInteres = req.FrecuenciaInteres,
+                    RecalcularInteresSobreSaldo = req.RecalcularInteresSobreSaldo,
                     GastoCierrePorcentaje = req.GastoCierrePorcentaje,
                     CuotaEstimada = cuota,
                     TotalPagar = totalPagar,
                     TotalIntereses = Math.Round(totalPagar - principal, 2),
                     Estado = EstadoSolicitud.Aprobada,
                     TipoPrestamo = req.TipoPrestamo,
+                    Modalidad = req.Modalidad,
                     FechaSolicitud = fechaInicio
                 };
                 await _unitOfWork.LoanApplications.AddAsync(loanApplication);
@@ -135,13 +137,16 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     LoanApplicationId = loanApplication.Id,
                     MontoOriginal = principal,
                     Moneda = moneda,
-                    TasaInteresAnual = req.TasaMensual * 12,
+                    TasaInteresAnual = InterestRateCalculator.AnnualRate(req.TasaMensual, req.FrecuenciaInteres),
                     PlazoMeses = plazoMeses,
                     CuotaMensual = cuota,
                     SaldoPendiente = principal,
                     Estado = EstadoPrestamo.Activo,
                     Tipo = req.TipoPrestamo,
+                    Modalidad = req.Modalidad,
                     FrecuenciaPago = req.FrecuenciaPago,
+                    FrecuenciaInteres = req.FrecuenciaInteres,
+                    RecalcularInteresSobreSaldo = req.RecalcularInteresSobreSaldo,
                     FechaInicio = fechaInicio,
                     FechaVencimiento = fechaInicio.AddMonths(plazoMeses),
                     CreatedAt = DateTime.UtcNow
@@ -189,7 +194,10 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     SaldoPendiente = loan.SaldoPendiente,
                     Estado = loan.Estado,
                     Tipo = loan.Tipo,
+                    Modalidad = loan.Modalidad,
                     FrecuenciaPago = loan.FrecuenciaPago,
+                    FrecuenciaInteres = loan.FrecuenciaInteres,
+                    RecalcularInteresSobreSaldo = loan.RecalcularInteresSobreSaldo,
                     FechaInicio = loan.FechaInicio,
                     FechaVencimiento = loan.FechaVencimiento
                 };
@@ -206,22 +214,20 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
 
         private static void GenerateInstallments(Loan loan, decimal principal, decimal tasaMensual, decimal cuotaPeriodo, DateTime firstPaymentDate)
         {
-            var periodsPerMonth = loan.FrecuenciaPago switch
-            {
-                FrecuenciaPago.Diaria => 30,
-                FrecuenciaPago.Semanal => 4,
-                FrecuenciaPago.Quincenal => 2,
-                _ => 1
-            };
+            var periodsPerMonth = (int)InterestRateCalculator.PeriodsPerMonth(loan.FrecuenciaPago);
             var totalPayments = loan.PlazoMeses * periodsPerMonth;
-            var monthlyRateDecimal = tasaMensual / 100;
-            var ratePerPeriod = monthlyRateDecimal / periodsPerMonth;
+            var ratePerPeriod = InterestRateCalculator.RatePerPaymentPeriod(tasaMensual, loan.FrecuenciaInteres, loan.FrecuenciaPago);
             var saldo = principal;
 
             for (int i = 1; i <= totalPayments; i++)
             {
                 var interes = Math.Round(saldo * ratePerPeriod, 2);
-                var capital = Math.Round(cuotaPeriodo - interes, 2);
+                var capital = loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo
+                    ? (i < totalPayments ? 0m : Math.Round(saldo, 2))
+                    : Math.Round(Math.Max(0, cuotaPeriodo - interes), 2);
+                var cuota = loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo && i == totalPayments
+                    ? Math.Round(interes + capital, 2)
+                    : cuotaPeriodo;
                 saldo -= capital;
 
                 var fechaPago = loan.FrecuenciaPago switch
@@ -241,7 +247,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan
                     FechaPago = fechaPago,
                     Capital = capital,
                     Interes = interes,
-                    Cuota = Math.Round(cuotaPeriodo, 2),
+                    Cuota = Math.Round(cuota, 2),
                     CapitalPagado = 0,
                     InteresPagado = 0,
                     MoraPagada = 0,

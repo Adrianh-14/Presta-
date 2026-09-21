@@ -103,7 +103,64 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                     await _unitOfWork.LateFees.UpdateAsync(lateFee, cancellationToken);
                 }
 
-                foreach (var inst in installments)
+                if (loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo)
+                {
+                    // En interés sobre saldo, el excedente de la cuota no
+                    // prepaga intereses futuros: se aplica directamente al
+                    // capital pendiente (normalmente la última cuota).
+                    var today = DateTime.UtcNow.Date;
+                    var interestRows = installments
+                        .Where(i => i.Estado != EstadoInstallment.Pagado &&
+                                    i.Interes - i.InteresPagado > 0 &&
+                                    i.FechaPago.Date <= today)
+                        .OrderBy(i => i.Numero)
+                        .ToList();
+                    if (interestRows.Count == 0)
+                    {
+                        interestRows = installments
+                            .Where(i => i.Estado != EstadoInstallment.Pagado && i.Interes - i.InteresPagado > 0)
+                            .OrderBy(i => i.Numero)
+                            .Take(1)
+                            .ToList();
+                    }
+
+                    foreach (var inst in interestRows)
+                    {
+                        if (remaining <= 0) break;
+                        var interestDue = Math.Max(0, inst.Interes - inst.InteresPagado);
+                        var applied = Math.Min(remaining, interestDue);
+                        inst.InteresPagado += applied;
+                        remaining -= applied;
+                        totalInteres += applied;
+                        if (inst.InteresPagado >= inst.Interes && inst.CapitalPagado >= inst.Capital)
+                            inst.Estado = EstadoInstallment.Pagado;
+                        else if (applied > 0)
+                            inst.Estado = EstadoInstallment.Parcial;
+                        await _unitOfWork.Installments.UpdateAsync(inst, cancellationToken);
+                    }
+
+                    var capitalRow = installments
+                        .Where(i => i.Estado != EstadoInstallment.Pagado && i.Capital - i.CapitalPagado > 0)
+                        .OrderByDescending(i => i.Numero)
+                        .FirstOrDefault();
+                    if (remaining > 0 && capitalRow is not null)
+                    {
+                        var capitalDue = Math.Max(0, capitalRow.Capital - capitalRow.CapitalPagado);
+                        var applied = Math.Min(remaining, capitalDue);
+                        capitalRow.CapitalPagado += applied;
+                        remaining -= applied;
+                        totalCapital += applied;
+                        if (capitalRow.InteresPagado >= capitalRow.Interes && capitalRow.CapitalPagado >= capitalRow.Capital)
+                            capitalRow.Estado = EstadoInstallment.Pagado;
+                        else if (applied > 0)
+                            capitalRow.Estado = EstadoInstallment.Parcial;
+                        await _unitOfWork.Installments.UpdateAsync(capitalRow, cancellationToken);
+                    }
+
+                    if (remaining > 0)
+                        throw new InvalidOperationException("El pago incluye un monto que no corresponde a intereses vencidos ni a capital pendiente.");
+                }
+                else foreach (var inst in installments)
                 {
                     if (remaining <= 0) break;
                     if (inst.Estado == EstadoInstallment.Pagado) continue;
@@ -141,8 +198,11 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 decimal nuevoSaldo = installments.Sum(i => i.Capital - i.CapitalPagado);
                 loan.SaldoPendiente = nuevoSaldo;
 
+                if (loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo && loan.RecalcularInteresSobreSaldo)
+                    RecalculateInterestOnlySchedule(loan, installments);
+
                 var quedanMoras = unpaidLateFees.Any(lf => !lf.Pagado && lf.Monto > 0);
-                var quedanCuotasVencidas = installments.Any(i =>
+                var quedanCuotasVencidas = loan.Modalidad != ModalidadPrestamo.InteresPeriodicoSobreSaldo && installments.Any(i =>
                     i.Estado != EstadoInstallment.Pagado && i.FechaPago.Date < DateTime.UtcNow.Date);
 
                 if (nuevoSaldo <= 0 && !quedanMoras)
@@ -207,6 +267,34 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                 await _unitOfWork.RollbackTransactionAsync(cancellationToken);
                 throw;
             }
+        }
+
+        private static void RecalculateInterestOnlySchedule(Loan loan, IReadOnlyCollection<Installment> installments)
+        {
+            var periodsPerMonth = loan.FrecuenciaPago switch
+            {
+                FrecuenciaPago.Diaria => 30m,
+                FrecuenciaPago.Semanal => 4m,
+                FrecuenciaPago.Quincenal => 2m,
+                _ => 1m
+            };
+            var ratePerPeriod = (loan.TasaInteresAnual / 100m / 12m) / periodsPerMonth;
+            var pending = installments.OrderBy(i => i.Numero).Where(i => i.Estado != EstadoInstallment.Pagado).ToList();
+            var balance = loan.SaldoPendiente;
+            for (var index = 0; index < pending.Count; index++)
+            {
+                var installment = pending[index];
+                var interest = Math.Round(balance * ratePerPeriod, 2);
+                var isFinal = index == pending.Count - 1;
+                var capital = isFinal ? Math.Round(balance + installment.CapitalPagado, 2) : installment.CapitalPagado;
+                installment.Interes = interest + installment.InteresPagado;
+                installment.Capital = capital;
+                installment.Cuota = Math.Round(interest + Math.Max(0, capital - installment.CapitalPagado), 2);
+                balance = Math.Max(0, balance - Math.Max(0, capital - installment.CapitalPagado));
+            }
+
+            if (pending.Count > 0)
+                loan.CuotaMensual = pending[0].Cuota;
         }
 
         private async Task<PaymentDto> ProcessSaldoPayment(CreatePaymentRequest req, Loan loan, CancellationToken cancellationToken)

@@ -13,12 +13,17 @@ namespace PréstamoPlus.Domain.Entities
         public int Plazo { get; set; }
         public UnidadPlazo UnidadPlazo { get; set; }
         public FrecuenciaPago FrecuenciaPago { get; set; }
+        public FrecuenciaInteres FrecuenciaInteres { get; set; } = FrecuenciaInteres.Mensual;
+        public bool RecalcularInteresSobreSaldo { get; set; }
+        public string? ClientDecisionToken { get; set; }
+        public DateTime? ClientDecisionAt { get; set; }
         public decimal GastoCierrePorcentaje { get; set; }
         public decimal CuotaEstimada { get; set; }
         public decimal TotalPagar { get; set; }
         public decimal TotalIntereses { get; set; }
         public EstadoSolicitud Estado { get; set; } = EstadoSolicitud.Pendiente;
         public TipoPrestamo TipoPrestamo { get; set; } = TipoPrestamo.Personal;
+        public ModalidadPrestamo Modalidad { get; set; } = ModalidadPrestamo.InteresPeriodicoSobreSaldo;
         public DateTime FechaSolicitud { get; set; } = DateTime.UtcNow;
         public Guid? FirstApprovedBy { get; set; }
         public DateTime? FirstApprovedAt { get; set; }

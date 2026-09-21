@@ -127,10 +127,14 @@ namespace PréstamoPlus.API.Controllers
         [EnableRateLimiting("public-form")]
         [RequestSizeLimit(25 * 1024 * 1024)]
         [ProducesResponseType(typeof(ClientDto), StatusCodes.Status201Created)]
-        public async Task<IActionResult> Register([FromBody] RegisterClientRequest request)
+        public async Task<IActionResult> Register([FromBody] RegisterClientRequest request, CancellationToken cancellationToken)
         {
             try
             {
+                var email = request.Client?.Email?.Trim().ToLowerInvariant();
+                var verified = !string.IsNullOrWhiteSpace(email) && await _db.EmailVerificationCodes.AnyAsync(
+                    x => x.Email == email && x.Purpose == "client-registration" && x.VerifiedAt != null && x.VerifiedAt > DateTime.UtcNow.AddMinutes(-30), cancellationToken);
+                if (!verified) return BadRequest(new { message = "Debes verificar el correo del cliente antes de continuar." });
                 var result = await _mediator.Send(new RegisterClientCommand(request));
                 return Created(string.Empty, result);
             }

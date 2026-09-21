@@ -27,7 +27,7 @@ export default function Clientes() {
   const tenantId = user?.tenantId || (() => {
     try { return JSON.parse(atob(localStorage.getItem('accessToken')?.split('.')[1] || '')).tenantId || ''; } catch { return ''; }
   })();
-  const registrationUrl = tenantId ? `/solicitud?mode=client&tenant=${tenantId}&source=admin` : '/solicitud?mode=client&source=admin';
+  const registrationUrl = tenantId ? `/solicitud?mode=client&tenant=${tenantId}&source=admin&v=2` : '/solicitud?mode=client&source=admin&v=2';
 
   useEffect(() => {
     let active = true;

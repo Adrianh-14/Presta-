@@ -123,7 +123,9 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
                     req.TasaInteresMensual,
                     req.Plazo,
                     req.UnidadPlazo,
-                    req.FrecuenciaPago);
+                    req.FrecuenciaPago,
+                    req.FrecuenciaInteres,
+                    req.Modalidad);
 
                 var loanApplication = new LoanApplication
                 {
@@ -136,12 +138,15 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
                     Plazo = req.Plazo,
                     UnidadPlazo = req.UnidadPlazo,
                     FrecuenciaPago = req.FrecuenciaPago,
+                    FrecuenciaInteres = req.FrecuenciaInteres,
+                    RecalcularInteresSobreSaldo = req.RecalcularInteresSobreSaldo,
                     GastoCierrePorcentaje = req.GastoCierrePorcentaje,
                     CuotaEstimada = calcResult.Cuota,
                     TotalPagar = calcResult.TotalPagar,
                     TotalIntereses = calcResult.TotalIntereses,
                     Estado = Domain.Enums.EstadoSolicitud.Pendiente,
                     TipoPrestamo = req.TipoPrestamo,
+                    Modalidad = req.Modalidad,
                     FechaSolicitud = DateTime.UtcNow
                 };
                 await _unitOfWork.LoanApplications.AddAsync(loanApplication);
@@ -206,12 +211,15 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
                     Plazo = loanApplication.Plazo,
                     UnidadPlazo = loanApplication.UnidadPlazo,
                     FrecuenciaPago = loanApplication.FrecuenciaPago,
+                    FrecuenciaInteres = loanApplication.FrecuenciaInteres,
+                    RecalcularInteresSobreSaldo = loanApplication.RecalcularInteresSobreSaldo,
                     GastoCierrePorcentaje = loanApplication.GastoCierrePorcentaje,
                     CuotaEstimada = loanApplication.CuotaEstimada,
                     TotalPagar = loanApplication.TotalPagar,
                     TotalIntereses = loanApplication.TotalIntereses,
                     Estado = loanApplication.Estado,
                     TipoPrestamo = loanApplication.TipoPrestamo,
+                    Modalidad = loanApplication.Modalidad,
                     FechaSolicitud = loanApplication.FechaSolicitud,
                     Client = new ClientDto
                     {
@@ -292,37 +300,40 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.CreateSolicitud
 
         private static (decimal Cuota, decimal TotalPagar, decimal TotalIntereses) CalculateLoan(
             decimal monto, decimal gastoCierrePorcentaje, decimal tasaMensual, int plazo,
-            Domain.Enums.UnidadPlazo unidadPlazo, Domain.Enums.FrecuenciaPago frecuencia)
+            Domain.Enums.UnidadPlazo unidadPlazo, Domain.Enums.FrecuenciaPago frecuencia,
+            Domain.Enums.FrecuenciaInteres frecuenciaInteres,
+            Domain.Enums.ModalidadPrestamo modalidad)
         {
             var gastoCierre = monto * (gastoCierrePorcentaje / 100);
             var principal = monto + gastoCierre;
-            var tasaDecimal = tasaMensual / 100;
-
             int totalPeriodos;
-            decimal tasaPorPeriodo;
+            var tasaPorPeriodo = InterestRateCalculator.RatePerPaymentPeriod(tasaMensual, frecuenciaInteres, frecuencia);
 
             switch (frecuencia)
             {
                 case Domain.Enums.FrecuenciaPago.Diaria:
-                    tasaPorPeriodo = tasaDecimal / 30;
                     totalPeriodos = unidadPlazo == Domain.Enums.UnidadPlazo.Anios ? plazo * 360 : plazo * 30;
                     break;
                 case Domain.Enums.FrecuenciaPago.Semanal:
-                    tasaPorPeriodo = tasaDecimal / 4;
                     totalPeriodos = unidadPlazo == Domain.Enums.UnidadPlazo.Anios ? plazo * 48 : plazo * 4;
                     break;
                 case Domain.Enums.FrecuenciaPago.Quincenal:
-                    tasaPorPeriodo = tasaDecimal / 2;
                     totalPeriodos = unidadPlazo == Domain.Enums.UnidadPlazo.Anios ? plazo * 24 : plazo * 2;
                     break;
                 default:
-                    tasaPorPeriodo = tasaDecimal;
                     totalPeriodos = unidadPlazo == Domain.Enums.UnidadPlazo.Anios ? plazo * 12 : plazo;
                     break;
             }
 
             if (totalPeriodos <= 0 || principal <= 0)
                 return (0, 0, 0);
+
+            if (modalidad == Domain.Enums.ModalidadPrestamo.InteresPeriodicoSobreSaldo)
+            {
+                var interes = principal * tasaPorPeriodo;
+                var interesesCalculados = Math.Round(interes, 2) * totalPeriodos;
+                return (Math.Round(interes, 2), Math.Round(principal + interesesCalculados, 2), Math.Round(interesesCalculados, 2));
+            }
 
             if (tasaPorPeriodo <= 0)
             {

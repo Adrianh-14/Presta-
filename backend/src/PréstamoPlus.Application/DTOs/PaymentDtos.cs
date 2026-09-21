@@ -53,6 +53,7 @@ namespace PréstamoPlus.Application.DTOs
         public decimal CuotaConMora { get; init; }
         public int DiasMora { get; init; }
         public decimal SaldoPendiente { get; init; }
+        public decimal TotalAPagar { get; init; }
         public int TotalPagos { get; init; }
         public DateTime? ProximoPago { get; init; }
     }

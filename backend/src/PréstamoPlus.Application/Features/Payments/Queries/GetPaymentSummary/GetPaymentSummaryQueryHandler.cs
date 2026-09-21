@@ -25,12 +25,18 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
 
             var unpaidMoraSpec = new UnpaidLateFeesByLoanIdSpec(request.LoanId);
             var unpaidLateFees = await _unitOfWork.LateFees.ListAsync(unpaidMoraSpec, cancellationToken);
+            var installments = await _unitOfWork.Installments.ListAsync(
+                new InstallmentsByLoanIdSpec(request.LoanId), cancellationToken);
 
             decimal totalPagado = payments.Sum(p => p.Monto);
             decimal totalCapital = payments.Sum(p => p.Capital);
             decimal totalIntereses = payments.Sum(p => p.Interes);
             decimal totalMora = payments.Sum(p => p.MoraPagada);
             decimal moraPendiente = unpaidLateFees.Sum(lf => lf.Monto);
+            var cuotasPendientes = installments
+                .Where(i => i.Estado != EstadoInstallment.Pagado)
+                .Sum(i => Math.Max(0, i.Capital - i.CapitalPagado) + Math.Max(0, i.Interes - i.InteresPagado));
+            var totalAPagar = totalPagado + cuotasPendientes + moraPendiente;
             int diasMora = unpaidLateFees.Count == 0 ? 0 : unpaidLateFees.Max(lf => lf.DiasAtraso);
 
             DateTime? proximoPago = null;
@@ -57,6 +63,7 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
                 CuotaConMora = loan.CuotaMensual + moraPendiente,
                 DiasMora = diasMora,
                 SaldoPendiente = loan.SaldoPendiente,
+                TotalAPagar = totalAPagar,
                 TotalPagos = payments.Count,
                 ProximoPago = proximoPago
             };

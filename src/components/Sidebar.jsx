@@ -131,5 +131,5 @@ export default function Sidebar() {
 }
 
 function BrandMark() {
-  return <img src="/branding/icono-prestamos-plus.svg" alt="Préstamos Plus" className="h-9 w-9 shrink-0 rounded-8 object-contain" />;
+  return <img src="/branding/icono-prestamos-plus.png" alt="Préstamos Plus" className="h-9 w-9 shrink-0 rounded-8 object-contain" />;
 }

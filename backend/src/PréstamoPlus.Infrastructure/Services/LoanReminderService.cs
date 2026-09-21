@@ -72,27 +72,19 @@ namespace PréstamoPlus.Infrastructure.Services
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
-            var today = DateTime.UtcNow.Date;
-            var reminderWindow = today.AddDays(3);
-
-            var installmentsDueSoon = await context.Installments
-                .Where(i => i.Estado != EstadoInstallment.Pagado
-                    && i.FechaPago.Date == reminderWindow
-                    && (i.Loan.Estado == EstadoPrestamo.Activo ||
-                        i.Loan.Estado == EstadoPrestamo.Mora ||
-                        i.Loan.Estado == EstadoPrestamo.Vencido))
-                .Include(i => i.Loan)
-                    .ThenInclude(l => l.Client)
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GetSantoDomingoTimeZone());
+            var today = localNow.Date;
+            var activeLoans = await context.Loans
+                .Where(l => l.Estado == EstadoPrestamo.Activo ||
+                            l.Estado == EstadoPrestamo.Mora ||
+                            l.Estado == EstadoPrestamo.Vencido)
+                .Include(l => l.Client)
+                .Include(l => l.Installments)
                 .ToListAsync(cancellationToken);
 
-            _logger.LogInformation(
-                "Encontradas {Count} cuotas con vencimiento el {Date}.",
-                installmentsDueSoon.Count,
-                reminderWindow.ToString("dd/MM/yyyy"));
-
-            foreach (var installment in installmentsDueSoon)
+            var reminders = new List<(Loan Loan, Installment Installment, int DaysUntilDue, string Key)>();
+            foreach (var loan in activeLoans)
             {
-                var loan = installment.Loan;
                 var client = loan.Client;
                 if (client == null || string.IsNullOrWhiteSpace(client.Email))
                 {
@@ -102,7 +94,47 @@ namespace PréstamoPlus.Infrastructure.Services
                     continue;
                 }
 
-                var notificationKey = $"loan-payment-reminder:{loan.Id:N}:{installment.Numero}";
+                var pending = loan.Installments
+                    .Where(i => i.Estado != EstadoInstallment.Pagado)
+                    .OrderBy(i => i.FechaPago)
+                    .ThenBy(i => i.Numero)
+                    .ToList();
+                if (pending.Count == 0) continue;
+
+                if (loan.FrecuenciaPago == FrecuenciaPago.Diaria)
+                {
+                    var installment = pending.FirstOrDefault(i => i.FechaPago.Date <= today);
+                    if (installment != null)
+                        reminders.Add((loan, installment, Math.Max(0, (installment.FechaPago.Date - today).Days),
+                            $"loan-payment-reminder:{loan.Id:N}:daily:{today:yyyyMMdd}"));
+                    continue;
+                }
+
+                var offsets = loan.FrecuenciaPago switch
+                {
+                    FrecuenciaPago.Semanal => new[] { 1, 0 },
+                    FrecuenciaPago.Quincenal => new[] { 2, 1, 0 },
+                    FrecuenciaPago.Mensual => new[] { 2, 1, 0 },
+                    _ => Array.Empty<int>()
+                };
+
+                foreach (var installment in pending)
+                {
+                    var daysUntilDue = (installment.FechaPago.Date - today).Days;
+                    if (!offsets.Contains(daysUntilDue)) continue;
+                    reminders.Add((loan, installment, daysUntilDue,
+                        $"loan-payment-reminder:{loan.Id:N}:{installment.Numero}:d{daysUntilDue}"));
+                }
+            }
+
+            _logger.LogInformation("Encontrados {Count} recordatorios de pago para {Date}.", reminders.Count, today.ToString("dd/MM/yyyy"));
+
+            foreach (var reminder in reminders)
+            {
+                var loan = reminder.Loan;
+                var installment = reminder.Installment;
+                var client = loan.Client!;
+                var notificationKey = reminder.Key;
                 var alreadySent = await context.MessageLogs.AnyAsync(log =>
                     log.Tipo == TipoNotificacion.Email &&
                     log.Estado == EstadoMensaje.Enviado &&
@@ -113,7 +145,8 @@ namespace PréstamoPlus.Infrastructure.Services
                     loan,
                     client,
                     installment,
-                    notificationService.ClientPortalUrl);
+                    notificationService.ClientPortalUrl,
+                    reminder.DaysUntilDue == 0 ? "hoy" : $"en {reminder.DaysUntilDue} días");
                 var loggedEmailBody = $"<!-- {notificationKey} -->{email.Html}";
                 var dueDate = installment.FechaPago.ToString("dd/MM/yyyy");
                 var amount = installment.Cuota.ToString("N2");
@@ -182,10 +215,23 @@ namespace PréstamoPlus.Infrastructure.Services
 
         private static DateTime GetNextRunTime(DateTime now)
         {
-            var today8am = now.Date.AddHours(8);
-            if (now >= today8am)
-                return today8am.AddDays(1);
-            return today8am;
+            var timeZone = GetSantoDomingoTimeZone();
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(now, timeZone);
+            var localTarget = localNow.Date.AddHours(15);
+            if (localNow >= localTarget) localTarget = localTarget.AddDays(1);
+            return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localTarget, DateTimeKind.Unspecified), timeZone);
+        }
+
+        private static TimeZoneInfo GetSantoDomingoTimeZone()
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById("America/Santo_Domingo"); }
+            catch (TimeZoneNotFoundException)
+            {
+                try { return TimeZoneInfo.FindSystemTimeZoneById("SA Western Standard Time"); }
+                catch (TimeZoneNotFoundException) { return TimeZoneInfo.Utc; }
+                catch (InvalidTimeZoneException) { return TimeZoneInfo.Utc; }
+            }
+            catch (InvalidTimeZoneException) { return TimeZoneInfo.Utc; }
         }
     }
 }

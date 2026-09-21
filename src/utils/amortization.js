@@ -82,6 +82,34 @@ export function generateAmortizationTable(principal, annualRate, months, frecuen
   return table;
 }
 
+// Calendario para préstamos de interés periódico sobre saldo: cada período
+// paga el interés del saldo vigente y el capital queda para el vencimiento,
+// salvo abonos extraordinarios registrados por el sistema.
+export function generateInterestOnlyTable(principal, annualRate, months, frecuencia = 'mensual', fechaInicio = null) {
+  const periodsPerMonth = getPeriodsPerMonth(frecuencia);
+  const totalPeriods = months * periodsPerMonth;
+  const ratePerPeriod = annualRate / 100 / 12 / periodsPerMonth;
+  const startDate = fechaInicio || new Date().toISOString().split('T')[0];
+  const table = [];
+  let saldo = principal;
+  for (let i = 1; i <= totalPeriods; i++) {
+    const saldoInicial = saldo;
+    const interes = Math.round(saldo * ratePerPeriod * 100) / 100;
+    const capital = i === totalPeriods ? saldo : 0;
+    table.push({
+      numero: i,
+      fechaPago: calculatePaymentDate(startDate, i, frecuencia),
+      cuota: Math.round((interes + capital) * 100) / 100,
+      capital: Math.round(capital * 100) / 100,
+      interes,
+      saldoInicial: Math.round(saldoInicial * 100) / 100,
+      saldoFinal: Math.max(0, Math.round((saldo - capital) * 100) / 100),
+    });
+    saldo = Math.max(0, saldo - capital);
+  }
+  return table;
+}
+
 export function calculateLoanSummary(principal, annualRate, months, paidMonths = 0, saldoPendiente = null, frecuencia = 'mensual', fechaInicio = null, cuotaMensual = null) {
   const table = generateAmortizationTable(principal, annualRate, months, frecuencia, fechaInicio, cuotaMensual);
   const periodsPerMonth = getPeriodsPerMonth(frecuencia);

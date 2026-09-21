@@ -53,6 +53,8 @@ namespace PréstamoPlus.API.Controllers
         {
             try
             {
+                if (!await HasVerifiedEmailAsync(request.Email, "tenant-registration", cancellationToken))
+                    return BadRequest(new { message = "Debes verificar el correo de trabajo antes de crear la empresa." });
                 var result = await _tenantRegistration.RegisterAsync(request, cancellationToken);
                 return Created(string.Empty, result);
             }
@@ -61,6 +63,81 @@ namespace PréstamoPlus.API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("email-verification/request")]
+        [AllowAnonymous]
+        [EnableRateLimiting("tenant-registration")]
+        public async Task<IActionResult> RequestEmailVerification([FromBody] EmailVerificationRequest request, CancellationToken cancellationToken)
+        {
+            var email = request.Email.Trim().ToLowerInvariant();
+            var purpose = request.Purpose.Trim().ToLowerInvariant();
+            if (!IsEmailVerificationPurpose(purpose) || string.IsNullOrWhiteSpace(email))
+                return BadRequest(new { message = "Indica un correo válido." });
+            if (!_notifications.EmailEnabled)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "La verificación por correo no está disponible todavía. Configura el servicio de correo para continuar." });
+
+            var now = DateTime.UtcNow;
+            var previous = await _db.EmailVerificationCodes
+                .Where(x => x.Email == email && x.Purpose == purpose && x.VerifiedAt == null)
+                .ToListAsync(cancellationToken);
+            _db.EmailVerificationCodes.RemoveRange(previous);
+
+            var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+            var verification = new EmailVerificationCode
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                Purpose = purpose,
+                CodeHash = HashVerificationCode(email, purpose, code),
+                CreatedAt = now,
+                ExpiresAt = now.AddMinutes(15)
+            };
+            _db.EmailVerificationCodes.Add(verification);
+            await _db.SaveChangesAsync(cancellationToken);
+            await _notifications.SendEmailAsync(email, "Verifica tu correo de PréstamoPlus",
+                $"<p>Tu código de verificación es:</p><p style=\"font-size:28px;font-weight:700;letter-spacing:6px\">{code}</p><p>El código vence en 15 minutos.</p>");
+            return Ok(new { message = "Código enviado. Revisa tu correo." });
+        }
+
+        [HttpPost("email-verification/confirm")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmEmailVerification([FromBody] EmailVerificationConfirmRequest request, CancellationToken cancellationToken)
+        {
+            var email = request.Email.Trim().ToLowerInvariant();
+            var purpose = request.Purpose.Trim().ToLowerInvariant();
+            var code = request.Code.Trim();
+            if (!IsEmailVerificationPurpose(purpose) || string.IsNullOrWhiteSpace(email) || code.Length != 6 || !code.All(char.IsDigit))
+                return BadRequest(new { message = "Indica un correo y un código de 6 dígitos válidos." });
+            var verification = await _db.EmailVerificationCodes
+                .Where(x => x.Email == email && x.Purpose == purpose && x.VerifiedAt == null && x.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (verification is null || verification.FailedAttempts >= 5)
+                return BadRequest(new { message = "El código es inválido o expiró." });
+            if (!CryptographicOperations.FixedTimeEquals(
+                    Convert.FromHexString(verification.CodeHash),
+                    Convert.FromHexString(HashVerificationCode(email, purpose, code))))
+            {
+                verification.FailedAttempts++;
+                await _db.SaveChangesAsync(cancellationToken);
+                return BadRequest(new { message = "El código de verificación no es correcto." });
+            }
+            verification.VerifiedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            return Ok(new { verified = true, message = "Correo verificado correctamente." });
+        }
+
+        private async Task<bool> HasVerifiedEmailAsync(string? email, string purpose, CancellationToken cancellationToken)
+        {
+            var normalized = email?.Trim().ToLowerInvariant();
+            return !string.IsNullOrWhiteSpace(normalized) && await _db.EmailVerificationCodes.AnyAsync(
+                x => x.Email == normalized && x.Purpose == purpose && x.VerifiedAt != null && x.VerifiedAt > DateTime.UtcNow.AddMinutes(-30), cancellationToken);
+        }
+
+        private static bool IsEmailVerificationPurpose(string purpose) => purpose is "tenant-registration" or "client-registration";
+
+        private static string HashVerificationCode(string email, string purpose, string code) =>
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{email}:{purpose}:{code}"))).ToLowerInvariant();
 
         [HttpPost("login")]
         [AllowAnonymous]

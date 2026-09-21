@@ -22,4 +22,16 @@ export const solicitudService = {
     });
     return data;
   },
+  getDecision: async (id, token) => {
+    const { data } = await api.get(`/api/solicituds/decision/${id}`, { params: { token } });
+    return data;
+  },
+  decideAsClient: async (id, token, approved) => {
+    const { data } = await api.post(`/api/solicituds/decision/${id}`, { token, approved });
+    return data;
+  },
+  resendCounterOffer: async (id, terms = {}) => {
+    const { data } = await api.post(`/api/solicituds/${id}/reenviar-contraoferta`, terms);
+    return data;
+  },
 };

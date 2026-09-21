@@ -135,7 +135,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                 loan.SaldoPendiente = nuevoSaldo;
 
                 var quedanMoras = unpaidLateFees.Any(lf => !lf.Pagado && lf.Monto > 0);
-                var quedanCuotasVencidas = loanInstallments.Any(i =>
+                var quedanCuotasVencidas = loan.Modalidad != ModalidadPrestamo.InteresPeriodicoSobreSaldo && loanInstallments.Any(i =>
                     i.Estado != EstadoInstallment.Pagado && i.FechaPago.Date < DateTime.UtcNow.Date);
 
                 if (nuevoSaldo <= 0 && !quedanMoras)

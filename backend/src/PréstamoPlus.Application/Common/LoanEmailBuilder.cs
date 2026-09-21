@@ -27,11 +27,12 @@ namespace PréstamoPlus.Application.Common
             Loan loan,
             Client client,
             Installment installment,
-            string portalUrl)
+            string portalUrl,
+            string reminderTiming = "próximamente")
         {
-            var subject = $"Recordatorio: tu pago vence el {installment.FechaPago:dd/MM/yyyy}";
+            var subject = $"Recordatorio de pago: vence {reminderTiming}";
             var content = $"""
-                <p style="line-height:1.6;margin:0 0 20px;">Tu próxima cuota vence el <strong>{installment.FechaPago:dd/MM/yyyy}</strong>.</p>
+                <p style="line-height:1.6;margin:0 0 20px;">Te recordamos amablemente que tu próxima cuota vence <strong>{reminderTiming}</strong>, el <strong>{installment.FechaPago:dd/MM/yyyy}</strong>.</p>
                 {Details(
                     ("Número de cuota", installment.Numero.ToString()),
                     ("Monto de la cuota", Money(installment.Cuota)),

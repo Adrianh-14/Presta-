@@ -7,6 +7,8 @@ export default function StatusBadge({ status }) {
     inactivo: 'bg-surface-fill text-slate-400',
     pendiente: 'bg-warning-50 text-warning-700',
     procesando: 'bg-accent-50 text-accent-600',
+    contraoferta: 'bg-blue-50 text-blue-700 border border-blue-200',
+    cliente_aprobada: 'bg-success-50 text-success-700 border border-success-200',
     aprobada: 'bg-success-50 text-success-700',
     rechazada: 'bg-danger-50 text-danger-700',
     negada: 'bg-danger-50 text-danger-700',
@@ -19,7 +21,7 @@ export default function StatusBadge({ status }) {
     enrevision: 'bg-accent-50 text-accent-600',
   };
 
-  const solicitudMap = { 0: 'pendiente', 1: 'procesando', 2: 'aprobada', 3: 'negada', 4: 'cancelado' };
+  const solicitudMap = { 0: 'pendiente', 1: 'procesando', 2: 'aprobada', 3: 'negada', 4: 'cancelado', 5: 'contraoferta', 6: 'cliente_aprobada' };
   const prestamoMap = { 0: 'activo', 1: 'vencido', 2: 'mora', 3: 'pagado', 4: 'cancelado', 5: 'legal' };
   const mapped = solicitudMap[raw] || prestamoMap[raw] || s;
 

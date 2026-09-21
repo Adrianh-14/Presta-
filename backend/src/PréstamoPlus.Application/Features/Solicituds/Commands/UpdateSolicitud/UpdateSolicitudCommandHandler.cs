@@ -38,8 +38,10 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
 
             var validTransition = loanApp.Estado switch
             {
-                EstadoSolicitud.Pendiente => request.Estado is EstadoSolicitud.Procesando or EstadoSolicitud.Cancelada or EstadoSolicitud.Rechazada,
-                EstadoSolicitud.Procesando => request.Estado is EstadoSolicitud.Aprobada or EstadoSolicitud.Rechazada,
+                EstadoSolicitud.Pendiente => request.Estado is EstadoSolicitud.Procesando or EstadoSolicitud.Contraoferta or EstadoSolicitud.Cancelada or EstadoSolicitud.Rechazada,
+                EstadoSolicitud.Procesando => request.Estado is EstadoSolicitud.Contraoferta or EstadoSolicitud.ClienteAprobada or EstadoSolicitud.Aprobada or EstadoSolicitud.Rechazada,
+                EstadoSolicitud.Contraoferta => request.Estado is EstadoSolicitud.Contraoferta or EstadoSolicitud.ClienteAprobada or EstadoSolicitud.Rechazada,
+                EstadoSolicitud.ClienteAprobada => request.Estado is EstadoSolicitud.Aprobada or EstadoSolicitud.Rechazada,
                 _ => false
             };
 
@@ -47,13 +49,13 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 throw new InvalidOperationException(
                     $"No se puede cambiar una solicitud de {loanApp.Estado} a {request.Estado}.");
 
-            if (request.Estado == EstadoSolicitud.Procesando && string.IsNullOrWhiteSpace(loanApp.VerificationMedia?.GarantiaPath))
+            if (request.Estado == EstadoSolicitud.Contraoferta && string.IsNullOrWhiteSpace(loanApp.VerificationMedia?.GarantiaPath))
                 throw new InvalidOperationException("No se puede procesar la solicitud hasta que el cliente suba la garantía.");
 
             // Una contraoferta se guarda al pasar a procesamiento para que el cliente
             // reciba por correo exactamente las condiciones propuestas por la empresa.
-            if (request.Estado == EstadoSolicitud.Procesando &&
-                (request.MontoAprobado.HasValue || request.TasaInteresMensual.HasValue || request.GastoCierrePorcentaje.HasValue || request.Plazo.HasValue || request.UnidadPlazo.HasValue || request.FrecuenciaPago.HasValue))
+            if (request.Estado == EstadoSolicitud.Contraoferta &&
+                (request.MontoAprobado.HasValue || request.TasaInteresMensual.HasValue || request.GastoCierrePorcentaje.HasValue || request.Plazo.HasValue || request.UnidadPlazo.HasValue || request.FrecuenciaPago.HasValue || request.FrecuenciaInteres.HasValue || request.Modalidad.HasValue || request.RecalcularInteresSobreSaldo.HasValue))
             {
                 var monto = request.MontoAprobado ?? loanApp.MontoSolicitado;
                 var tasa = request.TasaInteresMensual ?? loanApp.TasaInteresMensual;
@@ -61,35 +63,47 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 var plazo = request.Plazo ?? loanApp.Plazo;
                 var unidad = request.UnidadPlazo ?? loanApp.UnidadPlazo;
                 var frecuencia = request.FrecuenciaPago ?? loanApp.FrecuenciaPago;
+                var frecuenciaInteres = request.FrecuenciaInteres ?? loanApp.FrecuenciaInteres;
+                var modalidad = request.Modalidad ?? loanApp.Modalidad;
                 if (monto <= 0 || tasa < 0 || cierre < 0 || plazo <= 0 || !Enum.IsDefined(frecuencia))
                     throw new ArgumentException("Las condiciones propuestas no son válidas.");
                 var plazoMeses = unidad == UnidadPlazo.Anios ? plazo * 12 : plazo;
                 var principal = monto + monto * cierre / 100;
-                var (cuota, totalPagar, totalIntereses) = CalculateLoan(principal, tasa, plazoMeses, frecuencia);
+                var (cuota, totalPagar, totalIntereses) = CalculateLoan(principal, tasa, plazoMeses, frecuencia, frecuenciaInteres, modalidad);
                 loanApp.MontoSolicitado = monto;
                 loanApp.TasaInteresMensual = tasa;
                 loanApp.GastoCierrePorcentaje = cierre;
                 loanApp.Plazo = plazo;
                 loanApp.UnidadPlazo = unidad;
                 loanApp.FrecuenciaPago = frecuencia;
+                loanApp.FrecuenciaInteres = frecuenciaInteres;
+                loanApp.Modalidad = modalidad;
+                if (request.RecalcularInteresSobreSaldo.HasValue)
+                    loanApp.RecalcularInteresSobreSaldo = request.RecalcularInteresSobreSaldo.Value;
                 loanApp.CuotaEstimada = cuota;
                 loanApp.TotalPagar = totalPagar;
                 loanApp.TotalIntereses = totalIntereses;
+                loanApp.ClientDecisionToken = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+                loanApp.ClientDecisionAt = null;
             }
 
             if (request.Estado == EstadoSolicitud.Aprobada)
             {
                 if (!request.ActorUserId.HasValue)
                     throw new UnauthorizedAccessException("La aprobación requiere un usuario autenticado.");
-                if (loanApp.FirstApprovedBy is null)
+                var formalizingAfterClientApproval = loanApp.Estado == EstadoSolicitud.ClienteAprobada;
+                if (!formalizingAfterClientApproval && loanApp.FirstApprovedBy is null)
                 {
                     loanApp.FirstApprovedBy = request.ActorUserId;
                     loanApp.FirstApprovedAt = DateTime.UtcNow;
                     await _unitOfWork.SaveChangesAsync(cancellationToken);
                     return null;
                 }
-                loanApp.SecondApprovedBy = request.ActorUserId;
-                loanApp.SecondApprovedAt = DateTime.UtcNow;
+                if (!formalizingAfterClientApproval)
+                {
+                    loanApp.SecondApprovedBy = request.ActorUserId;
+                    loanApp.SecondApprovedAt = DateTime.UtcNow;
+                }
             }
 
             loanApp.Estado = request.Estado;
@@ -103,6 +117,8 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 var plazo = request.Plazo ?? loanApp.Plazo;
                 var unidadPlazo = request.UnidadPlazo ?? loanApp.UnidadPlazo;
                 var frecuencia = request.FrecuenciaPago ?? loanApp.FrecuenciaPago;
+                var frecuenciaInteres = request.FrecuenciaInteres ?? loanApp.FrecuenciaInteres;
+                var modalidad = request.Modalidad ?? loanApp.Modalidad;
 
                 if (montoAprobado <= 0)
                     throw new ArgumentException("El monto aprobado debe ser mayor que cero.");
@@ -124,7 +140,9 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                     principal,
                     tasaMensual,
                     plazoMeses,
-                    frecuencia);
+                    frecuencia,
+                    frecuenciaInteres,
+                    modalidad);
 
                 loanApp.MontoSolicitado = montoAprobado;
                 loanApp.TasaInteresMensual = tasaMensual;
@@ -132,6 +150,9 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 loanApp.Plazo = plazo;
                 loanApp.UnidadPlazo = unidadPlazo;
                 loanApp.FrecuenciaPago = frecuencia;
+                loanApp.FrecuenciaInteres = frecuenciaInteres;
+                if (request.RecalcularInteresSobreSaldo.HasValue)
+                    loanApp.RecalcularInteresSobreSaldo = request.RecalcularInteresSobreSaldo.Value;
                 loanApp.CuotaEstimada = cuota;
                 loanApp.TotalPagar = totalPagar;
                 loanApp.TotalIntereses = totalIntereses;
@@ -144,13 +165,16 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                     LoanApplicationId = loanApp.Id,
                     MontoOriginal = principal,
                     Moneda = loanApp.Moneda,
-                    TasaInteresAnual = tasaMensual * 12,
+                    TasaInteresAnual = InterestRateCalculator.AnnualRate(tasaMensual, frecuenciaInteres),
                     PlazoMeses = plazoMeses,
                     CuotaMensual = cuota,
                     SaldoPendiente = principal,
                     Estado = EstadoPrestamo.Activo,
                     Tipo = loanApp.TipoPrestamo,
                     FrecuenciaPago = frecuencia,
+                    FrecuenciaInteres = frecuenciaInteres,
+                    Modalidad = modalidad,
+                    RecalcularInteresSobreSaldo = loanApp.RecalcularInteresSobreSaldo,
                     FechaInicio = fechaInicio,
                     FechaVencimiento = fechaInicio.AddMonths(plazoMeses),
                     CreatedAt = DateTime.UtcNow
@@ -220,13 +244,16 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                 TasaInteresMensual = loanApp.TasaInteresMensual,
                 Plazo = loanApp.Plazo,
                 UnidadPlazo = loanApp.UnidadPlazo,
-                FrecuenciaPago = loanApp.FrecuenciaPago,
+                    FrecuenciaPago = loanApp.FrecuenciaPago,
+                    FrecuenciaInteres = loanApp.FrecuenciaInteres,
+                    RecalcularInteresSobreSaldo = loanApp.RecalcularInteresSobreSaldo,
                 GastoCierrePorcentaje = loanApp.GastoCierrePorcentaje,
                 CuotaEstimada = loanApp.CuotaEstimada,
                 TotalPagar = loanApp.TotalPagar,
                 TotalIntereses = loanApp.TotalIntereses,
                 Estado = loanApp.Estado,
                 TipoPrestamo = loanApp.TipoPrestamo,
+                Modalidad = loanApp.Modalidad,
                 FechaSolicitud = loanApp.FechaSolicitud,
                 Client = new ClientDto
                 {
@@ -287,15 +314,19 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
         {
             var periodsPerMonth = GetPeriodsPerMonth(loan.FrecuenciaPago);
             var totalPayments = loan.PlazoMeses * periodsPerMonth;
-            var monthlyRateDecimal = tasaMensual / 100;
-            var ratePerPeriod = monthlyRateDecimal / periodsPerMonth;
+            var ratePerPeriod = InterestRateCalculator.RatePerPaymentPeriod(tasaMensual, loan.FrecuenciaInteres, loan.FrecuenciaPago);
             var saldo = principal;
 
             for (int i = 1; i <= (int)totalPayments; i++)
             {
                 var interes = Math.Round(saldo * ratePerPeriod, 2);
-                var capital = Math.Round(cuotaPeriodo - interes, 2);
-                saldo -= capital;
+            var capital = loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo
+                ? (i < totalPayments ? 0m : Math.Round(saldo, 2))
+                : Math.Round(cuotaPeriodo - interes, 2);
+            var cuota = loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo && i == totalPayments
+                ? Math.Round(interes + capital, 2)
+                : cuotaPeriodo;
+            saldo -= capital;
 
                 var fechaPago = CalculatePaymentDate(firstPaymentDate, i - 1, loan.FrecuenciaPago);
 
@@ -307,7 +338,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                     FechaPago = fechaPago,
                     Capital = capital,
                     Interes = interes,
-                    Cuota = Math.Round(cuotaPeriodo, 2),
+                    Cuota = Math.Round(cuota, 2),
                     CapitalPagado = 0,
                     InteresPagado = 0,
                     MoraPagada = 0,
@@ -331,12 +362,19 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
             decimal principal,
             decimal tasaMensual,
             int plazoMeses,
-            FrecuenciaPago frecuencia)
+            FrecuenciaPago frecuencia, FrecuenciaInteres frecuenciaInteres, ModalidadPrestamo modalidad)
         {
             var periodsPerMonth = GetPeriodsPerMonth(frecuencia);
             var totalPeriods = plazoMeses * periodsPerMonth;
-            var ratePerPeriod = tasaMensual / 100 / periodsPerMonth;
+            var ratePerPeriod = InterestRateCalculator.RatePerPaymentPeriod(tasaMensual, frecuenciaInteres, frecuencia);
             decimal cuota;
+
+            if (modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo)
+            {
+                var interes = principal * ratePerPeriod;
+                var totalIntereses = Math.Round(interes, 2) * totalPeriods;
+                return (Math.Round(interes, 2), Math.Round(principal + totalIntereses, 2), Math.Round(totalIntereses, 2));
+            }
 
             if (ratePerPeriod <= 0)
             {

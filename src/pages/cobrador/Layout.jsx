@@ -20,7 +20,7 @@ export default function CollectorSidebar() {
     <aside className="w-full md:w-64 shrink-0 bg-white border-b md:border-b-0 md:border-r border-surface-border flex flex-col">
       <div className="p-6 border-b border-surface-border">
         <div className="flex items-center gap-2">
-          <img src="/branding/icono-prestamos-plus.svg" alt="Préstamos Plus" className="w-8 h-8 rounded-8 object-contain" />
+          <img src="/branding/icono-prestamos-plus.png" alt="Préstamos Plus" className="w-8 h-8 rounded-8 object-contain" />
           <div>
             <h1 className="text-lg font-bold text-navy-500 leading-tight">PréstamoPlus</h1>
             <p className="text-xs text-slate-400">Cobrador</p>

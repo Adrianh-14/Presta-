@@ -8,6 +8,7 @@ import { printAmortization } from '../../utils/printAmortization';
 import CurrencyFlag from '../CurrencyFlag';
 import { getCurrency, formatCurrency } from '../../data/currencies';
 import { useAuth } from '../../context/AuthContext';
+import { isInterestPeriodic, modalidadLabel } from '../../utils/loanModalidad';
 
 export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLegal }) {
   const { user } = useAuth();
@@ -45,10 +46,17 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
   const diasMora = Number(paymentSummary?.diasMora || 0);
   const tieneMora = moraPendiente > 0;
   const totalPagado = paymentSummary?.totalPagado ?? 0;
+  const totalAPagar = Number(paymentSummary?.totalAPagar ?? (totalPagado + saldo + moraPendiente));
+  const isInterestOnly = isInterestPeriodic(loan?.modalidad);
+  const totalPeriods = Math.max(1, Math.round(plazo * periodsPerMonth));
+  const periodsPaid = Number(paymentSummary?.totalPagos || 0);
+  const periodsRemaining = Math.max(1, totalPeriods - periodsPaid);
+  const capitalRecommended = saldo / periodsRemaining;
+  const recommendedPayment = capitalRecommended + cuotaBase + moraPendiente;
 
   const tabs = [
     { id: 'resumen', label: 'Resumen' },
-    { id: 'amortizacion', label: 'Tabla Amortización' },
+    { id: 'amortizacion', label: isInterestPeriodic(loan?.modalidad) ? 'Calendario de intereses' : 'Tabla Amortización' },
     { id: 'pagos', label: `Pagos (${payments.length})` },
   ];
 
@@ -139,31 +147,60 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
           {activeTab === 'resumen' && (
             <div className="space-y-6">
               <div className="gradient-hero rounded-xl p-6 text-white">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div>
+                <div className="grid grid-cols-2 gap-5 md:grid-cols-3">
+                  <div className="min-w-0">
                     <p className="text-navy-200 text-xs">Monto Original</p>
-                    <p className="text-2xl font-bold">{formatCurrency(monto, currency.code)}</p>
+                    <p className="text-xl font-bold tracking-tight sm:text-2xl">{formatCurrency(monto, currency.code)}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-navy-200 text-xs">{tieneMora ? 'Cuota con mora' : `Cuota ${freqLabel}`}</p>
-                    <p className="text-2xl font-bold">{formatCurrency(cuotaConMora, currency.code)}</p>
+                    <p className="text-xl font-bold tracking-tight sm:text-2xl">{formatCurrency(cuotaConMora, currency.code)}</p>
                     <p className="text-navy-300 text-xs">{tieneMora ? `Base $${cuotaBase.toLocaleString()} + mora` : `$${(cuotaBase * periodsPerMonth).toLocaleString()}/mes`}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-navy-200 text-xs">Saldo Pendiente</p>
-                    <p className="text-2xl font-bold">{formatCurrency(saldo, currency.code)}</p>
+                    <p className="text-xl font-bold tracking-tight sm:text-2xl">{formatCurrency(saldo, currency.code)}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-navy-200 text-xs">Total Pagado</p>
-                    <p className="text-2xl font-bold">{formatCurrency(totalPagado, currency.code)}</p>
+                    <p className="text-xl font-bold tracking-tight sm:text-2xl">{formatCurrency(totalPagado, currency.code)}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
+                    <p className="text-navy-200 text-xs">Total a Pagar</p>
+                    <p className="text-xl font-bold tracking-tight sm:text-2xl">{formatCurrency(totalAPagar, currency.code)}</p>
+                    <p className="text-navy-300 text-xs">Capital + intereses + mora</p>
+                  </div>
+                  <div className="min-w-0">
                     <p className="text-navy-200 text-xs">Frecuencia</p>
-                    <p className="text-2xl font-bold">{freqLabel}</p>
+                    <p className="text-xl font-bold tracking-tight sm:text-2xl">{freqLabel}</p>
                     <p className="text-navy-300 text-xs">{periodsPerMonth} pagos/mes</p>
                   </div>
                 </div>
               </div>
+
+              {isInterestOnly && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Recomendación para el cliente</p>
+                      <h3 className="mt-1 text-lg font-bold text-blue-950">Pago sugerido para saldar en el plazo</h3>
+                      <p className="mt-1 max-w-2xl text-sm text-blue-800">
+                        No es una cuota obligatoria ni cambia el préstamo. Incluye la cuota de interés,
+                        un abono de capital repartido entre los períodos restantes y la mora pendiente.
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-white px-4 py-3 text-right shadow-sm">
+                      <p className="text-xs font-medium text-blue-600">Por {freqLabel.toLowerCase()}</p>
+                      <p className="text-2xl font-extrabold text-blue-900">{formatCurrency(recommendedPayment, currency.code)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-2 border-t border-blue-200 pt-3 text-sm text-blue-900 sm:grid-cols-3">
+                    <span>Interés: <strong>{formatCurrency(cuotaBase, currency.code)}</strong></span>
+                    <span>Capital sugerido: <strong>{formatCurrency(capitalRecommended, currency.code)}</strong></span>
+                    <span>Períodos restantes: <strong>{periodsRemaining}</strong></span>
+                  </div>
+                </div>
+              )}
 
               {tieneMora && (
                 <div className="border border-red-200 bg-red-50 p-4">
@@ -240,6 +277,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                     <div className="flex justify-between"><span className="text-gray-600">Mora Pagada</span><span className="text-red-600">${moraPagada.toLocaleString()}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Mora Pendiente</span><span className="font-semibold text-red-600">${moraPendiente.toLocaleString()}</span></div>
                     <div className="border-t border-gray-200 pt-2"><div className="flex justify-between font-semibold"><span>Total Pagado</span><span>${totalPagado.toLocaleString()}</span></div></div>
+                    <div className="flex justify-between font-semibold text-navy-800"><span>Total a Pagar</span><span>{formatCurrency(totalAPagar, currency.code)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Saldo Capital</span><span className="font-bold text-red-600">${saldo.toLocaleString()}</span></div>
                   </div>
                 </div>
@@ -249,6 +287,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                     <div className="flex justify-between"><span className="text-gray-600">Tasa Anual</span><span className="font-medium">{tasa}%</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Tasa Mensual</span><span className="font-medium">{(tasa / 12).toFixed(2)}%</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Plazo</span><span className="font-medium">{plazo} meses ({plazo * periodsPerMonth} pagos)</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Modalidad</span><span className="font-medium">{modalidadLabel(loan.modalidad)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Inicio</span><span className="font-medium">{loan.fechaInicio ? new Date(loan.fechaInicio).toLocaleDateString() : '-'}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Vencimiento</span><span className="font-medium">{loan.fechaVencimiento ? new Date(loan.fechaVencimiento).toLocaleDateString() : '-'}</span></div>
                   </div>
@@ -294,7 +333,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
           {activeTab === 'amortizacion' && (
             <div>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-gray-900">Tabla de Amortización</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{isInterestPeriodic(loan?.modalidad) ? 'Calendario de intereses y capital' : 'Tabla de Amortización'}</h3>
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-gray-500">${cuotaPorPeriodo.toLocaleString()}/{freqLabel.toLowerCase()}</p>
                   <button

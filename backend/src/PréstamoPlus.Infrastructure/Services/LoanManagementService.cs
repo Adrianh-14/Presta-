@@ -41,6 +41,7 @@ namespace PréstamoPlus.Infrastructure.Services
                     using var scope = _scopeFactory.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+                    await ExtendInterestOnlyLoans(dbContext, stoppingToken);
                     await UpdateOverdueLoanStatuses(dbContext, stoppingToken);
                     var moraNotifications = await CalculateLateFees(dbContext, stoppingToken);
 
@@ -81,13 +82,84 @@ namespace PréstamoPlus.Infrastructure.Services
         private async Task UpdateOverdueLoanStatuses(ApplicationDbContext dbContext, CancellationToken cancellationToken)
         {
             var loansToUpdate = await dbContext.Loans
-                .Where(l => l.Estado == EstadoPrestamo.Activo && l.FechaVencimiento < DateTime.UtcNow)
+                .Where(l => l.Estado == EstadoPrestamo.Activo &&
+                            l.Modalidad != ModalidadPrestamo.InteresPeriodicoSobreSaldo &&
+                            l.FechaVencimiento < DateTime.UtcNow)
                 .ToListAsync(cancellationToken);
 
             foreach (var loan in loansToUpdate)
             {
                 loan.Estado = EstadoPrestamo.Vencido;
                 _logger.LogInformation("Préstamo {LoanId} marcado como Vencido", loan.Id);
+            }
+        }
+
+        /// <summary>
+        /// Interest-only loans do not expire when the initial term ends. The
+        /// term is the initial schedule; while capital remains, create the next
+        /// interest-only periods so payments can continue indefinitely.
+        /// </summary>
+        private async Task ExtendInterestOnlyLoans(ApplicationDbContext dbContext, CancellationToken cancellationToken)
+        {
+            var loans = await dbContext.Loans
+                .Where(l => l.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo &&
+                            l.Estado != EstadoPrestamo.Pagado &&
+                            l.Estado != EstadoPrestamo.Cancelado &&
+                            l.Estado != EstadoPrestamo.Legal &&
+                            l.SaldoPendiente > 0)
+                .Include(l => l.Installments)
+                .ToListAsync(cancellationToken);
+
+            var now = DateTime.UtcNow;
+            foreach (var loan in loans)
+            {
+                var last = loan.Installments.OrderBy(i => i.Numero).LastOrDefault();
+                if (last is null) continue;
+
+                var periodsPerMonth = loan.FrecuenciaPago switch
+                {
+                    FrecuenciaPago.Diaria => 30m,
+                    FrecuenciaPago.Semanal => 4m,
+                    FrecuenciaPago.Quincenal => 2m,
+                    _ => 1m
+                };
+                var ratePerPeriod = (loan.TasaInteresAnual / 100m / 12m) / periodsPerMonth;
+                var nextNumber = last.Numero + 1;
+                var nextDate = last.FechaPago;
+
+                while (nextDate.Date <= now.Date)
+                {
+                    nextDate = loan.FrecuenciaPago switch
+                    {
+                        FrecuenciaPago.Diaria => nextDate.AddDays(1),
+                        FrecuenciaPago.Semanal => nextDate.AddDays(7),
+                        FrecuenciaPago.Quincenal => nextDate.AddDays(15),
+                        _ => nextDate.AddMonths(1)
+                    };
+
+                    if (nextDate.Date > now.Date) break;
+
+                    var interestBase = loan.RecalcularInteresSobreSaldo ? loan.SaldoPendiente : loan.MontoOriginal;
+                    var interest = Math.Round(interestBase * ratePerPeriod, 2);
+                    var continuation = new Installment
+                    {
+                        Id = Guid.NewGuid(),
+                        LoanId = loan.Id,
+                        Numero = nextNumber++,
+                        FechaPago = nextDate,
+                        Capital = 0m,
+                        Interes = interest,
+                        Cuota = interest,
+                        CapitalPagado = 0m,
+                        InteresPagado = 0m,
+                        MoraPagada = 0m,
+                        Estado = EstadoInstallment.Pendiente
+                    };
+                    dbContext.Installments.Add(continuation);
+                    loan.Installments.Add(continuation);
+                    loan.FechaVencimiento = nextDate;
+                    _logger.LogInformation("Período de interés extendido para préstamo {LoanId}: {FechaPago}", loan.Id, nextDate);
+                }
             }
         }
 
@@ -109,7 +181,12 @@ namespace PréstamoPlus.Infrastructure.Services
                     .FirstOrDefaultAsync(tc => tc.TenantId == loan.TenantId, cancellationToken);
 
                 var tasaDiaria = tenantConfig?.TasaMoraDiaria ?? 0.05m;
-                var diasGracia = tenantConfig?.DiasGracia ?? 3;
+                // En préstamos diarios la mora comienza al día siguiente de la
+                // fecha de vencimiento. La gracia configurable se conserva para
+                // préstamos semanales, quincenales y mensuales.
+                var diasGracia = loan.FrecuenciaPago == FrecuenciaPago.Diaria
+                    ? 0
+                    : tenantConfig?.DiasGracia ?? 3;
 
                 var overdueInstallments = await dbContext.Installments
                     .Where(i => i.LoanId == loan.Id &&
@@ -122,15 +199,17 @@ namespace PréstamoPlus.Infrastructure.Services
                 var moraDiaria = 0m;
                 foreach (var inst in overdueInstallments)
                 {
-                    var capitalPendiente = inst.Capital - inst.CapitalPagado;
-                    if (capitalPendiente <= 0) continue;
+                    var saldoVencido = loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo
+                        ? inst.Interes - inst.InteresPagado
+                        : inst.Capital - inst.CapitalPagado;
+                    if (saldoVencido <= 0) continue;
 
                     var diasAtraso = (DateTime.UtcNow - inst.FechaPago.AddDays(diasGracia)).Days;
                     if (diasAtraso <= 0) continue;
 
                     // Cada registro representa exclusivamente la mora generada ese dia.
                     // Multiplicar nuevamente por los dias de atraso duplicaria cargos previos.
-                    moraDiaria += capitalPendiente * tasaDiaria;
+                    moraDiaria += saldoVencido * tasaDiaria;
 
                     if (inst.Estado == EstadoInstallment.Pendiente)
                         inst.Estado = EstadoInstallment.Vencido;
