@@ -19,8 +19,9 @@ export default function PortalPayments() {
 
   return (
     <div className="max-w-5xl">
-      <h1 className="text-2xl font-bold text-navy-500 mb-1">Historial de pagos</h1>
-      <p className="text-slate-500 text-sm mb-8">Selecciona un préstamo para consultar sus cuotas y pagos registrados.</p>
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Portal de cliente</p>
+      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Historial de pagos</h1>
+      <p className="mt-1 mb-8 text-sm text-slate-500">Selecciona un préstamo para consultar sus cuotas y pagos registrados.</p>
       {loans.length === 0 ? (
         <div className="bg-white rounded-16 border border-surface-border p-10 text-center shadow-card">
           <CreditCard className="mx-auto text-slate-300 mb-3" size={42} />
@@ -29,7 +30,7 @@ export default function PortalPayments() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {loans.map((loan) => (
-            <button key={loan.id} onClick={() => navigate(`/portal/prestamo/${loan.id}`)} className="text-left bg-white rounded-12 border border-surface-border p-5 shadow-card hover:shadow-card-lg transition-shadow">
+            <button key={loan.id} onClick={() => navigate(`/portal/prestamo/${loan.id}`)} className="text-left rounded-16 border border-surface-border bg-white p-5 shadow-card transition-shadow hover:-translate-y-0.5 hover:shadow-card-lg">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div><p className="text-xs uppercase tracking-wider text-slate-400">Préstamo</p><p className="text-lg font-bold text-navy-500">${Number(loan.monto || 0).toLocaleString()}</p></div>
                 <ArrowRight className="text-accent-500" size={18} />

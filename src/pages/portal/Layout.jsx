@@ -30,13 +30,13 @@ export default function PortalLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-canvas flex flex-col md:flex-row">
-      <aside className="w-full md:w-60 shrink-0 bg-white border-b md:border-b-0 md:border-r border-surface-border flex flex-col">
+    <div className="portal-shell min-h-screen bg-surface-canvas flex flex-col md:flex-row">
+      <aside className="hidden w-full shrink-0 flex-col border-b border-surface-border bg-white md:flex md:w-60 md:border-b-0 md:border-r">
         <div className="p-5 border-b border-surface-border">
           <div className="flex items-center gap-2">
-            <img src="/branding/icono-prestamos-plus.png" alt="PréstamoPlus" className="w-8 h-8 rounded-8 bg-navy-900 p-1 object-contain" />
+            <img src="/branding/icono-bonexa.svg" alt="Bonexa" className="w-8 h-8 rounded-8 bg-navy-900 p-1 object-contain" />
             <div>
-              <h1 className="text-sm font-bold text-navy-500 leading-tight">PréstamoPlus</h1>
+              <h1 className="text-sm font-bold text-navy-500 leading-tight">Bonexa</h1>
               <p className="text-[11px] text-slate-400">Portal de Cliente</p>
             </div>
           </div>
@@ -84,7 +84,20 @@ export default function PortalLayout() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 min-w-0 w-full p-4 sm:p-6 md:p-8 overflow-auto">
+      <header className="flex items-center justify-between border-b border-surface-border bg-white px-5 py-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <img src="/branding/icono-bonexa.svg" alt="Bonexa" className="h-8 w-8 rounded-8 bg-navy-900 p-1 object-contain" />
+          <div><p className="text-sm font-bold leading-tight text-navy-500">Bonexa</p><p className="text-[11px] text-slate-400">Portal de cliente</p></div>
+        </div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-50 text-navy-500"><User size={17} /></div>
+      </header>
+      <nav aria-label="Navegación móvil del portal" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-surface-border bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(7,27,46,0.08)] backdrop-blur md:hidden">
+        {navItems.map((item) => {
+          const active = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
+          return <button key={item.to} type="button" onClick={() => navigate(item.to)} aria-current={active ? 'page' : undefined} className={`flex min-w-0 flex-col items-center gap-1 rounded-8 px-1 py-1.5 text-[10px] font-semibold ${active ? 'text-accent-600' : 'text-slate-400'}`}><item.icon size={18} /><span className="truncate">{item.label === 'Pagar con QR' ? 'Pagar' : item.label === 'Ubicación para visita' ? 'Más' : item.label === 'Historial' ? 'Pagos' : 'Inicio'}</span></button>;
+        })}
+      </nav>
+      <main className="min-w-0 w-full flex-1 overflow-auto p-4 pb-24 sm:p-6 md:p-8 md:pb-8">
         <Outlet />
       </main>
     </div>

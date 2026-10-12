@@ -64,30 +64,36 @@ export default function VisitForm() {
 
   if (success) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="mx-auto flex min-h-[24rem] max-w-xl items-center justify-center rounded-16 border border-surface-border bg-white p-8 shadow-card">
         <div className="text-center">
           <div className="w-16 h-16 bg-success-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <Send className="text-success-500" size={32} />
           </div>
-          <h2 className="text-xl font-bold text-navy-500 mb-2">Visita Registrada</h2>
-          <p className="text-slate-400 text-sm">Redirigiendo...</p>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-success-700">Cobranza registrada</p>
+          <h2 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-navy-800">Visita registrada</h2>
+          <p className="mt-2 text-sm text-slate-500">Redirigiendo a tus cobros...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto">
-      <button onClick={() => navigate('/cobrador/cobros')} className="flex items-center gap-2 text-sm text-slate-500 hover:text-navy-500 mb-6 transition-colors">
+    <div className="mx-auto max-w-xl">
+      <button onClick={() => navigate('/cobrador/cobros')} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-navy-800">
         <ArrowLeft size={16} /> Volver a mis cobros
       </button>
 
-      <div className="bg-white rounded-16 shadow-card-lg p-6">
-        <h2 className="text-lg font-bold text-navy-500 mb-6">Registrar Visita</h2>
+      <div className="rounded-16 border border-surface-border bg-white p-6 shadow-card sm:p-8">
+        <div className="mb-7">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Cobranza de campo</p>
+          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-navy-800">Registrar visita</h1>
+          <p className="mt-1 text-sm text-slate-500">Documenta el resultado y deja la cartera al día.</p>
+          {assignment && <p className="mt-3 rounded-8 bg-surface-canvas px-3 py-2 text-xs font-semibold text-navy-700">{assignment.cliente || assignment.nombreCliente || 'Cliente asignado'}</p>}
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-2">Resultado de la visita</label>
+            <label className="mb-2 block text-xs font-bold uppercase tracking-[0.08em] text-navy-700">Resultado de la visita</label>
             <div className="grid grid-cols-2 gap-2">
               {visitTypes.map((vt) => (
                 <button key={vt.value} type="button" onClick={() => setTipo(vt.value)}
@@ -100,9 +106,9 @@ export default function VisitForm() {
 
           {(tipo === 'cobroExitoso' || tipo === 'cobroParcial') && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1">Monto Recibido</label>
+            <label className="mb-1 block text-xs font-bold uppercase tracking-[0.08em] text-navy-700">Monto recibido</label>
               <input type="number" step="0.01" min="0" value={monto} onChange={(e) => setMonto(e.target.value)}
-                className="w-full px-4 py-2.5 bg-surface-fill rounded-8 text-sm border border-surface-border focus:border-accent-500 outline-none" placeholder="0.00" />
+                className="auth-input w-full px-4 py-2.5 text-sm" placeholder="0.00" />
               {assignment && <div className="flex flex-wrap gap-2 mt-2">
                 <button type="button" onClick={() => setMonto(Number(assignment.cuotaMensual || 0).toFixed(2))}
                   className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500">
@@ -117,9 +123,9 @@ export default function VisitForm() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">Notas</label>
+            <label className="mb-1 block text-xs font-bold uppercase tracking-[0.08em] text-navy-700">Notas</label>
             <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={3}
-              className="w-full px-4 py-2.5 bg-surface-fill rounded-8 text-sm border border-surface-border focus:border-accent-500 outline-none resize-none"
+              className="auth-input w-full resize-none px-4 py-2.5 text-sm"
               placeholder="Detalles de la visita..." />
           </div>
 
@@ -129,8 +135,8 @@ export default function VisitForm() {
           </div>
 
           <button type="submit" disabled={!tipo || submitting}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-sm font-semibold rounded-8 shadow-btn hover:shadow-card-lg transition-all disabled:opacity-50">
-            <Send size={16} /> {submitting ? 'Enviando...' : 'Registrar Visita'}
+            className="w-full flex items-center justify-center gap-2 rounded-8 bg-navy-800 px-4 py-3 text-sm font-bold text-white shadow-btn transition-all hover:bg-navy-700 disabled:opacity-50">
+            <Send size={16} /> {submitting ? 'Enviando...' : 'Registrar visita'}
           </button>
         </form>
       </div>

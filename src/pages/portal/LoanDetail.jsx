@@ -92,7 +92,7 @@ export default function PortalLoanDetail() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8">
-        <div className="bg-white rounded-12 border border-surface-border shadow-card p-6">
+        <div className="rounded-16 border border-surface-border bg-white p-6 shadow-card">
           <h3 className="text-base font-bold text-navy-500 mb-4">{isInterestPeriodic(loan?.modalidad) ? 'Calendario de intereses y capital' : 'Tabla de Amortización'}</h3>
           <div className="overflow-x-auto max-h-[420px] scrollbar-thin">
             <table className="w-full text-sm">
@@ -133,7 +133,7 @@ export default function PortalLoanDetail() {
           </div>
         </div>
 
-        <div className="bg-white rounded-12 border border-surface-border shadow-card p-6">
+        <div className="rounded-16 border border-surface-border bg-white p-6 shadow-card">
           <h3 className="text-base font-bold text-navy-500 mb-4">Historial de Pagos</h3>
           {payments.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-12">No hay pagos registrados</p>

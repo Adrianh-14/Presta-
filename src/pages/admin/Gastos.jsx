@@ -59,10 +59,11 @@ export default function Gastos() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-navy-500">Gastos Operacionales</h1>
-          <p className="text-slate-400 text-sm">Control de gastos y rentabilidad</p>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Finanzas</p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Gastos operacionales</h1>
+          <p className="mt-1 text-sm text-slate-500">Control de gastos y rentabilidad</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-accent-600 text-white rounded-8 text-sm font-semibold shadow-btn hover:shadow-card-lg transition-all">
           <Plus size={16} /> Nuevo Gasto
@@ -77,7 +78,7 @@ export default function Gastos() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-12 p-6 shadow-card border border-surface-border lg:col-span-2">
+        <div className="rounded-16 border border-surface-border bg-white p-6 shadow-card lg:col-span-2">
           <h3 className="text-base font-bold text-navy-500 mb-4">Ingresos vs Gastos (6 meses)</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={summary?.tendenciaMensual || []}>
@@ -91,7 +92,7 @@ export default function Gastos() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-12 p-6 shadow-card border border-surface-border">
+        <div className="rounded-16 border border-surface-border bg-white p-6 shadow-card">
           <h3 className="text-base font-bold text-navy-500 mb-4">Gastos por Categoría</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -114,7 +115,7 @@ export default function Gastos() {
         </div>
       </div>
 
-      <div className="bg-white rounded-12 shadow-card border border-surface-border">
+      <div className="rounded-16 border border-surface-border bg-white shadow-card">
         <div className="p-6 border-b border-surface-border flex items-center justify-between">
           <h3 className="text-base font-bold text-navy-500">Historial de Gastos</h3>
           <div className="flex gap-3">

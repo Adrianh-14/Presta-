@@ -78,7 +78,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
     && fechaPrimerPago >= fechaInicio;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="admin-modal fixed inset-0 z-50 flex items-center justify-center bg-navy-950/55 p-4" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">

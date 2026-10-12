@@ -7,7 +7,7 @@ export default function StatusBadge({ status }) {
     inactivo: 'bg-surface-fill text-slate-400',
     pendiente: 'bg-warning-50 text-warning-700',
     procesando: 'bg-accent-50 text-accent-600',
-    contraoferta: 'bg-blue-50 text-blue-700 border border-blue-200',
+    contraoferta: 'bg-accent-50 text-accent-700 border border-accent-100',
     cliente_aprobada: 'bg-success-50 text-success-700 border border-success-200',
     aprobada: 'bg-success-50 text-success-700',
     rechazada: 'bg-danger-50 text-danger-700',
@@ -16,7 +16,7 @@ export default function StatusBadge({ status }) {
     mora: 'bg-warning-50 text-warning-700 border border-warning-200',
     pagado: 'bg-navy-50 text-navy-500',
     cancelado: 'bg-surface-fill text-slate-400',
-    legal: 'bg-red-100 text-red-900 border border-red-300',
+    legal: 'bg-danger-50 text-danger-600 border border-danger-200',
     en_revision: 'bg-accent-50 text-accent-600',
     enrevision: 'bg-accent-50 text-accent-600',
   };

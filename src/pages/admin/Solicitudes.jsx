@@ -80,7 +80,7 @@ export default function Solicitudes() {
       const pngUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = pngUrl;
-      link.download = `prestamoplus-qr-solicitudes-${tenantId.slice(0, 8)}.png`;
+      link.download = `bonexa-qr-solicitudes-${tenantId.slice(0, 8)}.png`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -184,17 +184,46 @@ export default function Solicitudes() {
   return (
     <div>
       {actionError && <div role="alert" className="fixed left-1/2 top-5 z-[80] w-[min(92vw,680px)] -translate-x-1/2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 shadow-xl">{actionError}</div>}
+      <div className="md:hidden">
+        <div className="mb-6">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Bandeja de entrada</p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Solicitudes</h1>
+          <p className="mt-1 text-sm text-slate-500">{solicitudes.filter((s) => estadoToLabel(s.estado) === 'pendiente').length} pendientes de revisión</p>
+        </div>
+        <div className="mb-5 flex gap-2">
+          <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="min-w-0 flex-1 rounded-8 border border-surface-border bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-100">
+            <option value="todos">Todos</option><option value="pendiente">Pendientes</option><option value="procesando">Procesando</option><option value="aprobada">Aprobadas</option><option value="negada">Negadas</option>
+          </select>
+          <button type="button" onClick={handleCopyLink} className="inline-flex shrink-0 items-center gap-1.5 rounded-8 bg-navy-900 px-3 py-2.5 text-xs font-bold text-white"><Link2 size={14} /> {linkCopied ? 'Copiado' : 'Copiar link'}</button>
+        </div>
+        {tenantId && (
+          <section className="mb-5 rounded-16 border border-surface-border bg-white p-5 shadow-card">
+            <div className="flex items-center gap-2 text-accent-600"><QrCode size={18} /><span className="text-[10px] font-bold uppercase tracking-[0.14em]">QR estático de solicitudes</span></div>
+            <h2 className="mt-2 text-lg font-bold text-navy-500">Un código para tus redes y sucursales</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Permanente y exclusivo de tu empresa. Las solicitudes llegan a tu panel.</p>
+            <div ref={qrRef} className="mt-4 flex items-center gap-4 rounded-12 bg-surface-canvas p-3">
+              <QRCodeSVG value={solicitudUrl} size={112} level="H" includeMargin fgColor="#071b2e" />
+              <div className="min-w-0 flex-1"><p className="truncate text-[10px] text-slate-500">{solicitudUrl}</p><button type="button" onClick={handleCopyLink} className="mt-3 inline-flex items-center gap-1.5 rounded-8 border border-navy-900 px-3 py-2 text-xs font-bold text-navy-900"><Copy size={13} /> Copiar enlace</button><button type="button" onClick={handleDownloadQr} className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-accent-600"><Download size={13} /> Descargar PNG</button></div>
+            </div>
+          </section>
+        )}
+        {filtered.length === 0 ? <div className="rounded-16 border border-dashed border-surface-border bg-white px-5 py-12 text-center shadow-card"><p className="text-sm text-slate-500">No hay solicitudes para este filtro.</p></div> : (
+          <div className="space-y-3">{filtered.map((s) => <button key={s.id} type="button" onClick={() => setSelectedSolicitud(s)} className="w-full rounded-16 border border-surface-border bg-white p-4 text-left shadow-card"><div className="flex items-start justify-between gap-3"><span className="min-w-0"><span className="block truncate font-bold text-navy-800">{s.client?.nombre || 'Solicitud'}</span><span className="mt-1 block truncate text-xs text-slate-500">{s.client?.email || 'Sin correo'}</span></span><StatusBadge status={s.estado} /></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><span><span className="block text-slate-500">Monto solicitado</span><span className="mt-1 flex items-center gap-1 font-bold text-navy-800"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.montoSolicitado, String(s.moneda || 'DOP').toUpperCase())}</span></span><span><span className="block text-slate-500">Cuota estimada</span><span className="mt-1 flex items-center gap-1 font-bold text-navy-800"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.cuotaEstimada, String(s.moneda || 'DOP').toUpperCase())}</span></span></div></button>)}</div>
+        )}
+      </div>
+      <div className="hidden md:block">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Solicitudes</h1>
-        <p className="text-gray-500">{solicitudes.filter((s) => estadoToLabel(s.estado) === 'pendiente').length} pendientes de revisión</p>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Bandeja de entrada</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Solicitudes</h1>
+        <p className="mt-1 text-sm text-slate-500">{solicitudes.filter((s) => estadoToLabel(s.estado) === 'pendiente').length} pendientes de revisión</p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-16 border border-surface-border bg-white p-4 shadow-card">
         <div className="flex gap-4">
           <select
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+            className="rounded-8 border border-surface-border bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
           >
             <option value="todos">Todos</option>
             <option value="pendiente">Pendientes</option>
@@ -205,7 +234,7 @@ export default function Solicitudes() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button onClick={handleCopyLink} className="flex items-center gap-2 px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors text-sm font-medium">
+          <button onClick={handleCopyLink} className="flex items-center gap-2 rounded-8 bg-navy-900 px-4 py-2.5 text-sm font-bold text-white shadow-btn transition hover:bg-navy-800">
             {linkCopied ? <Check size={16} /> : <Link2 size={16} />}
             {linkCopied ? 'Link copiado' : 'Copiar link de solicitud'}
           </button>
@@ -239,7 +268,7 @@ export default function Solicitudes() {
           <div
             key={s.id}
             onClick={() => setSelectedSolicitud(s)}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer rounded-16 border border-surface-border bg-white p-6 shadow-card transition-shadow hover:-translate-y-0.5 hover:shadow-card-lg"
           >
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -273,6 +302,7 @@ export default function Solicitudes() {
             </div>
           </div>
         ))}
+      </div>
       </div>
 
       {selectedSolicitud && (

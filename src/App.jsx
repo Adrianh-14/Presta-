@@ -37,8 +37,9 @@ import PortalPayments from './pages/portal/Payments';
 import Mora from './pages/admin/Mora';
 import Configuracion from './pages/admin/Configuracion';
 import LocationConsent from './pages/portal/LocationConsent';
+import Landing from './pages/Landing';
 
-const MOBILE_PORTAL_KEY = 'prestamoplus.mobilePortal';
+const MOBILE_PORTAL_KEY = 'bonexa.mobilePortal';
 const isNativeApp = () => Capacitor.isNativePlatform();
 
 function ProtectedRoute({ children }) {
@@ -70,8 +71,8 @@ function ClientRoute({ children }) {
 }
 
 function CollectorRoute({ children }) {
-  if (isNativeApp() && localStorage.getItem(MOBILE_PORTAL_KEY) === 'client') return <Navigate to="/portal/login" replace />;
   const { isAuthenticated, user } = useAuth();
+  if (isNativeApp() && localStorage.getItem(MOBILE_PORTAL_KEY) === 'client') return <Navigate to="/portal/login" replace />;
   if (!isAuthenticated) return <Navigate to="/cobrador/login" replace />;
   if (user?.role !== 'Cobrador') return <Navigate to="/login" replace />;
   return children;
@@ -98,7 +99,7 @@ function ClientLoginRoute({ children }) {
 
 function EntryGate() {
   const choice = localStorage.getItem(MOBILE_PORTAL_KEY);
-  if (!isNativeApp()) return <Navigate to="/admin" replace />;
+  if (!isNativeApp()) return <Landing />;
   if (!choice) return <EntryChoice onSelect={(value) => { localStorage.setItem(MOBILE_PORTAL_KEY, value); window.location.replace(value === 'client' ? '/portal/login' : '/login'); }} />;
   return <Navigate to={choice === 'client' ? '/portal/login' : '/login'} replace />;
 }

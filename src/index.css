@@ -4,20 +4,20 @@
 
 @layer base {
   body {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background-color: #f8f9fb;
-    color: #0a0a0a;
+    font-family: 'DM Sans', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: #f3f6f9;
+    color: #071b2e;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3 {
-    font-family: 'Manrope', 'Inter', system-ui, sans-serif;
-    letter-spacing: -0.025em;
+    font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+    letter-spacing: -0.035em;
   }
 
   :focus-visible {
-    outline: 3px solid #006bff;
+    outline: 3px solid #ffb547;
     outline-offset: 2px;
   }
 
@@ -33,18 +33,46 @@
 
 @layer components {
   .gradient-hero {
-    background-color: #071b2e;
+    background: #071b2e;
   }
   .financial-grid {
     background-color: #071b2e;
     background-image:
-      linear-gradient(rgba(110, 180, 255, 0.07) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(110, 180, 255, 0.07) 1px, transparent 1px);
+      linear-gradient(rgba(255, 181, 71, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 181, 71, 0.08) 1px, transparent 1px);
     background-size: 42px 42px;
   }
 
   .auth-input {
-    @apply w-full rounded-8 border border-surface-border bg-white px-4 py-3 text-sm text-navy-800 outline-none transition placeholder:text-slate-300 focus:border-accent-500 focus:ring-4 focus:ring-accent-100;
+    @apply w-full rounded-8 border border-surface-border bg-white px-4 py-3 text-sm text-navy-800 outline-none transition placeholder:text-slate-300 focus:border-warning-500 focus:ring-4 focus:ring-warning-50;
+  }
+
+  .login-logo-drop {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: bonexa-logo-drop .8s cubic-bezier(.3, 1.7, .5, 1) both;
+  }
+
+  .login-logo-float {
+    filter: drop-shadow(0 24px 40px #0009);
+  }
+
+  .login-logo-plus {
+    animation: bonexa-logo-pulse 1.6s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .login-pulse {
+    animation: bonexa-logo-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes bonexa-logo-drop {
+    from { transform: translateY(-70px); opacity: 0; }
+  }
+
+  @keyframes bonexa-logo-pulse {
+    50% { opacity: .3; }
   }
 
   .field-invalid .auth-input {
@@ -54,8 +82,225 @@
   .financial-card {
     @apply rounded-16 border border-surface-border bg-white shadow-card;
   }
+
+  /* The public application is a long, legacy form; keep its behavior intact
+     while bringing every field into the Bonexa component language. */
+  .public-application input:not([type='checkbox']):not([type='radio']),
+  .public-application select,
+  .public-application textarea {
+    @apply rounded-8 border-surface-border bg-white text-navy-800 outline-none transition;
+  }
+
+  .public-application input:not([type='checkbox']):not([type='radio']):focus,
+  .public-application select:focus,
+  .public-application textarea:focus {
+    @apply border-warning-500 ring-4 ring-warning-50;
+  }
+
+  .public-application label {
+    color: #36516e;
+  }
+
+  .public-application button:not([class*='bg-']) {
+    @apply rounded-8 font-semibold transition;
+  }
+
+  .public-application input[type='checkbox'],
+  .public-application input[type='radio'] {
+    accent-color: #ffb547;
+  }
+
+  .public-application .bg-gray-50 {
+    background-color: #f3f6f9;
+  }
+  .public-application .bg-gray-100 { background-color: #e8eef4; }
+  .public-application .bg-gray-200 { background-color: #dce5ee; }
+
+  .public-application .text-gray-900 {
+    color: #071b2e;
+  }
+
+  .public-application .text-gray-700,
+  .public-application .text-gray-600,
+  .public-application .text-gray-500 {
+    color: #526b84;
+  }
+
+  .public-application .text-gray-900 { color: #071b2e; }
+  .public-application .text-gray-400 { color: #8094a8; }
+  .public-application .border-gray-100,
+  .public-application .border-gray-200,
+  .public-application .border-gray-300 { border-color: #dce5ee; }
+  .public-application .rounded-lg,
+  .public-application .rounded-xl,
+  .public-application .rounded-2xl { border-radius: 0.75rem; }
+  .public-application .bg-blue-50 { background-color: #eef4ff; }
+  .public-application .bg-blue-100 { background-color: #dce9ff; }
+  .public-application .bg-blue-600 { background-color: #071b2e; }
+  .public-application .text-blue-600,
+  .public-application .text-blue-700,
+  .public-application .text-blue-800 { color: #1b4b9b; }
+  .public-application .border-blue-200 { border-color: #b9d0f5; }
+  .public-application .bg-green-50 { background-color: #eefaf3; }
+  .public-application .bg-green-100 { background-color: #d9f5e6; }
+  .public-application .bg-green-500 { background-color: #059669; }
+  .public-application .bg-green-600 { background-color: #0b6b3a; }
+  .public-application .text-green-600,
+  .public-application .text-green-700,
+  .public-application .text-green-800 { color: #0b6b3a; }
+  .public-application .border-green-200 { border-color: #b7e7ca; }
+  .public-application .bg-red-50 { background-color: #fff1f0; }
+  .public-application .bg-red-100 { background-color: #fadbd8; }
+  .public-application .bg-red-500,
+  .public-application .bg-red-600 { background-color: #a12b2b; }
+  .public-application .text-red-500,
+  .public-application .text-red-600,
+  .public-application .text-red-700 { color: #a12b2b; }
+  .public-application .border-red-200 { border-color: #f2b8b5; }
+  .public-application .bg-amber-50 { background-color: #fff7e8; }
+  .public-application .bg-amber-100 { background-color: #ffe8c2; }
+  .public-application .text-amber-600,
+  .public-application .text-amber-700 { color: #a96000; }
+
+  .admin-shell input:not([type='checkbox']):not([type='radio']),
+  .admin-shell select,
+  .admin-shell textarea {
+    @apply rounded-8 border-surface-border bg-white text-navy-800 outline-none transition;
+  }
+
+  .admin-shell input:not([type='checkbox']):not([type='radio']):focus,
+  .admin-shell select:focus,
+  .admin-shell textarea:focus {
+    @apply border-warning-500 ring-4 ring-warning-50;
+  }
+
+  .admin-shell .text-gray-900 { color: #071b2e; }
+  .admin-shell .text-gray-700,
+  .admin-shell .text-gray-600,
+  .admin-shell .text-gray-500 { color: #526b84; }
+  .admin-shell .bg-gray-50 { background-color: #f3f6f9; }
+  .admin-shell .border-gray-100,
+  .admin-shell .border-gray-200,
+  .admin-shell .border-gray-300 { border-color: #dce5ee; }
+  .admin-shell .rounded-lg,
+  .admin-shell .rounded-xl,
+  .admin-shell .rounded-2xl { border-radius: 0.75rem; }
+  .admin-shell .bg-gray-900,
+  .admin-shell .bg-blue-600 { background-color: #071b2e; }
+  .admin-shell .bg-green-600 { background-color: #0b6b3a; }
+  .admin-shell .bg-red-600 { background-color: #a12b2b; }
+  .admin-shell .text-blue-600 { color: #b36b00; }
+  .admin-shell .text-green-600 { color: #0b6b3a; }
+  .admin-shell .text-red-600 { color: #a12b2b; }
+  .admin-shell .hover\:bg-blue-700:hover { background-color: #0f2d47; }
+  .admin-shell .hover\:bg-green-700:hover { background-color: #07552e; }
+  .admin-shell .hover\:bg-red-700:hover { background-color: #7e2020; }
+
+  /* Translate legacy detail dialogs into the Bonexa component language. */
+  .admin-shell .admin-modal .bg-gray-50 { background-color: #f3f6f9; }
+  .admin-shell .admin-modal .bg-gray-100 { background-color: #e8eef4; }
+  .admin-shell .admin-modal .bg-gray-200 { background-color: #dce5ee; }
+  .admin-shell .admin-modal .border-gray-100,
+  .admin-shell .admin-modal .border-gray-200,
+  .admin-shell .admin-modal .border-gray-300 { border-color: #dce5ee; }
+  .admin-shell .admin-modal .text-gray-900 { color: #071b2e; }
+  .admin-shell .admin-modal .text-gray-700,
+  .admin-shell .admin-modal .text-gray-600,
+  .admin-shell .admin-modal .text-gray-500 { color: #526b84; }
+  .admin-shell .admin-modal .text-gray-400 { color: #8094a8; }
+  .admin-shell .admin-modal .bg-green-100 { background-color: #d9f5e6; }
+  .admin-shell .admin-modal .text-green-600,
+  .admin-shell .admin-modal .text-green-700 { color: #0b6b3a; }
+  .admin-shell .admin-modal .bg-red-50,
+  .admin-shell .admin-modal .bg-red-100 { background-color: #fadbd8; }
+  .admin-shell .admin-modal .text-red-600,
+  .admin-shell .admin-modal .text-red-700,
+  .admin-shell .admin-modal .text-red-900 { color: #a12b2b; }
+  .admin-shell .admin-modal .bg-blue-50 { background-color: #dce9ff; }
+  .admin-shell .admin-modal .text-blue-600,
+  .admin-shell .admin-modal .text-blue-700,
+  .admin-shell .admin-modal .text-blue-800,
+  .admin-shell .admin-modal .text-blue-900,
+  .admin-shell .admin-modal .text-blue-950 { color: #1b4b9b; }
+  .admin-shell .admin-modal .border-blue-200 { border-color: #b9d0f5; }
+  .admin-shell .admin-modal .border-red-200 { border-color: #f2b8b5; }
+  .admin-shell .admin-modal .border-green-200 { border-color: #b7e7ca; }
+  .admin-shell .admin-modal .rounded-2xl,
+  .admin-shell .admin-modal .rounded-xl,
+  .admin-shell .admin-modal .rounded-lg { border-radius: 1rem; }
+  .admin-shell .admin-modal .shadow-2xl { box-shadow: 0 24px 70px rgba(7, 27, 46, 0.24); }
+
+  /* Portal and collector legacy states use the same semantic palette as the
+     Bonexa admin surfaces, including validation and payment feedback. */
+  .portal-shell .text-gray-900,
+  .collector-shell .text-gray-900 { color: #071b2e; }
+  .portal-shell .text-gray-700,
+  .portal-shell .text-gray-600,
+  .portal-shell .text-gray-500,
+  .collector-shell .text-gray-700,
+  .collector-shell .text-gray-600,
+  .collector-shell .text-gray-500 { color: #526b84; }
+  .portal-shell .bg-gray-50,
+  .collector-shell .bg-gray-50 { background-color: #f3f6f9; }
+  .portal-shell .border-gray-100,
+  .portal-shell .border-gray-200,
+  .portal-shell .border-gray-300,
+  .collector-shell .border-gray-100,
+  .collector-shell .border-gray-200,
+  .collector-shell .border-gray-300 { border-color: #dce5ee; }
+  .portal-shell .rounded-lg,
+  .portal-shell .rounded-xl,
+  .portal-shell .rounded-2xl,
+  .collector-shell .rounded-lg,
+  .collector-shell .rounded-xl,
+  .collector-shell .rounded-2xl { border-radius: 0.75rem; }
+  .portal-shell .bg-green-50,
+  .collector-shell .bg-green-50 { background-color: #eefaf3; }
+  .portal-shell .bg-green-100,
+  .collector-shell .bg-green-100 { background-color: #d9f5e6; }
+  .portal-shell .text-green-500,
+  .portal-shell .text-green-600,
+  .portal-shell .text-green-700,
+  .collector-shell .text-green-500,
+  .collector-shell .text-green-600,
+  .collector-shell .text-green-700 { color: #0b6b3a; }
+  .portal-shell .border-green-200,
+  .collector-shell .border-green-200 { border-color: #b7e7ca; }
+  .portal-shell .bg-red-50,
+  .collector-shell .bg-red-50 { background-color: #fff1f0; }
+  .portal-shell .bg-red-100,
+  .collector-shell .bg-red-100 { background-color: #fadbd8; }
+  .portal-shell .text-red-500,
+  .portal-shell .text-red-600,
+  .portal-shell .text-red-700,
+  .collector-shell .text-red-500,
+  .collector-shell .text-red-600,
+  .collector-shell .text-red-700 { color: #a12b2b; }
+  .portal-shell .border-red-200,
+  .collector-shell .border-red-200 { border-color: #f2b8b5; }
+  .portal-shell .hover\:bg-red-50:hover,
+  .collector-shell .hover\:bg-red-50:hover { background-color: #fff1f0; }
+
+  .portal-shell input:not([type='checkbox']):not([type='radio']),
+  .portal-shell select,
+  .portal-shell textarea,
+  .collector-shell input:not([type='checkbox']):not([type='radio']),
+  .collector-shell select,
+  .collector-shell textarea {
+    @apply rounded-8 border-surface-border bg-white text-navy-800 outline-none transition;
+  }
+
+  .portal-shell input:not([type='checkbox']):not([type='radio']):focus,
+  .portal-shell select:focus,
+  .portal-shell textarea:focus,
+  .collector-shell input:not([type='checkbox']):not([type='radio']):focus,
+  .collector-shell select:focus,
+  .collector-shell textarea:focus {
+    @apply border-warning-500 ring-4 ring-warning-50;
+  }
+
   .gradient-accent {
-    background: linear-gradient(135deg, #006bff 0%, #0044a8 100%);
+    background: linear-gradient(135deg, #ffb547 0%, #d88718 100%);
   }
   .gradient-success {
     background: linear-gradient(135deg, #059669 0%, #047857 100%);

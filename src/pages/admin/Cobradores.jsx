@@ -83,10 +83,11 @@ export default function Cobradores() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-navy-500">Cobradores</h1>
-          <p className="text-slate-400 text-sm">Gestión de cobradores y asignaciones</p>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Equipo de campo</p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Cobradores</h1>
+          <p className="mt-1 text-sm text-slate-500">Gestión de cobradores y asignaciones</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-accent-600 text-white rounded-8 text-sm font-semibold shadow-btn hover:shadow-card-lg transition-all">
           <Plus size={16} /> Nuevo Cobrador
@@ -178,7 +179,7 @@ export default function Cobradores() {
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
+        <div className="admin-modal fixed inset-0 z-50 flex items-center justify-center bg-navy-950/55 p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-16 shadow-card-lg max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-surface-border">
               <h2 className="text-lg font-bold text-navy-500">Nuevo Cobrador</h2>

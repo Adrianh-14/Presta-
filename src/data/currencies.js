@@ -1,5 +1,5 @@
 /**
- * Catálogo de divisas soportadas por PréstamoPlus.
+ * Catálogo de divisas soportadas por Bonexa.
  *
  * `flag` es intencionalmente un emoji: funciona sin descargar imágenes,
  * también en móviles, y evita depender de un CDN externo para un selector

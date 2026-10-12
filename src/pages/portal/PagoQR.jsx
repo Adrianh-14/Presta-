@@ -64,7 +64,7 @@ export default function PagoQR() {
       stopScanner();
       window.location.assign(destination);
     } catch {
-      setScannerError('Ese código no pertenece a un cobro válido de PréstamoPlus. Solicita al cobrador que genere uno nuevo.');
+      setScannerError('Ese código no pertenece a un cobro válido de Bonexa. Solicita al cobrador que genere uno nuevo.');
     }
   };
 
@@ -125,7 +125,7 @@ export default function PagoQR() {
       })
       .catch(() => setError('QR no encontrado o inválido'))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [navigate, token]);
 
   useEffect(() => () => {
     if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current);
@@ -182,7 +182,7 @@ export default function PagoQR() {
           }
         } catch (scanError) {
           if (scanError?.message === 'invalid-qr') {
-            setScannerError('El QR detectado no corresponde a un cobro de PréstamoPlus.');
+            setScannerError('El QR detectado no corresponde a un cobro de Bonexa.');
           }
         }
         scanFrameRef.current = requestAnimationFrame(scan);
@@ -267,7 +267,7 @@ export default function PagoQR() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center">
+      <div className="min-h-screen bg-surface-canvas flex items-center justify-center">
         <Loader2 size={32} className="text-accent-500 animate-spin" />
       </div>
     );
@@ -275,7 +275,7 @@ export default function PagoQR() {
 
   if (!token && !info) {
     return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
         <div className="bg-white rounded-16 shadow-2xl p-5 sm:p-8 max-w-md w-full">
           <div className="text-center mb-6"><QrCodeIcon /><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent-600 mt-4">Pago presencial seguro</p><h2 className="text-2xl font-bold text-navy-700 mt-1">Escanear cobro</h2><p className="text-slate-500 text-sm mt-2">Apunta al QR temporal generado por tu cobrador.</p></div>
           <div className="rounded-16 border border-surface-border bg-navy-900 p-2.5 text-center mb-4 shadow-card overflow-hidden">
@@ -297,7 +297,7 @@ export default function PagoQR() {
 
   if (result) {
     return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
         <div className="bg-white rounded-16 shadow-2xl p-8 max-w-sm w-full text-center">
           <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
             <CheckCircle size={32} className="text-green-500" />
@@ -328,7 +328,7 @@ export default function PagoQR() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
       <div className="bg-white rounded-16 shadow-2xl p-8 max-w-sm w-full">
         <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-full bg-accent-50 flex items-center justify-center mx-auto mb-3">

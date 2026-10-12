@@ -76,7 +76,7 @@ export function printAmortization({ client, loan, rows, title = 'Tabla de amorti
     </head>
     <body>
       <header>
-        <div><div class="brand">${escapeHtml(companyName || 'PréstamoPlus')}</div><h1>${escapeHtml(title)}</h1></div>
+        <div><div class="brand">${escapeHtml(companyName || 'Bonexa')}</div><h1>${escapeHtml(title)}</h1></div>
         <div class="issued">Documento generado<br><strong>${escapeHtml(new Date().toLocaleString('es-DO'))}</strong></div>
       </header>
       <section class="grid">

@@ -157,13 +157,10 @@ export default function PortalLogin() {
         <div className="bg-white rounded-16 shadow-card-lg border border-surface-border overflow-hidden">
           <div className="h-1.5 bg-gradient-to-r from-navy-500 via-navy-400 to-accent-500" />
           <div className="p-8">
-            <div className="text-center mb-7">
-              <div className="w-14 h-14 bg-navy-50 rounded-16 flex items-center justify-center mx-auto mb-4">
-                {isCodeStep
-                  ? <KeyRound className="text-navy-500" size={27} />
-                  : <User className="text-navy-500" size={28} />}
-              </div>
-              <h1 className="text-xl font-bold text-navy-500">Portal de Cliente</h1>
+            <div className="mb-7 text-center">
+              <img src="/branding/icono-bonexa.svg" alt="Bonexa" className="mx-auto mb-4 h-14 w-14 rounded-16" />
+              <div className="mb-2 flex items-center justify-center gap-2 text-accent-600">{isCodeStep ? <KeyRound size={16} /> : <User size={16} />}<span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]">Portal de cliente</span></div>
+              <h1 className="font-display text-2xl font-extrabold text-navy-800">Consulta tu cartera</h1>
               <p className="text-slate-500 text-sm mt-1">
                 {isCodeStep
                   ? `Confirma el código enviado para la cédula ${maskedIdentifier}`

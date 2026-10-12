@@ -5,7 +5,7 @@ import api from '../../services/api';
 import CurrencyFlag from '../../components/CurrencyFlag';
 import { tenantService } from '../../services/tenantService';
 
-const STORAGE_KEY = 'prestamoplus.inversiones';
+const STORAGE_KEY = 'bonexa.inversiones';
 export default function Inversiones() {
   const [rows, setRows] = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } });
   const [form, setForm] = useState({ amount: '', currency: 'DOP', rate: '10', note: '' }); const [currencyOpen, setCurrencyOpen] = useState(false);

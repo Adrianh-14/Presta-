@@ -33,6 +33,32 @@ export default function PlatformDashboard() {
   const activeLoans = data.loans.filter((loan) => String(loan.estado).toLowerCase() === 'activo').length;
 
   return <div className="min-h-full pb-8">
+    <section className="flex min-h-[calc(100vh-5rem)] flex-col gap-3 px-0 pb-3 md:hidden">
+      <header className="rounded-16 bg-gradient-to-br from-navy-950 to-navy-800 p-5 text-white shadow-card-lg">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-warning-500">Control de plataforma</p>
+        <h1 className="mt-1 font-display text-[28px] font-extrabold leading-tight">Centro de mando</h1>
+        <p className="mt-1 text-[13px] text-white/75">Pulso de tus empresas.</p>
+      </header>
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          ['EMPRESAS ACTIVAS', data.overview?.empresasActivas ?? 0, `${data.overview?.totalEmpresas ?? 0} registradas`],
+          ['EN PRUEBA', data.overview?.enPrueba ?? 0, 'Onboarding'],
+          ['VENCIDAS', data.overview?.vencidas ?? 0, 'Requieren atención'],
+          ['SOLICITUDES', pending, 'Pendientes'],
+        ].map(([label, value, note]) => <div key={label} className="rounded-12 border border-surface-border bg-white p-3.5 shadow-card"><p className="text-[10px] font-bold tracking-[0.1em] text-slate-500">{label}</p><p className="mt-0.5 font-display text-2xl font-extrabold text-navy-900">{loading ? '…' : value}</p><p className="text-[11.5px] text-navy-900/60">{note}</p></div>)}
+      </div>
+      <div className="rounded-12 border border-surface-border bg-white px-4 py-1 shadow-card">
+        <div className="flex justify-between py-2 text-sm"><span className="text-navy-900/70">Ingreso mensual esperado</span><b className="text-navy-900">{money(financials.ingresoMensualEsperado)}</b></div>
+        <div className="flex justify-between border-t border-surface-border py-2 text-sm"><span className="text-navy-900/70">Cortesías activas</span><b className="text-navy-900">{financials.cortesiasActivas ?? 0}</b></div>
+        <div className="flex justify-between border-t border-surface-border py-2 text-sm"><span className="text-navy-900/70">Puntualidad de pago</span><b className="text-success-700">{financials.tasaPagoPuntual ?? 100}%</b></div>
+      </div>
+      <section className="rounded-16 bg-navy-900 p-4 text-white shadow-card">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-warning-500">Siguiente acción</p>
+        <div className="mt-2 flex flex-col gap-2"><button type="button" onClick={() => navigate('/admin/clientes')} className="flex items-center justify-between rounded-8 bg-navy-800 px-3.5 py-3 text-left text-sm font-bold">Ver clientes <ArrowUpRight size={16} className="text-warning-500" /></button><button type="button" onClick={() => navigate('/admin/solicitudes')} className="flex items-center justify-between rounded-8 bg-navy-800 px-3.5 py-3 text-left text-sm font-bold">Revisar solicitudes <ArrowUpRight size={16} className="text-warning-500" /></button></div>
+      </section>
+    </section>
+
+    <section className="hidden md:block">
     <header className="relative mb-8 overflow-hidden rounded-16 bg-navy-900 px-6 py-7 text-white shadow-card-lg sm:px-8 sm:py-9">
       <div className="absolute -right-24 -top-32 h-72 w-72 rounded-full bg-accent-500/20 blur-3xl" />
       <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -50,5 +76,6 @@ export default function PlatformDashboard() {
       <section className="rounded-16 border border-surface-border bg-white p-6 shadow-card sm:p-7"><div className="mb-6 flex items-start justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Operación</p><h2 className="mt-1 text-lg font-bold text-navy-500">Resumen financiero</h2></div><WalletCards className="text-accent-500" size={21} /></div><div className="grid gap-4 sm:grid-cols-3"><div className="rounded-12 bg-surface-fill p-4"><p className="text-xs text-slate-400">Capital disponible</p><p className="mt-2 text-xl font-bold text-navy-500">{money(stats.capitalDisponible ?? stats.disponible)}</p></div><div className="rounded-12 bg-success-50 p-4"><p className="text-xs text-success-700">Por cobrar</p><p className="mt-2 text-xl font-bold text-success-700">{money(stats.porCobrar)}</p></div><div className="rounded-12 bg-warning-50 p-4"><p className="text-xs text-warning-700">En cartera</p><p className="mt-2 text-xl font-bold text-warning-700">{stats.enCartera || 0}</p></div></div><div className="mt-6 rounded-12 border border-accent-100 bg-accent-50/40 p-4 text-sm text-slate-600">Los indicadores globales se alimentan de empresas, suscripciones y eventos auditables en tiempo real.</div></section>
       <section className="rounded-16 border border-surface-border bg-navy-800 p-6 text-white shadow-card sm:p-7"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent-200">Siguiente acción</p><h2 className="mt-2 text-lg font-bold">Administra la operación</h2><p className="mt-2 text-sm leading-6 text-navy-100">Accede a los módulos operativos mientras habilitamos la gestión global de planes y tenants.</p><div className="mt-6 space-y-2"><button onClick={() => navigate('/admin/clientes')} className="flex w-full items-center justify-between rounded-8 bg-white/10 px-4 py-3 text-left text-sm font-semibold transition hover:bg-white/15">Ver clientes <ArrowUpRight size={16} /></button><button onClick={() => navigate('/admin/solicitudes')} className="flex w-full items-center justify-between rounded-8 bg-white/10 px-4 py-3 text-left text-sm font-semibold transition hover:bg-white/15">Revisar solicitudes <ArrowUpRight size={16} /></button></div></section>
     </div>
+    </section>
   </div>;
 }

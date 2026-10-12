@@ -7,6 +7,7 @@ import { printAmortization } from '../../utils/printAmortization';
 import { useAuth } from '../../context/AuthContext';
 import { CURRENCY_CATALOG } from '../../data/currencies';
 import { tenantService } from '../../services/tenantService';
+import { QRCodeSVG } from 'qrcode.react';
 
 function formatCurrency(v, currency = 'DOP') { return new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(v); }
 function formatNumber(v) { return new Intl.NumberFormat('es-DO').format(Math.round(v)); }
@@ -173,8 +174,50 @@ export default function NuevoPrestamo() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-navy-500 mb-1">Nuevo Préstamo</h1>
-      <p className="text-slate-400 text-sm mb-8">El cliente se registra con QR y tú creas el préstamo</p>
+      <div className="md:hidden">
+        <div className="mb-6">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Colocación</p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Nuevo préstamo</h1>
+          <p className="mt-1 text-sm text-slate-500">El cliente se registra con QR y tú creas el préstamo.</p>
+        </div>
+        <div className="mb-6 grid grid-cols-3 gap-2 text-center">
+          {[['qr', '1', 'QR'], ['select', '2', 'Buscar cliente'], ['loan', '3', 'Crear préstamo']].map(([id, number, label]) => (
+            <button key={id} type="button" onClick={() => setStep(id)} className={`rounded-8 px-2 py-2 text-[11px] font-bold ${step === id ? 'bg-navy-500 text-white' : 'bg-surface-fill text-slate-400'}`}>
+              <span className="block font-mono text-[10px]">{number}</span>{label}
+            </button>
+          ))}
+        </div>
+        {step === 'qr' && (
+          <section className="rounded-16 border border-surface-border bg-white p-5 text-center shadow-card">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-50 text-accent-500"><QrCode size={25} /></div>
+            <h2 className="text-lg font-bold text-navy-500">Registro rápido por QR</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">El cliente escanea y llena solo sus datos. Tú creas el préstamo después.</p>
+            <div className="my-5 inline-block rounded-12 border border-surface-border bg-white p-3 shadow-sm"><QRCodeSVG value={qrUrl} size={176} level="H" includeMargin fgColor="#071b2e" aria-label="QR de registro" /></div>
+            <p className="mb-5 truncate rounded-8 bg-surface-canvas px-3 py-2 text-xs text-slate-500">bonexa.app/solicitud?tenant=…</p>
+            <div className="flex flex-col gap-2">
+              <button type="button" onClick={() => setStep('select')} className="inline-flex items-center justify-center gap-2 rounded-8 gradient-accent px-4 py-3 text-sm font-bold text-white shadow-btn">Ya se registró <ArrowRight size={16} /></button>
+              <button type="button" onClick={() => navigator.clipboard?.writeText(qrUrl)} className="rounded-8 border border-surface-border px-4 py-3 text-sm font-bold text-navy-500">Copiar enlace</button>
+            </div>
+          </section>
+        )}
+        {step === 'select' && (
+          <section className="rounded-16 border border-surface-border bg-white p-5 shadow-card">
+            <h2 className="text-lg font-bold text-navy-500">Buscar cliente</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Ingresa la cédula del cliente que acaba de registrarse.</p>
+            <input value={searchCedula} onChange={(e) => setSearchCedula(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchClient()} className="auth-input mt-5" placeholder="001-1234567-8" />
+            <button type="button" onClick={searchClient} disabled={searching || !searchCedula.trim()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-8 gradient-accent px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{searching ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />} Buscar</button>
+            {searchError && <p className="mt-3 rounded-8 bg-danger-50 px-3 py-2 text-sm text-danger-500">{searchError}</p>}
+            <button type="button" onClick={() => setStep('qr')} className="mt-5 text-sm font-semibold text-slate-500">← Volver al QR</button>
+          </section>
+        )}
+      </div>
+
+      <div className={step === 'loan' ? '' : 'hidden md:block'}>
+      <div className="mb-8">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Colocación</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Nuevo préstamo</h1>
+        <p className="mt-1 text-sm text-slate-500">Registra una operación con sus condiciones reales.</p>
+      </div>
 
       {/* Steps */}
       <div className="flex items-center gap-3 mb-8">
@@ -213,11 +256,7 @@ export default function NuevoPrestamo() {
             </p>
 
             <div className="bg-white inline-block p-4 rounded-12 border-2 border-surface-border shadow-card mb-6">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrUrl)}&bgcolor=ffffff&color=0b3558`}
-                alt="QR Registro"
-                className="w-48 h-48"
-              />
+              <QRCodeSVG value={qrUrl} size={220} level="H" includeMargin fgColor="#071b2e" aria-label="QR de registro" />
             </div>
 
             <p className="text-xs text-slate-400 mb-6 font-mono bg-surface-canvas inline-block px-3 py-1 rounded-full">
@@ -479,6 +518,7 @@ export default function NuevoPrestamo() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

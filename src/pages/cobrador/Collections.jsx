@@ -42,11 +42,12 @@ export default function Collections() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-navy-500">Mis Cobros</h1>
-        <p className="text-slate-400 text-sm">Préstamos asignados para cobranza</p>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Cobranza</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Cobros de hoy</h1>
+        <p className="mt-1 text-sm text-slate-500">Préstamos asignados para tu ruta de cobranza</p>
       </div>
 
-      <div className="bg-white rounded-12 shadow-card border border-surface-border mb-6">
+      <div className="mb-6 rounded-16 border border-surface-border bg-white shadow-card">
         <div className="p-4 border-b border-surface-border">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

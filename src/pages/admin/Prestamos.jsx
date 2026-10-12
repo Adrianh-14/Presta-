@@ -78,11 +78,12 @@ export default function Prestamos() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Cartera de Préstamos</h1>
-        <p className="text-gray-500">{prestamos.length} préstamos registrados</p>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-accent-600">Cartera</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Préstamos</h1>
+        <p className="mt-1 text-sm text-slate-500">{prestamos.length} préstamos registrados</p>
       </div>
 
-      <div className="flex gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-3 rounded-16 border border-surface-border bg-white p-4 shadow-card lg:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
@@ -90,13 +91,13 @@ export default function Prestamos() {
             placeholder="Buscar por cliente..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+            className="auth-input w-full pl-10"
           />
         </div>
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+          className="rounded-8 border border-surface-border bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
         >
           <option value="todos">Todos los estados</option>
           <option value="activo">Activos</option>
@@ -109,7 +110,7 @@ export default function Prestamos() {
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+          className="rounded-8 border border-surface-border bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-100"
         >
           <option value="todos">Todos los tipos</option>
           <option value="personal">Personal</option>

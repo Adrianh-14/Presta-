@@ -9,7 +9,7 @@ import { expenseService } from '../../services/expenseService';
 import { getCurrency } from '../../data/currencies';
 import CurrencyFlag from '../../components/CurrencyFlag';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+const COLORS = ['#071B2E', '#FFB547', '#9AA9B8', '#D9F5E6'];
 
 const freqLabel = { diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual' };
 const currencyMeta = { DOP: { flag: '🇩🇴', label: 'Pesos dominicanos' }, USD: { flag: '🇺🇸', label: 'Dólares estadounidenses' }, EUR: { flag: '🇪🇺', label: 'Euros' } };
@@ -76,30 +76,65 @@ export default function Dashboard() {
     mensual: 'text-danger-700',
   };
 
+  const mobileCurrency = getCurrency(stats?.monedasHabilitadas?.[0] || 'DOP');
+  const mobileCurrencyCode = stats?.monedasHabilitadas?.[0] || 'DOP';
+  const mobileCapital = stats?.capitalDisponiblePorMoneda?.[mobileCurrencyCode]
+    ?? stats?.capitalDisponible
+    ?? stats?.disponible
+    ?? 0;
+  const mobileMonths = loansByMonth.slice(-6);
+  const maxMonthlyLoans = Math.max(1, ...mobileMonths.map((item) => Number(item.cantidad || 0)));
+
   return (
     <div>
+      <section className="flex min-h-[calc(100vh-5rem)] flex-col gap-3 px-0 pb-3 md:hidden">
+        <div className="px-4 pt-1 sm:px-0">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-warning-700">Vista ejecutiva</p>
+          <h1 className="mt-0.5 font-display text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">Estado de cartera</h1>
+          <p className="text-[13.5px] text-navy-900/70">Capital, colocación y cobranza.</p>
+        </div>
+
+        <section className="rounded-16 bg-navy-900 p-5 text-surface-canvas shadow-card-lg">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-warning-500">Liquidez · Capital disponible</p>
+          <div className="mt-2 flex items-center gap-3"><CurrencyFlag currency={mobileCurrency} className="h-[22px] w-8" /><div><p className="text-xs text-white/70">{mobileCurrencyCode} · {mobileCurrency.name}</p><p className="font-display text-[28px] font-extrabold leading-tight">{formatMoney(mobileCapital, mobileCurrencyCode)}</p></div></div>
+          <p className="mt-2 text-[11px] text-white/55">Los saldos nunca se mezclan entre divisas.</p>
+        </section>
+
+        <div className="grid grid-cols-2 gap-3">
+          {[['EN CARTERA', stats?.enCartera || 0, 'préstamos'], ['INTERESES', `$${Number(financial?.totalIngresos || 0).toLocaleString()}`, ''], ['UTILIDAD NETA', `$${Number(financial?.utilidadNeta || 0).toLocaleString()}`, ''], ['MARGEN', `${financial?.margenPorcentaje || 0}%`, '']].map(([label, value, note]) => <div key={label} className="rounded-12 border border-surface-border bg-white p-3.5 shadow-card"><p className="text-[10px] font-bold tracking-[0.1em] text-slate-500">{label}</p><p className="mt-0.5 font-display text-2xl font-extrabold text-navy-900">{value}</p><p className="text-[11.5px] text-navy-900/60">{note}</p></div>)}
+        </div>
+
+        <section className="rounded-16 border border-surface-border bg-white p-4 shadow-card">
+          <p className="mb-1 font-bold text-navy-900">Préstamos por mes <span className="text-[11px] font-normal text-navy-900/55">· ejemplo</span></p>
+          <div className="flex h-28 items-end justify-between gap-2 pt-2">
+            {(mobileMonths.length ? mobileMonths : [{ mes: '—', cantidad: 0 }]).map((item) => <div key={item.mes} className="flex h-full flex-1 flex-col items-center justify-end gap-1"><div className="w-full max-w-8 rounded-t-6 bg-warning-500" style={{ height: `${Math.max(8, (Number(item.cantidad || 0) / maxMonthlyLoans) * 88)}px` }} /><span className="text-[10px] text-slate-500">{item.mes}</span></div>)}
+          </div>
+        </section>
+      </section>
+
+      <section className="hidden md:block">
       <div className="mb-8 flex flex-col gap-3 border-b border-surface-border pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-600">Vista ejecutiva</p><h1 className="mt-1 font-display text-3xl font-extrabold text-navy-800">Estado de cartera</h1><p className="mt-1 text-sm text-slate-500">Capital, colocación y cobranza en una sola lectura.</p></div>
         <div className="w-fit rounded-full border border-success-500/20 bg-success-50 px-3 py-1.5 text-xs font-semibold text-success-700">Operación sincronizada</div>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-6 sm:max-w-sm">
-        <KPICard title="Total en cartera" value={stats?.enCartera || 0} icon={Users} color="warning" />
+      <div className="mb-8 grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <div className="order-2 lg:order-1">
+          <section className="h-full rounded-16 bg-navy-900 p-6 text-white shadow-card sm:p-7">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-warning-500">Liquidez</p>
+            <h2 className="mt-1 font-display text-xl font-extrabold">Capital disponible por moneda</h2>
+            <p className="mt-1 text-xs text-slate-300">Los saldos se mantienen separados; nunca se mezclan entre divisas.</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {(stats?.monedasHabilitadas?.length ? stats.monedasHabilitadas : ['DOP']).map((currency) => {
+                const meta = getCurrency(currency);
+                const value = stats?.capitalDisponiblePorMoneda?.[currency] ?? (currency === 'DOP' ? (stats?.capitalDisponible ?? stats?.disponible ?? 0) : 0);
+                return <button type="button" key={currency} onClick={() => setSelectedCurrency(currency)} className="rounded-12 border border-white/10 bg-navy-800 p-4 text-left transition hover:-translate-y-0.5 hover:border-warning-500/60"><div className="flex items-center gap-2"><CurrencyFlag currency={meta} className="h-5 w-8" /><div><p className="text-xs font-semibold text-white">{currency} <span className="font-normal text-slate-400">· {meta.name}</span></p><p className="mt-1 font-display text-2xl font-extrabold text-white">{formatMoney(value, currency)}</p></div></div><p className="mt-3 text-[11px] font-semibold text-warning-500">Ver resumen en {currency} →</p></button>;
+              })}
+            </div>
+          </section>
+        </div>
+        <div className="order-1 lg:order-2"><KPICard title="Total en cartera" value={stats?.enCartera || 0} icon={Users} color="warning" /></div>
       </div>
-
-      <section className="mb-8 rounded-12 border border-surface-border bg-white p-6 shadow-card">
-        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent-600">Liquidez</p><h2 className="text-lg font-bold text-navy-500">Capital disponible por moneda</h2></div>
-          <p className="text-xs text-slate-400">Los saldos se mantienen separados; nunca se mezclan entre divisas.</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {(stats?.monedasHabilitadas?.length ? stats.monedasHabilitadas : ['DOP']).map((currency) => {
-            const catalogMeta = getCurrency(currency); const meta = catalogMeta;
-            const value = stats?.capitalDisponiblePorMoneda?.[currency] ?? (currency === 'DOP' ? (stats?.capitalDisponible ?? stats?.disponible ?? 0) : 0);
-            return <button type="button" key={currency} onClick={() => setSelectedCurrency(currency)} className="rounded-12 border border-surface-border bg-surface-canvas p-4 text-left transition hover:-translate-y-0.5 hover:border-accent-300 hover:shadow-card"><div className="flex items-center gap-2"><CurrencyFlag currency={meta} className="h-5 w-8" /><div><p className="text-xs font-semibold text-slate-500">{currency}</p><p className="text-[11px] text-slate-400">{meta.name}</p></div></div><p className="mt-3 text-xl font-bold text-navy-500">{formatMoney(value, currency)}</p><p className="mt-1 text-[11px] text-slate-400">Ver resumen en {currency} →</p></button>;
-          })}
-        </div>
-      </section>
 
       {selectedCurrency && (() => { const loans = allLoans.filter((loan) => (loan.moneda || 'DOP') === selectedCurrency); const total = loans.reduce((sum, loan) => sum + Number(loan.monto || 0), 0); const cobrar = loans.reduce((sum, loan) => sum + Number(loan.saldoPendiente || 0), 0); const intereses = loans.reduce((sum, loan) => sum + Math.max(0, Number(loan.saldoPendiente || 0) - Number(loan.monto || 0)), 0); const meta = getCurrency(selectedCurrency); return <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/50 p-4" onClick={() => setSelectedCurrency(null)}><div className="w-full max-w-xl rounded-16 bg-white p-6 shadow-card-lg" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between"><div><CurrencyFlag currency={meta} className="h-7 w-10" /><h3 className="mt-2 text-xl font-bold text-navy-800">Resumen en {selectedCurrency}</h3><p className="text-sm text-slate-500">{meta.name} · {loans.length} préstamo{loans.length === 1 ? '' : 's'}</p></div><button type="button" onClick={() => setSelectedCurrency(null)} className="rounded-8 p-2 text-slate-400 hover:bg-slate-100" aria-label="Cerrar"><X size={20} /></button></div><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-12 bg-surface-canvas p-4"><p className="text-xs text-slate-400">Total prestado</p><p className="mt-2 text-lg font-bold text-navy-500">{formatMoney(total, selectedCurrency)}</p></div><div className="rounded-12 bg-success-50 p-4"><p className="text-xs text-success-700">Total por cobrar</p><p className="mt-2 text-lg font-bold text-success-700">{formatMoney(cobrar, selectedCurrency)}</p></div><div className="rounded-12 bg-accent-50 p-4"><p className="text-xs text-accent-700">Interés estimado</p><p className="mt-2 text-lg font-bold text-accent-700">{formatMoney(intereses, selectedCurrency)}</p></div></div><p className="mt-5 text-xs text-slate-400">Los préstamos se contabilizan únicamente dentro de su propia divisa.</p></div></div>; })()}
 
@@ -154,7 +189,7 @@ export default function Dashboard() {
 
       {/* Modal de préstamos por período */}
       {selectedPeriod && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPeriod(null)}>
+        <div className="admin-modal fixed inset-0 z-50 flex items-center justify-center bg-navy-950/55 p-4" onClick={() => setSelectedPeriod(null)}>
           <div className="bg-white rounded-16 shadow-card-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-surface-border">
               <div>
@@ -267,6 +302,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      </section>
     </div>
   );
 }

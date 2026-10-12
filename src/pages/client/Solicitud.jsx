@@ -117,7 +117,7 @@ export default function Solicitud() {
       if (allowed.length) { setEnabledCurrencies(allowed.map((c) => c.code)); setCalcCurrency((current) => allowed.some((c) => c.code === current) ? current : allowed[0].code); }
     }).catch(() => {});
   }, [tenantId]);
-  const draftStorageKey = `prestamoplus-form:${isClientMode ? 'client' : 'request'}:${tenantId || 'default'}`;
+  const draftStorageKey = `bonexa-form:${isClientMode ? 'client' : 'request'}:${tenantId || 'default'}`;
   const readSavedDraft = useCallback(() => {
     try {
       return JSON.parse(sessionStorage.getItem(draftStorageKey) || 'null');
@@ -891,15 +891,16 @@ export default function Solicitud() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-accent-500">PréstamoPlus</h1>
-          <p className="text-sm text-gray-500">Solicitud de Préstamo</p>
+    <div className="public-application min-h-screen bg-surface-canvas">
+      <header className="border-b border-navy-800 bg-navy-900 text-white">
+        <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-4">
+          <img src="/branding/icono-bonexa.svg" alt="Bonexa" className="h-10 w-10 rounded-8" />
+          <div><h1 className="font-display text-xl font-extrabold tracking-tight">Bonexa</h1>
+          <p className="text-xs text-navy-100">Solicitud de préstamo</p></div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
         <div className="mb-8">
           <div className="flex items-center justify-between overflow-x-auto pb-2">
             {steps.map((step, index) => (
@@ -922,7 +923,7 @@ export default function Solicitud() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+        <form onSubmit={handleSubmit(onSubmit)} className="rounded-16 border border-surface-border bg-white p-5 shadow-card sm:p-8">
           {/* Step 1: Datos Personales */}
           {currentStep === 1 && (
             <div className="space-y-6">
@@ -1481,7 +1482,7 @@ export default function Solicitud() {
                         <Check className="text-green-600" size={20} />
                       </div>
                       <div>
-                        <p className="font-medium text-green-800">¿Por qué PréstamoPlus?</p>
+                        <p className="font-medium text-green-800">¿Por qué Bonexa?</p>
                         <ul className="text-sm text-green-700 mt-1 space-y-1">
                           <li>• Aprobación rápida en menos de 24 horas</li>
                           <li>• Sin penalización por pago anticipado</li>

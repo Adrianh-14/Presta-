@@ -8,7 +8,7 @@ const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/admin/clientes', icon: Users, label: 'Clientes' },
   { to: '/admin/prestamos', icon: CreditCard, label: 'Préstamos' },
-  { to: '/admin/nuevo-prestamo', icon: PlusSquare, label: 'Nuevo Préstamo' },
+  { to: '/admin/nuevo-prestamo', icon: PlusSquare, label: 'Nuevo préstamo' },
   { to: '/admin/solicitudes', icon: FileText, label: 'Solicitudes' },
   { to: '/admin/mora', icon: AlertTriangle, label: 'Mora y cobranza' },
   { to: '/admin/configuracion', icon: Settings, label: 'Configuración' },
@@ -67,8 +67,8 @@ export default function Sidebar() {
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-navy-900 px-4 text-white md:hidden">
-        <div className="flex items-center gap-3"><BrandMark /><div><p className="font-display text-sm font-bold">PréstamoPlus</p><p className="text-[9px] uppercase tracking-[0.18em] text-accent-200">Control de cartera</p></div></div>
-        <button type="button" onClick={() => setOpen(true)} aria-label="Abrir navegación" className="rounded-8 border border-white/15 p-2"><Menu size={20} /></button>
+        <div className="flex min-w-0 items-center gap-3"><BrandMark /><div className="min-w-0"><p className="truncate font-display text-sm font-bold">{tenantName || user?.nombreEmpresa || 'Bonexa'}</p><p className="text-[9px] uppercase tracking-[0.15em] text-white/60">{isPlatformAdmin ? 'PLATAFORMA' : 'ADMIN · OPERACIÓN'}</p></div></div>
+        <div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-500 text-sm font-extrabold text-navy-900">{(user?.nombre || 'A').charAt(0).toUpperCase()}</div><button type="button" onClick={() => setOpen(true)} aria-label="Abrir navegación" className="rounded-8 border border-white/15 p-2"><Menu size={18} /></button></div>
       </header>
       {open && <button type="button" aria-label="Cerrar navegación" onClick={() => setOpen(false)} className="fixed inset-0 z-30 bg-navy-950/60 backdrop-blur-sm md:hidden" />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[82vw] max-w-72 shrink-0 flex-col border-r border-navy-700 bg-navy-900 text-white transition-transform duration-200 md:sticky md:top-0 md:h-screen md:w-64 md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -76,7 +76,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <BrandMark />
           <div>
-            <h1 className="max-w-[150px] truncate font-display text-base font-bold leading-tight text-white">{tenantName || user?.nombreEmpresa || 'PréstamoPlus'}</h1>
+            <h1 className="max-w-[150px] truncate font-display text-base font-bold leading-tight text-white">{tenantName || user?.nombreEmpresa || 'Bonexa'}</h1>
             <p className="text-[10px] uppercase tracking-[0.16em] text-accent-200">{user?.role} · Operación</p>
           </div>
           <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar navegación" className="ml-auto rounded-8 p-2 text-slate-300 hover:bg-white/10 md:hidden"><X size={18} /></button>
@@ -131,5 +131,5 @@ export default function Sidebar() {
 }
 
 function BrandMark() {
-  return <img src="/branding/icono-prestamos-plus.png" alt="Préstamos Plus" className="h-9 w-9 shrink-0 rounded-8 object-contain" />;
+  return <img src="/branding/icono-bonexa.svg" alt="Bonexa" className="h-9 w-9 shrink-0 rounded-8 object-contain" />;
 }
