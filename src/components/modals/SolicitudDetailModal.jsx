@@ -376,11 +376,30 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
                 <div className="p-3 text-center"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Interés total</p><p className="mt-1 font-bold text-amber-600">{money(Math.max(0, totalAprobado - principalAprobado), moneda)}</p></div>
               </div>
               <button
+                type="button"
+                onClick={() => onApprove(solicitud.id, {
+                  fechaInicio,
+                  fechaPrimerPago,
+                  montoAprobado: montoNumero,
+                  tasaInteresMensual: tasaNumero,
+                  gastoCierrePorcentaje: cierreNumero,
+                  plazo: plazoNumero,
+                  unidadPlazo: unidadPlazoAprobada,
+                  frecuenciaPago: frecuenciaAprobada,
+                  frecuenciaInteres: frecuenciaInteresAprobada,
+                  modalidad: modalidadAprobada,
+                })}
+                disabled={!termsAreValid}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Check size={20} /> Aprobar tal como fue solicitado
+              </button>
+              <button
                 onClick={() => onProcess(solicitud.id, instrucciones.trim() || null, { montoAprobado: montoNumero, tasaInteresMensual: tasaNumero, gastoCierrePorcentaje: cierreNumero, plazo: plazoNumero, unidadPlazo: unidadPlazoAprobada, frecuenciaPago: frecuenciaAprobada, frecuenciaInteres: frecuenciaInteresAprobada, modalidad: modalidadAprobada })}
-                disabled={!montoNumero || tasaNumero < 0 || cierreNumero < 0 || !plazoNumero}
+                disabled={!termsAreValid}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors font-medium"
               >
-                <Clock size={20} /> Guardar condiciones y enviar propuesta
+                <Clock size={20} /> Enviar propuesta con estas condiciones
               </button>
               <button
                 onClick={() => onReject(solicitud.id, true)}

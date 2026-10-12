@@ -13,6 +13,7 @@ public sealed class ResendClientOtpSender : IClientOtpSender
     private readonly string _apiKey;
     private readonly string _fromEmail;
     private readonly string _fromName;
+    private readonly string _replyToEmail;
     private readonly ILogger<ResendClientOtpSender> _logger;
 
     public ResendClientOtpSender(
@@ -20,8 +21,9 @@ public sealed class ResendClientOtpSender : IClientOtpSender
         ILogger<ResendClientOtpSender> logger)
     {
         _apiKey = configuration["Resend:ApiKey"] ?? string.Empty;
-        _fromEmail = configuration["Resend:FromEmail"] ?? "onboarding@resend.dev";
-        _fromName = configuration["Resend:FromName"] ?? "PrestamoPlus";
+        _fromEmail = configuration["Resend:FromEmail"] ?? string.Empty;
+        _fromName = configuration["Resend:FromName"] ?? "Bonexa";
+        _replyToEmail = configuration["Resend:ReplyToEmail"] ?? string.Empty;
         _logger = logger;
     }
 
@@ -42,7 +44,7 @@ public sealed class ResendClientOtpSender : IClientOtpSender
         var safeCode = WebUtility.HtmlEncode(delivery.Code);
         var html = $$"""
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0b3558">
-              <h2>Código de acceso a PréstamoPlus</h2>
+              <h2>Código de acceso a Bonexa</h2>
               <p>Hola {{safeName}},</p>
               <p>Usa este código una sola vez para entrar a tu portal:</p>
               <p style="font-size:32px;font-weight:700;letter-spacing:8px">{{safeCode}}</p>
@@ -53,13 +55,18 @@ public sealed class ResendClientOtpSender : IClientOtpSender
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        request.Content = JsonContent.Create(new
+        var payload = new Dictionary<string, object>
         {
-            from = $"{_fromName} <{_fromEmail}>",
-            to = new[] { delivery.Email },
-            subject = "Tu código de acceso a PréstamoPlus",
-            html
-        });
+            ["from"] = $"{_fromName} <{_fromEmail}>",
+            ["to"] = new[] { delivery.Email },
+            ["subject"] = "Tu código de acceso a Bonexa",
+            ["html"] = html
+        };
+        if (!string.IsNullOrWhiteSpace(_replyToEmail))
+        {
+            payload["reply_to"] = _replyToEmail;
+        }
+        request.Content = JsonContent.Create(payload);
 
         using var response = await HttpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)

@@ -17,10 +17,12 @@ export const solicitudService = {
   },
 
   updateEstado: async (id, estado, options = {}) => {
-    const { data } = await api.patch(`/api/solicituds/${id}/estado`, { estado, ...options }, {
+    const response = await api.patch(`/api/solicituds/${id}/estado`, { estado, ...options }, {
       headers: { 'Content-Type': 'application/json' },
     });
-    return data;
+    return response.status === 202
+      ? { ...response.data, pendingApproval: true }
+      : response.data;
   },
   getDecision: async (id, token) => {
     const { data } = await api.get(`/api/solicituds/decision/${id}`, { params: { token } });

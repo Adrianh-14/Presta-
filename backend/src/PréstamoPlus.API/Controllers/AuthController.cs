@@ -94,7 +94,7 @@ namespace PréstamoPlus.API.Controllers
             };
             _db.EmailVerificationCodes.Add(verification);
             await _db.SaveChangesAsync(cancellationToken);
-            await _notifications.SendEmailAsync(email, "Verifica tu correo de PréstamoPlus",
+            await _notifications.SendEmailAsync(email, "Verifica tu correo de Bonexa",
                 $"<p>Tu código de verificación es:</p><p style=\"font-size:28px;font-weight:700;letter-spacing:6px\">{code}</p><p>El código vence en 15 minutos.</p>");
             return Ok(new { message = "Código enviado. Revisa tu correo." });
         }

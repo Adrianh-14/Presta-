@@ -9,25 +9,29 @@ namespace PréstamoPlus.Infrastructure.Services
     public class NotificationService : INotificationService
     {
         private readonly ILogger<NotificationService> _logger;
+        private readonly IPublicUrlResolver _publicUrlResolver;
         private static readonly HttpClient HttpClient = new();
         private readonly ResendSettings _settings;
 
         public NotificationService(
             IConfiguration configuration,
-            ILogger<NotificationService> logger)
+            ILogger<NotificationService> logger,
+            IPublicUrlResolver publicUrlResolver)
         {
             _settings = new ResendSettings
             {
                 ApiKey = configuration["Resend:ApiKey"] ?? string.Empty,
-                FromEmail = configuration["Resend:FromEmail"] ?? "onboarding@resend.dev",
-                FromName = configuration["Resend:FromName"] ?? "PrestamoPlus",
+                FromEmail = configuration["Resend:FromEmail"] ?? string.Empty,
+                FromName = configuration["Resend:FromName"] ?? "Bonexa",
+                ReplyToEmail = configuration["Resend:ReplyToEmail"] ?? string.Empty,
                 ClientPortalUrl = configuration["Resend:ClientPortalUrl"] ?? "http://localhost:5173/portal/login"
             };
             _logger = logger;
+            _publicUrlResolver = publicUrlResolver;
         }
 
         public bool EmailEnabled => !string.IsNullOrWhiteSpace(_settings.ApiKey);
-        public string ClientPortalUrl => _settings.ClientPortalUrl;
+        public string ClientPortalUrl => _publicUrlResolver.ClientPortalUrl;
 
         public Task SendWhatsAppAsync(string to, string message)
         {
@@ -58,6 +62,10 @@ namespace PréstamoPlus.Infrastructure.Services
                     ["subject"] = subject,
                     ["html"] = body
                 };
+                if (!string.IsNullOrWhiteSpace(_settings.ReplyToEmail))
+                {
+                    payload["reply_to"] = _settings.ReplyToEmail;
+                }
                 if (attachments is { Count: > 0 })
                 {
                     payload["attachments"] = attachments.Select(attachment => new

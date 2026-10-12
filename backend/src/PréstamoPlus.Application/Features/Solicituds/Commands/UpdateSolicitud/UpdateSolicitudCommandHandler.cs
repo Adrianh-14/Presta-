@@ -38,7 +38,7 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
 
             var validTransition = loanApp.Estado switch
             {
-                EstadoSolicitud.Pendiente => request.Estado is EstadoSolicitud.Procesando or EstadoSolicitud.Contraoferta or EstadoSolicitud.Cancelada or EstadoSolicitud.Rechazada,
+                EstadoSolicitud.Pendiente => request.Estado is EstadoSolicitud.Procesando or EstadoSolicitud.Contraoferta or EstadoSolicitud.Aprobada or EstadoSolicitud.Cancelada or EstadoSolicitud.Rechazada,
                 EstadoSolicitud.Procesando => request.Estado is EstadoSolicitud.Contraoferta or EstadoSolicitud.ClienteAprobada or EstadoSolicitud.Aprobada or EstadoSolicitud.Rechazada,
                 EstadoSolicitud.Contraoferta => request.Estado is EstadoSolicitud.Contraoferta or EstadoSolicitud.ClienteAprobada or EstadoSolicitud.Rechazada,
                 EstadoSolicitud.ClienteAprobada => request.Estado is EstadoSolicitud.Aprobada or EstadoSolicitud.Rechazada,

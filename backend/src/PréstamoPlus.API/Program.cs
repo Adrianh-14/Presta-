@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using PréstamoPlus.API.DependencyInjection;
 using PréstamoPlus.API.Middleware;
@@ -126,12 +127,27 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<ITenantService, TenantService>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IPublicUrlResolver, RequestPublicUrlResolver>();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                               ForwardedHeaders.XForwardedProto |
+                               ForwardedHeaders.XForwardedHost;
+    // Dokploy/nginx/Cloudflare are the trusted reverse-proxy chain for the API.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.ForwardLimit = 2;
+});
 builder.Services.AddApi();
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: new[] { "ready" });
 builder.Services.AddApplicationDecorators();
 builder.Services.AddHostedService<LoanManagementService>();
 
 var app = builder.Build();
+
+// Must run before HTTPS redirection and before any service builds public links.
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {

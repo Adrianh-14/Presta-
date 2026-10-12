@@ -104,7 +104,7 @@ namespace PréstamoPlus.Application.Common
                 <body style="margin:0;background:#f8f9fb;font-family:Arial,sans-serif;color:#132028;">
                   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
                     <div style="background:#ffffff;border:1px solid #d4e0ed;padding:32px;">
-                      <div style="font-size:20px;font-weight:700;color:#0b3558;margin-bottom:28px;">PrestamoPlus</div>
+                      <div style="font-size:20px;font-weight:700;color:#0b3558;margin-bottom:28px;">Bonexa</div>
                       <div style="width:48px;height:4px;background:{accent};margin-bottom:20px;"></div>
                       <h1 style="font-size:24px;margin:0 0 12px;color:#0b3558;">{title}</h1>
                       <p style="line-height:1.6;margin:0 0 16px;">Hola {name},</p>

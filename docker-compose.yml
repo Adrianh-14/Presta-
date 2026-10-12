@@ -43,8 +43,9 @@ services:
       ClientAuthentication__RequestLimitPerWindow: ${CLIENT_AUTH_REQUEST_LIMIT_PER_WINDOW:-10}
       ClientAuthentication__SessionLifetimeMinutes: ${CLIENT_AUTH_SESSION_LIFETIME_MINUTES:-480}
       Resend__ApiKey: ${RESEND_API_KEY:-}
-      Resend__FromEmail: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      Resend__FromEmail: ${RESEND_FROM_EMAIL:-}
       Resend__FromName: ${RESEND_FROM_NAME:-Bonexa}
+      Resend__ReplyToEmail: ${RESEND_REPLY_TO_EMAIL:-}
       Resend__ClientPortalUrl: ${RESEND_CLIENT_PORTAL_URL:-http://localhost:3005/portal/login}
       Security__RealDataApproved: ${SECURITY_REAL_DATA_APPROVED:-false}
       Security__ReleaseApprovalReference: ${SECURITY_RELEASE_APPROVAL_REFERENCE:-}

@@ -45,10 +45,21 @@ internal static class SecurityConfigurationValidator
                 minimumBytes: 20,
                 errors);
 
-            if (!environment.IsDevelopment() &&
-                string.IsNullOrWhiteSpace(configuration["Resend:FromEmail"]))
+            var fromEmail = configuration["Resend:FromEmail"]?.Trim();
+            if (!environment.IsDevelopment() && string.IsNullOrWhiteSpace(fromEmail))
             {
                 errors.Add("Resend:FromEmail debe usar un remitente verificado fuera de Development.");
+            }
+            else if (!environment.IsDevelopment() && fromEmail!.EndsWith("@resend.dev", StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add("Resend:FromEmail no puede usar onboarding@resend.dev en producción; configura un dominio propio verificado en Resend.");
+            }
+
+            var clientPortalUrl = configuration["Resend:ClientPortalUrl"]?.Trim();
+            if (!environment.IsDevelopment() &&
+                (string.IsNullOrWhiteSpace(clientPortalUrl) || !Uri.TryCreate(clientPortalUrl, UriKind.Absolute, out var portalUri) || portalUri.Scheme != Uri.UriSchemeHttps))
+            {
+                errors.Add("Resend:ClientPortalUrl debe ser una URL HTTPS pública en producción para los correos generados por tareas en segundo plano.");
             }
 
             ValidatePositiveSetting(configuration, "ClientAuthentication:OtpLifetimeMinutes", 1, 30, errors);

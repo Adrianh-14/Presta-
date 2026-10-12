@@ -121,7 +121,11 @@ export default function Solicitudes() {
   const handleAprobar = async (id, approvalTerms) => {
     try {
       setActionError('');
-      await solicitudService.updateEstado(id, 'Aprobada', approvalTerms);
+      const result = await solicitudService.updateEstado(id, 'Aprobada', approvalTerms);
+      if (result?.pendingApproval) {
+        setActionError(result.message || 'Primera aprobación registrada. Requiere un segundo aprobador.');
+        return;
+      }
       setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado: 'aprobada' } : s)));
       setSelectedSolicitud(null);
     } catch (err) {
