@@ -1,4 +1,4 @@
-import { ArrowRight, Check, CircleDollarSign, ClipboardCheck, Globe2, HandCoins, MapPinned, Menu, ShieldCheck, Smartphone, Users, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardCheck, CreditCard, Globe2, HandCoins, LayoutDashboard, MapPinned, Menu, QrCode, ShieldCheck, Smartphone, Users, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -20,6 +20,17 @@ const personas = [
   ['PRESTAMISTA', 'De la libreta a una cartera clara', 'Cuotas, cobros diarios y clientes sin perder la cercanía.', HandCoins],
   ['FINANCIERA', 'Más equipos, menos fricción', 'Roles, solicitudes, garantías, documentos y reportes.', Users],
   ['COBRADOR', 'El día se organiza en la calle', 'Asignaciones, visitas y pagos desde el móvil.', Smartphone],
+];
+
+const appScreens = [
+  { label: 'Panel', caption: 'La cartera, clara desde el inicio.', image: '/app-showcase/admin-dashboard.jpg', alt: 'Panel móvil de administración de Bonexa con resumen de cartera y cobros', icon: LayoutDashboard },
+  { label: 'Más herramientas', caption: 'Toda la operación, a un toque.', image: '/app-showcase/admin-more.jpg', alt: 'Menú móvil Más herramientas de Bonexa, organizado por operaciones y equipo', icon: Smartphone },
+  { label: 'Préstamos', caption: 'Encuentra cada operación al instante.', image: '/app-showcase/loans-sanitized.jpg', alt: 'Pantalla móvil de préstamos de Bonexa con datos de clientes de demostración', icon: CreditCard },
+  { label: 'Nuevo préstamo', caption: 'Inicia una operación desde el móvil.', image: '/app-showcase/new-loan-sanitized.jpg', alt: 'Pantalla móvil de registro rápido de préstamo con código QR de demostración no funcional', icon: CircleDollarSign },
+  { label: 'Clientes', caption: 'Expedientes y registro en un solo lugar.', image: '/app-showcase/clients-sanitized.jpg', alt: 'Pantalla móvil de clientes de Bonexa con datos de demostración', icon: Users },
+  { label: 'Portal cliente', caption: 'Cada cliente consulta lo suyo.', image: '/app-showcase/client-loans.jpg', alt: 'Portal móvil del cliente con préstamos vigentes y acceso a solicitar otro préstamo', icon: Users },
+  { label: 'Récord', caption: 'Un historial que da tranquilidad.', image: '/app-showcase/loan-record.jpg', alt: 'Récord móvil de préstamos liquidados en el portal de cliente Bonexa', icon: CreditCard },
+  { label: 'Pago con QR', caption: 'Pagar en persona, sin complicaciones.', image: '/app-showcase/qr-payment.jpg', alt: 'Pantalla móvil para escanear el código QR de un cobrador', icon: QrCode },
 ];
 
 const currencies = [
@@ -56,6 +67,10 @@ function Flag({ country }) {
 
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeScreen, setActiveScreen] = useState(0);
+  const selectedScreen = appScreens[activeScreen];
+  const showPreviousScreen = () => setActiveScreen((index) => (index - 1 + appScreens.length) % appScreens.length);
+  const showNextScreen = () => setActiveScreen((index) => (index + 1) % appScreens.length);
   return (
     <main className="overflow-hidden bg-surface-canvas text-navy-900">
       <header className="sticky top-0 z-20 border-b border-navy-900/10 bg-surface-canvas/90 backdrop-blur">
@@ -67,6 +82,7 @@ export default function Landing() {
           <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-600 md:flex">
             <a href="#ciclo" className="transition hover:text-navy-900">Cómo funciona</a>
             <a href="#soluciones" className="transition hover:text-navy-900">Soluciones</a>
+            <a href="#app-movil" className="transition hover:text-navy-900">App móvil</a>
             <a href="#simulador" className="transition hover:text-navy-900">Calculadora</a>
             <a href="#monedas" className="transition hover:text-navy-900">Multimoneda</a>
           </nav>
@@ -76,7 +92,7 @@ export default function Landing() {
           </div>
           <button type="button" className="rounded-8 p-2 md:hidden" onClick={() => setMenuOpen((value) => !value)} aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button>
         </div>
-        {menuOpen && <div className="border-t border-navy-900/10 px-5 py-4 md:hidden"><div className="flex flex-col gap-3 text-sm font-semibold"><a href="#ciclo" onClick={() => setMenuOpen(false)}>Cómo funciona</a><a href="#soluciones" onClick={() => setMenuOpen(false)}>Soluciones</a><a href="#simulador" onClick={() => setMenuOpen(false)}>Calculadora</a><a href="#monedas" onClick={() => setMenuOpen(false)}>Multimoneda</a><Link to="/login">Iniciar sesión</Link><Link to="/registro" className="rounded-8 bg-navy-900 px-4 py-3 text-center text-white">Comenzar gratis</Link></div></div>}
+        {menuOpen && <div className="border-t border-navy-900/10 px-5 py-4 md:hidden"><div className="flex flex-col gap-3 text-sm font-semibold"><a href="#ciclo" onClick={() => setMenuOpen(false)}>Cómo funciona</a><a href="#soluciones" onClick={() => setMenuOpen(false)}>Soluciones</a><a href="#app-movil" onClick={() => setMenuOpen(false)}>App móvil</a><a href="#simulador" onClick={() => setMenuOpen(false)}>Calculadora</a><a href="#monedas" onClick={() => setMenuOpen(false)}>Multimoneda</a><Link to="/login">Iniciar sesión</Link><Link to="/registro" className="rounded-8 bg-navy-900 px-4 py-3 text-center text-white">Comenzar gratis</Link></div></div>}
       </header>
 
       <section className="financial-grid relative">
@@ -95,6 +111,46 @@ export default function Landing() {
               <div className="flex items-start justify-between"><div><p className="font-mono text-[10px] font-bold uppercase tracking-[.16em] text-warning-700">CARTERA ACTIVA · EJEMPLO</p><p className="mt-2 font-display text-3xl font-extrabold text-navy-900">RD$2,480,500</p></div><span className="rounded-full bg-success-50 px-3 py-1 text-xs font-bold text-success-700">EN VIVO</span></div>
               <div className="mt-6 space-y-3"><div className="flex items-center justify-between rounded-8 bg-surface-canvas p-3"><div><p className="text-sm font-bold text-navy-900">María G.</p><p className="text-xs text-slate-500">Cuota 7 de 12 · Quincenal</p></div><span className="rounded-full bg-success-50 px-2.5 py-1 text-xs font-bold text-success-700">Al día</span></div><div className="flex items-center justify-between rounded-8 bg-surface-canvas p-3"><div><p className="text-sm font-bold text-navy-900">José R.</p><p className="text-xs text-slate-500">Vencida · 2 días</p></div><span className="rounded-full bg-warning-50 px-2.5 py-1 text-xs font-bold text-warning-700">Revisar</span></div><div className="flex items-center justify-between rounded-8 bg-surface-canvas p-3"><div><p className="text-sm font-bold text-navy-900">Andrea L.</p><p className="text-xs text-slate-500">Pago recibido · QR</p></div><span className="rounded-full bg-accent-100 px-2.5 py-1 text-xs font-bold text-accent-700">Conciliado</span></div></div>
               <div className="mt-5 grid grid-cols-2 gap-4 border-t border-surface-border pt-4 text-sm"><div><p className="text-xs text-slate-500">Próximo cobro</p><p className="mt-1 font-display font-extrabold text-navy-900">RD$18,650</p></div><div><p className="text-xs text-slate-500">Recuperación</p><p className="mt-1 font-display font-extrabold text-navy-900">94.2%</p></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="app-movil" className="relative isolate overflow-hidden bg-navy-950 text-white">
+        <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-40 [background-image:linear-gradient(rgba(255,181,71,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,181,71,.08)_1px,transparent_1px)] [background-size:38px_38px]" />
+        <div aria-hidden="true" className="absolute -right-40 top-1/2 -z-10 h-[34rem] w-[34rem] -translate-y-1/2 rounded-full bg-warning-500/15 blur-[100px]" />
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 sm:py-24 lg:grid-cols-[.9fr_1.1fr] lg:px-8 lg:py-28">
+          <div className="relative z-10 max-w-xl">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[.22em] text-warning-500">Bonexa en tu bolsillo</p>
+            <h2 className="mt-4 font-display text-4xl font-extrabold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl">Una operación moderna.<br /><span className="text-warning-500">También en móvil.</span></h2>
+            <p className="mt-5 max-w-lg text-base leading-7 text-slate-300 sm:text-lg">Administra tu cartera, organiza los cobros y permite que tus clientes consulten sus préstamos desde una experiencia hecha para el teléfono.</p>
+            <div className="mt-8 flex flex-wrap gap-2 text-xs font-semibold text-slate-200">
+              <span className="rounded-full border border-white/15 bg-white/[.06] px-3 py-2">Panel de administración</span>
+              <span className="rounded-full border border-white/15 bg-white/[.06] px-3 py-2">Portal de cliente</span>
+              <span className="rounded-full border border-white/15 bg-white/[.06] px-3 py-2">Cobros con QR</span>
+            </div>
+            <Link to="/registro" className="mt-9 inline-flex items-center gap-2 rounded-8 bg-warning-500 px-5 py-3.5 text-sm font-extrabold text-navy-900 shadow-btn transition hover:-translate-y-0.5 hover:bg-warning-400">Quiero conocer Bonexa <ArrowRight size={17} /></Link>
+          </div>
+
+          <div className="relative mx-auto flex w-full max-w-xl flex-col items-center">
+            <div aria-hidden="true" className="absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[.08] sm:h-[38rem] sm:w-[38rem]" />
+            <div className="relative rounded-[43px] border border-white/25 bg-gradient-to-br from-slate-400 via-slate-700 to-navy-950 p-[9px] shadow-[0_40px_110px_rgba(0,0,0,.55)] sm:p-[11px]">
+              <span aria-hidden="true" className="absolute -right-[4px] top-28 h-16 w-[4px] rounded-r-full bg-slate-500" />
+              <span aria-hidden="true" className="absolute -left-[4px] top-24 h-12 w-[4px] rounded-l-full bg-slate-500" />
+              <div className="overflow-hidden rounded-[34px] bg-surface-canvas p-1">
+                <img key={selectedScreen.image} src={selectedScreen.image} alt={selectedScreen.alt} className="phone-showcase-shot block aspect-[.37] w-[min(72vw,286px)] rounded-[29px] object-contain sm:w-[300px]" />
+              </div>
+            </div>
+            <div className="mt-6 flex w-full max-w-[430px] items-center justify-between gap-3">
+              <button type="button" onClick={showPreviousScreen} aria-label="Ver pantalla anterior" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 text-white transition hover:border-warning-500 hover:text-warning-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-warning-500"><ChevronLeft size={19} /></button>
+              <div className="min-w-0 flex-1 text-center" aria-live="polite">
+                <p className="text-sm font-bold text-white">{selectedScreen.label}</p>
+                <p className="mt-0.5 text-xs text-slate-400">{selectedScreen.caption}</p>
+              </div>
+              <button type="button" onClick={showNextScreen} aria-label="Ver pantalla siguiente" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 text-white transition hover:border-warning-500 hover:text-warning-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-warning-500"><ChevronRight size={19} /></button>
+            </div>
+            <div className="mt-4 flex flex-wrap justify-center gap-2" role="group" aria-label="Elegir pantalla de la aplicación móvil">
+              {appScreens.map(({ label, icon: Icon }, index) => <button key={label} type="button" onClick={() => setActiveScreen(index)} aria-label={`Mostrar ${label}`} aria-pressed={activeScreen === index} className={`flex h-9 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-warning-500 ${activeScreen === index ? 'border-warning-500 bg-warning-500 text-navy-900' : 'border-white/15 bg-white/[.04] text-slate-300 hover:border-white/40 hover:text-white'}`}><Icon size={14} aria-hidden="true" />{label}</button>)}
             </div>
           </div>
         </div>

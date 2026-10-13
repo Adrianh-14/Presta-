@@ -42,6 +42,13 @@
       linear-gradient(90deg, rgba(255, 181, 71, 0.08) 1px, transparent 1px);
     background-size: 42px 42px;
   }
+  .phone-showcase-shot {
+    animation: phone-showcase-in 360ms cubic-bezier(.2,.75,.25,1) both;
+  }
+  @keyframes phone-showcase-in {
+    from { opacity: .55; transform: translateY(7px) scale(.99); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
 
   .auth-input {
     @apply w-full rounded-8 border border-surface-border bg-white px-4 py-3 text-sm text-navy-800 outline-none transition placeholder:text-slate-300 focus:border-warning-500 focus:ring-4 focus:ring-warning-50;
