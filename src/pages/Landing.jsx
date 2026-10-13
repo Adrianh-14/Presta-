@@ -134,11 +134,11 @@ export default function Landing() {
 
           <div className="relative mx-auto flex w-full max-w-xl flex-col items-center">
             <div aria-hidden="true" className="absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[.08] sm:h-[38rem] sm:w-[38rem]" />
-            <div className="relative rounded-[43px] border border-white/25 bg-gradient-to-br from-slate-400 via-slate-700 to-navy-950 p-[9px] shadow-[0_40px_110px_rgba(0,0,0,.55)] sm:p-[11px]">
+            <div className="relative shrink-0 rounded-[30px] border border-white/25 bg-gradient-to-br from-slate-400 via-slate-700 to-navy-950 p-[6px] shadow-[0_24px_70px_rgba(0,0,0,.45)] sm:p-2">
               <span aria-hidden="true" className="absolute -right-[4px] top-28 h-16 w-[4px] rounded-r-full bg-slate-500" />
               <span aria-hidden="true" className="absolute -left-[4px] top-24 h-12 w-[4px] rounded-l-full bg-slate-500" />
-              <div className="overflow-hidden rounded-[34px] bg-surface-canvas p-1">
-                <img key={selectedScreen.image} src={`${selectedScreen.image}?v=2`} alt={selectedScreen.alt} className="phone-showcase-shot block aspect-[.37] w-[min(72vw,286px)] rounded-[29px] object-contain sm:w-[300px]" />
+              <div className="overflow-hidden rounded-[23px] bg-surface-canvas">
+                <img key={selectedScreen.image} src={`${selectedScreen.image}?v=2`} alt={selectedScreen.alt} className="phone-showcase-shot" />
               </div>
             </div>
             <div className="mt-6 flex w-full max-w-[430px] items-center justify-between gap-3">

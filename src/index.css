@@ -43,11 +43,15 @@
     background-size: 42px 42px;
   }
   .phone-showcase-shot {
+    display: block;
+    height: min(64vh, 560px, calc((100vw - 64px) * 1.9));
+    height: min(64svh, 560px, calc((100vw - 64px) * 1.9));
+    width: auto;
     animation: phone-showcase-in 360ms cubic-bezier(.2,.75,.25,1) both;
   }
   @keyframes phone-showcase-in {
-    from { opacity: .55; transform: translateY(7px) scale(.99); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from { opacity: .55; }
+    to { opacity: 1; }
   }
 
   .auth-input {
