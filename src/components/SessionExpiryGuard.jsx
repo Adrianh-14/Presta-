@@ -4,6 +4,7 @@ import { Clock3, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
 import { portalService } from '../services/portalService';
+import { tokenStore } from '../services/tokenStore';
 
 const WARNING_SECONDS = 30;
 const ACTIVE_WINDOW_MS = 90_000;
@@ -78,7 +79,7 @@ export default function SessionExpiryGuard() {
     setSecondsLeft(null);
     const checkSession = async () => {
       const clientToken = isClientRoute ? localStorage.getItem('clientToken') : null;
-      const staffToken = !isClientRoute && user ? localStorage.getItem('accessToken') : null;
+      const staffToken = !isClientRoute && user ? tokenStore.getAccessToken() : null;
       const token = clientToken || staffToken;
       if (!token) { setSecondsLeft(null); return; }
 

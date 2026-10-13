@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap, PiggyBank, AlertTriangle, Settings, MapPinned } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, ShieldCheck, FolderLock, Building2, Zap, PiggyBank, AlertTriangle, Settings, MapPinned } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { tokenStore } from '../services/tokenStore';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -32,7 +33,6 @@ const platformNavItems = [
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
   const [tenantName, setTenantName] = useState(user?.nombreEmpresa || '');
   const [pendingRequests, setPendingRequests] = useState(0);
   const previousPending = useRef(0);
@@ -41,7 +41,7 @@ export default function Sidebar() {
   useEffect(() => {
     if (!user?.tenantId || isPlatformAdmin) return undefined;
     let cancelled = false;
-    const token = localStorage.getItem('accessToken');
+    const token = tokenStore.getAccessToken();
     const notify = (count) => {
       if (count > previousPending.current && previousPending.current >= 0) {
         try { const context = new AudioContext(); const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.frequency.value = 880; gain.gain.value = 0.06; oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + 0.16); } catch { /* el sonido requiere interacción previa en algunos navegadores */ }
@@ -68,12 +68,11 @@ export default function Sidebar() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-navy-900 px-4 text-white md:hidden">
+      <header className="fixed inset-x-0 top-0 z-20 flex h-16 items-center justify-between border-b border-white/10 bg-navy-900 px-4 text-white md:hidden">
         <div className="flex min-w-0 items-center gap-3"><BrandMark /><div className="min-w-0"><p className="truncate font-display text-sm font-bold">{tenantName || user?.nombreEmpresa || 'Bonexa'}</p><p className="text-[9px] uppercase tracking-[0.15em] text-white/60">{isPlatformAdmin ? 'PLATAFORMA' : 'ADMIN · OPERACIÓN'}</p></div></div>
-        <div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-500 text-sm font-extrabold text-navy-900">{(user?.nombre || 'A').charAt(0).toUpperCase()}</div><button type="button" onClick={() => setOpen(true)} aria-label="Abrir navegación" className="rounded-8 border border-white/15 p-2"><Menu size={18} /></button></div>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-500 text-sm font-extrabold text-navy-900" aria-label={`Usuario ${user?.nombre || 'administrador'}`}>{(user?.nombre || 'A').charAt(0).toUpperCase()}</div>
       </header>
-      {open && <button type="button" aria-label="Cerrar navegación" onClick={() => setOpen(false)} className="fixed inset-0 z-30 bg-navy-950/60 backdrop-blur-sm md:hidden" />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[82vw] max-w-72 shrink-0 flex-col border-r border-navy-700 bg-navy-900 text-white transition-transform duration-200 md:sticky md:top-0 md:h-screen md:w-64 md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-navy-700 bg-navy-900 text-white md:sticky md:top-0 md:flex md:h-screen">
       <div className="border-b border-white/10 p-5">
         <div className="flex items-center gap-2">
           <BrandMark />
@@ -81,7 +80,6 @@ export default function Sidebar() {
             <h1 className="max-w-[150px] truncate font-display text-base font-bold leading-tight text-white">{tenantName || user?.nombreEmpresa || 'Bonexa'}</h1>
             <p className="text-[10px] uppercase tracking-[0.16em] text-accent-200">{user?.role} · Operación</p>
           </div>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar navegación" className="ml-auto rounded-8 p-2 text-slate-300 hover:bg-white/10 md:hidden"><X size={18} /></button>
         </div>
       </div>
 
@@ -92,7 +90,6 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
-            onClick={() => setOpen(false)}
             className={({ isActive }) =>
               `relative flex items-center gap-3 rounded-8 px-3 py-2.5 text-sm font-medium transition-all ${
                 isActive

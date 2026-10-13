@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { CURRENCY_CATALOG } from '../../data/currencies';
 import { tenantService } from '../../services/tenantService';
 import { QRCodeSVG } from 'qrcode.react';
+import { tokenStore } from '../../services/tokenStore';
 
 function formatCurrency(v, currency = 'DOP') { return new Intl.NumberFormat('es-DO', { style: 'currency', currency }).format(v); }
 function formatNumber(v) { return new Intl.NumberFormat('es-DO').format(Math.round(v)); }
@@ -49,7 +50,7 @@ export default function NuevoPrestamo() {
   const freqMap = { daily: 0, weekly: 1, biweekly: 2, monthly: 3, diaria: 0, semanal: 1, quincenal: 2, mensual: 3 };
 
   const tokenTenantId = (() => {
-    try { return JSON.parse(atob(localStorage.getItem('accessToken')?.split('.')[1] || '')).tenantId || ''; } catch { return ''; }
+    try { return JSON.parse(atob(tokenStore.getAccessToken()?.split('.')[1] || '')).tenantId || ''; } catch { return ''; }
   })();
   const tenantId = user?.tenantId || tokenTenantId;
   useEffect(() => {

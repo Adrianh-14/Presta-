@@ -9,10 +9,11 @@ import CurrencyFlag from '../../components/CurrencyFlag';
 import { getCurrency } from '../../data/currencies';
 import { modalidadLabel } from '../../utils/loanModalidad';
 import { formatDateOnly } from '../../utils/dateOnly';
+import { tokenStore } from '../../services/tokenStore';
 
 function getTenantIdFromToken() {
   try {
-    const token = localStorage.getItem('accessToken');
+    const token = tokenStore.getAccessToken();
     if (!token) return null;
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload.tenantId || null;

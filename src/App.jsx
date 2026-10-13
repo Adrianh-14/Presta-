@@ -45,6 +45,7 @@ import CollectorRoutes from './pages/admin/CollectorRoutes';
 import Landing from './pages/Landing';
 import ClientProfile from './pages/portal/Profile';
 import ProfileReviews from './pages/admin/ProfileReviews';
+import More from './pages/admin/More';
 import { portalService } from './services/portalService';
 import SessionExpiryGuard from './components/SessionExpiryGuard';
 
@@ -137,6 +138,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/plataforma" element={<PlatformRoute><AdminLayout /></PlatformRoute>}>
         <Route index element={<PlatformDashboard />} />
+        <Route path="mas" element={<More platform />} />
         <Route path="empresas" element={<PlatformEmpresas />} />
         <Route path="planes" element={<PlatformPlanes />} />
         <Route path="suscripciones" element={<PlatformSuscripciones />} />
@@ -150,6 +152,7 @@ function AppRoutes() {
       <Route path="/solicitud/decision" element={<SolicitudDecision />} />
       <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
+        <Route path="mas" element={<More />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="prestamos" element={<Prestamos />} />
         <Route path="nuevo-prestamo" element={<NuevoPrestamo />} />

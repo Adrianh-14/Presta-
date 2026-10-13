@@ -15,6 +15,7 @@ RUN node marketing/build.mjs
 
 FROM nginx:1.27-alpine AS runtime
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/security-headers.conf /etc/nginx/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html/app
 COPY --from=build /app/dist/assets /usr/share/nginx/html/assets
 COPY --from=build /app/dist/branding /usr/share/nginx/html/branding

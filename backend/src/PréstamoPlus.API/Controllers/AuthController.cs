@@ -9,6 +9,7 @@ using PréstamoPlus.Application.Features.Auth.Commands.RefreshToken;
 using PréstamoPlus.Application.Features.Auth.Commands.Register;
 using PréstamoPlus.Infrastructure.Persistence;
 using PréstamoPlus.Application.Common;
+using Microsoft.Extensions.Options;
 using PréstamoPlus.Domain.Entities;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,6 +26,8 @@ namespace PréstamoPlus.API.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IPasswordService _passwords;
         private readonly INotificationService _notifications;
+        private readonly JwtSettings _jwtSettings;
+        private readonly IWebHostEnvironment _environment;
 
         public AuthController(
             IMediator mediator,
@@ -32,7 +35,9 @@ namespace PréstamoPlus.API.Controllers
             ITenantRegistrationService tenantRegistration,
             ApplicationDbContext db,
             IPasswordService passwords,
-            INotificationService notifications)
+            INotificationService notifications,
+            IOptions<JwtSettings> jwtSettings,
+            IWebHostEnvironment environment)
         {
             _mediator = mediator;
             _clientAuthentication = clientAuthentication;
@@ -40,6 +45,8 @@ namespace PréstamoPlus.API.Controllers
             _db = db;
             _passwords = passwords;
             _notifications = notifications;
+            _jwtSettings = jwtSettings.Value;
+            _environment = environment;
         }
 
         [HttpPost("tenant-register")]
@@ -56,7 +63,7 @@ namespace PréstamoPlus.API.Controllers
                 if (!await HasVerifiedEmailAsync(request.Email, "tenant-registration", cancellationToken))
                     return BadRequest(new { message = "Debes verificar el correo de trabajo antes de crear la empresa." });
                 var result = await _tenantRegistration.RegisterAsync(request, cancellationToken);
-                return Created(string.Empty, result);
+                return Created(string.Empty, PrepareAuthResponse(result));
             }
             catch (InvalidOperationException ex)
             {
@@ -101,6 +108,7 @@ namespace PréstamoPlus.API.Controllers
 
         [HttpPost("email-verification/confirm")]
         [AllowAnonymous]
+        [EnableRateLimiting("client-otp-verify")]
         public async Task<IActionResult> ConfirmEmailVerification([FromBody] EmailVerificationConfirmRequest request, CancellationToken cancellationToken)
         {
             var email = request.Email.Trim().ToLowerInvariant();
@@ -141,6 +149,7 @@ namespace PréstamoPlus.API.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
+        [EnableRateLimiting("auth-login")]
         [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -148,7 +157,7 @@ namespace PréstamoPlus.API.Controllers
             try
             {
                 var result = await _mediator.Send(new LoginCommand(request));
-                return Ok(result);
+                return Ok(PrepareAuthResponse(result));
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -206,7 +215,7 @@ namespace PréstamoPlus.API.Controllers
                 }
 
                 var result = await _mediator.Send(new RegisterCommand(request, tenantId));
-                return Created(string.Empty, result);
+                return Created(string.Empty, PrepareAuthResponse(result));
             }
             catch (InvalidOperationException ex)
             {
@@ -218,15 +227,22 @@ namespace PréstamoPlus.API.Controllers
         [AllowAnonymous]
         [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
         {
+            Response.Headers.CacheControl = "no-store";
             try
             {
-                var result = await _mediator.Send(new RefreshTokenCommand(request));
-                return Ok(result);
+                var token = Request.Cookies[RefreshCookieName];
+                // Transitional body support lets existing web sessions migrate once;
+                // newly issued web sessions receive the secret only in the HttpOnly cookie.
+                if (string.IsNullOrWhiteSpace(token)) token = request?.RefreshToken;
+                if (string.IsNullOrWhiteSpace(token)) return Unauthorized(new { message = "La sesión expiró. Inicia sesión nuevamente." });
+                var result = await _mediator.Send(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = token }));
+                return Ok(PrepareAuthResponse(result));
             }
             catch (UnauthorizedAccessException ex)
             {
+                ClearRefreshCookie();
                 return Unauthorized(new { message = ex.Message });
             }
         }
@@ -234,13 +250,16 @@ namespace PréstamoPlus.API.Controllers
         [HttpPost("logout")]
         [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken cancellationToken)
+        public async Task<IActionResult> Logout([FromBody] LogoutRequest? request, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(request.RefreshToken))
-                return NoContent();
+            Response.Headers.CacheControl = "no-store";
+            var token = Request.Cookies[RefreshCookieName];
+            if (string.IsNullOrWhiteSpace(token)) token = request?.RefreshToken;
+            ClearRefreshCookie();
+            if (string.IsNullOrWhiteSpace(token)) return NoContent();
 
             var refresh = await _db.RefreshTokens.SingleOrDefaultAsync(
-                item => item.Token == request.RefreshToken && item.RevokedAt == null,
+                item => item.Token == token && item.RevokedAt == null,
                 cancellationToken);
             if (refresh is not null)
             {
@@ -250,6 +269,41 @@ namespace PréstamoPlus.API.Controllers
 
             return NoContent();
         }
+
+        private string RefreshCookieName => _environment.IsDevelopment() ? "bonexa-refresh" : "__Host-bonexa-refresh";
+
+        private AuthResponseDto PrepareAuthResponse(AuthResponseDto result)
+        {
+            Response.Headers.CacheControl = "no-store";
+            if (IsNativeClient()) return result;
+            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = !_environment.IsDevelopment(),
+                SameSite = SameSiteMode.Strict,
+                Path = "/",
+                IsEssential = true,
+                Expires = DateTimeOffset.UtcNow.AddDays(Math.Max(1, _jwtSettings.RefreshTokenExpirationDays))
+            });
+            return result with { RefreshToken = string.Empty };
+        }
+
+        private bool IsNativeClient()
+        {
+            var platform = Request.Headers["X-App-Client"].ToString();
+            var origin = Request.Headers.Origin.ToString();
+            return string.Equals(platform, "native", StringComparison.OrdinalIgnoreCase) ||
+                   origin.StartsWith("capacitor://", StringComparison.OrdinalIgnoreCase) ||
+                   origin.StartsWith("ionic://", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void ClearRefreshCookie() => Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !_environment.IsDevelopment(),
+            SameSite = SameSiteMode.Strict,
+            Path = "/"
+        });
 
         [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
         [HttpPost("client-session/renew")]

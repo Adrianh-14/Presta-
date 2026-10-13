@@ -1,14 +1,16 @@
 import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
+import { tokenStore } from './tokenStore';
 
 let refreshPromise = null;
 
 const refreshAccessToken = (refreshToken) => {
   if (!refreshPromise) {
-    refreshPromise = axios.post('/api/auth/refresh', { refreshToken })
+    refreshPromise = axios.post('/api/auth/refresh', refreshToken ? { refreshToken } : {})
       .then(({ data }) => {
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
+        tokenStore.setAccessToken(data.accessToken);
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+        else localStorage.removeItem('refreshToken');
         return data.accessToken;
       })
       .finally(() => { refreshPromise = null; });
@@ -22,6 +24,7 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? 'https://prestamosplus.com' : ''),
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -31,9 +34,10 @@ api.interceptors.request.use((config) => {
     delete config.headers['Content-Type'];
     delete config.headers['content-type'];
   }
+  if (Capacitor.isNativePlatform()) config.headers['X-App-Client'] = 'native';
   const token = config.useClientToken
     ? localStorage.getItem('clientToken')
-    : localStorage.getItem('accessToken') || localStorage.getItem('clientToken');
+    : tokenStore.getAccessToken() || localStorage.getItem('clientToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -54,7 +58,7 @@ api.interceptors.response.use(
 
     const clearSessionAndRedirect = () => {
       const isClientSession = !!localStorage.getItem('clientToken');
-      localStorage.removeItem('accessToken');
+      tokenStore.clear();
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       if (isClientSession) {
@@ -88,7 +92,7 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      if (refreshToken) {
+      if (refreshToken || localStorage.getItem('user')) {
         try {
           const accessToken = await refreshAccessToken(refreshToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;

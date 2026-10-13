@@ -13,14 +13,14 @@ export default function Layout() {
       { to: '/plataforma', label: 'Inicio', icon: LayoutDashboard, end: true },
       { to: '/plataforma/empresas', label: 'Empresas', icon: Building2 },
       { to: '/plataforma/planes', label: 'Planes', icon: CreditCard },
-      { to: '/plataforma/suscripciones', label: 'Más', icon: MoreHorizontal },
+      { to: '/plataforma/mas', label: 'Más', icon: MoreHorizontal },
     ]
     : [
       { to: '/admin', label: 'Inicio', icon: LayoutDashboard, end: true },
       { to: '/admin/clientes', label: 'Clientes', icon: Building2 },
       { to: '/admin/nuevo-prestamo', label: 'Nuevo', icon: Plus, action: true },
       { to: '/admin/prestamos', label: 'Cobros', icon: CreditCard },
-      { to: '/admin/configuracion', label: 'Más', icon: MoreHorizontal },
+      { to: '/admin/mas', label: 'Más', icon: MoreHorizontal },
     ];
 
   return (

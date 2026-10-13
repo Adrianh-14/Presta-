@@ -6,6 +6,7 @@ import DataTable from '../../components/DataTable';
 import StatusBadge from '../../components/StatusBadge';
 import ClienteDetailModal from '../../components/modals/ClienteDetailModal';
 import { clientService } from '../../services/clientService';
+import { tokenStore } from '../../services/tokenStore';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateOnly } from '../../utils/dateOnly';
 
@@ -27,7 +28,7 @@ export default function Clientes() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const tenantId = user?.tenantId || (() => {
-    try { return JSON.parse(atob(localStorage.getItem('accessToken')?.split('.')[1] || '')).tenantId || ''; } catch { return ''; }
+    try { return JSON.parse(atob(tokenStore.getAccessToken()?.split('.')[1] || '')).tenantId || ''; } catch { return ''; }
   })();
   const registrationUrl = tenantId ? `/solicitud?mode=client&tenant=${tenantId}&source=admin&v=2` : '/solicitud?mode=client&source=admin&v=2';
 

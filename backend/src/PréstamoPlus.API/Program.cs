@@ -112,6 +112,17 @@ builder.Services.AddRateLimiter(options =>
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 AutoReplenishment = true
             }));
+    options.AddPolicy("auth-login", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetRemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
     options.AddPolicy("public-form", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             GetRemoteAddress(context),
@@ -380,16 +391,9 @@ app.Run();
 
 static string GetRemoteAddress(HttpContext context)
 {
-    // Nginx/ngrok forward the original client address. Use the first hop so
-    // anonymous rate limits remain per client when the API sits behind a proxy.
-    var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-    var originalAddress = forwardedFor?
-        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .FirstOrDefault();
-
-    return !string.IsNullOrWhiteSpace(originalAddress)
-        ? originalAddress
-        : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    // Use the address established by ForwardedHeadersMiddleware. Never trust
+    // arbitrary X-Forwarded-For input here: callers can spoof it to evade limits.
+    return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 }
 
 static string[] FindAvailableDevelopmentUrls()

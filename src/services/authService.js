@@ -1,11 +1,22 @@
 import api from './api';
+import { tokenStore } from './tokenStore';
+
+const persistAuth = (data) => {
+  tokenStore.setAccessToken(data.accessToken);
+  localStorage.setItem('user', JSON.stringify(data.user));
+  if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+  else localStorage.removeItem('refreshToken');
+};
+
+const refreshRequest = () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  return api.post('/api/auth/refresh', refreshToken ? { refreshToken } : {});
+};
 
 export const authService = {
   login: async (email, password) => {
     const { data } = await api.post('/api/auth/login', { email, password });
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    persistAuth(data);
     return data;
   },
   requestPasswordReset: async (email) => (await api.post('/api/auth/password-reset/request', { email })).data,
@@ -15,51 +26,43 @@ export const authService = {
 
   register: async (email, password, nombre, role = 'Client') => {
     const { data } = await api.post('/api/auth/register', { email, password, nombre, role });
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    persistAuth(data);
     return data;
   },
 
   registerTenant: async (payload) => {
     const { data } = await api.post('/api/auth/tenant-register', payload);
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    persistAuth(data);
     return data;
   },
 
   logout: () => {
     const refreshToken = localStorage.getItem('refreshToken');
-    if (refreshToken) api.post('/api/auth/logout', { refreshToken }).catch(() => console.warn('No se pudo revocar la sesión en el servidor.'));
-    localStorage.removeItem('accessToken');
+    if (refreshToken || tokenStore.getAccessToken() || localStorage.getItem('user')) {
+      api.post('/api/auth/logout', refreshToken ? { refreshToken } : {})
+        .catch(() => console.warn('No se pudo revocar la sesión en el servidor.'));
+    }
+    tokenStore.clear();
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
   },
 
   restoreSession: async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    const storedUser = authService.getCurrentUser();
-    if (!refreshToken) return storedUser && localStorage.getItem('accessToken') ? storedUser : null;
     try {
-      const { data } = await api.post('/api/auth/refresh', { refreshToken });
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      const { data } = await refreshRequest();
+      persistAuth(data);
       return data.user;
     } catch {
-      authService.logout();
+      tokenStore.clear();
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
       return null;
     }
   },
 
   refreshSession: async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) throw new Error('No existe una sesión renovable.');
-    const { data } = await api.post('/api/auth/refresh', { refreshToken });
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    const { data } = await refreshRequest();
+    persistAuth(data);
     return data;
   },
 
@@ -75,6 +78,6 @@ export const authService = {
   },
 
   isAuthenticated: () => {
-    return !!localStorage.getItem('accessToken');
+    return !!tokenStore.getAccessToken();
   },
 };
