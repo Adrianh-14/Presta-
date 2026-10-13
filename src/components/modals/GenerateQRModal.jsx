@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Clock, Copy, Check } from 'lucide-react';
+import { X, Clock, Copy, Check, CheckCircle, Download, Printer } from 'lucide-react';
 import { collectorPortalService } from '../../services/cobradorService';
+import { portalService } from '../../services/portalService';
+import { downloadPaymentReceipt, printPaymentReceipt } from '../../utils/paymentReceipt';
 
 const formatAmount = (value) => Number(value || 0).toLocaleString('en-US', {
   minimumFractionDigits: 2,
@@ -17,6 +19,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
   const [copied, setCopied] = useState(false);
   const [sugerido, setSugerido] = useState(null);
   const [attempts, setAttempts] = useState(0);
+  const [receiptData, setReceiptData] = useState(null);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
       setCopied(false);
       setSugerido(null);
       setAttempts(0);
+      setReceiptData(null);
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
   }, [isOpen]);
@@ -46,7 +50,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
         })
         .catch(() => {});
     }
-  }, [isOpen, assignment?.id]);
+  }, [isOpen, assignment?.id, assignment?.cuotaMensual, assignment?.qrGenerationAttempts]);
 
   useEffect(() => {
     if (qrData) {
@@ -64,6 +68,20 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
       return () => clearInterval(intervalRef.current);
     }
   }, [qrData]);
+
+  useEffect(() => {
+    if (!qrData?.token || receiptData) return undefined;
+    let active = true;
+    const checkPayment = async () => {
+      try {
+        const data = await portalService.getQRInfo(qrData.token);
+        if (active && String(data.status).toLowerCase() === 'used') setReceiptData(data);
+      } catch { /* QR may be unavailable while the client is scanning it. */ }
+    };
+    checkPayment();
+    const poll = window.setInterval(checkPayment, 3000);
+    return () => { active = false; window.clearInterval(poll); };
+  }, [qrData, receiptData]);
 
   const handleGenerate = async () => {
     if (!monto || parseFloat(monto) <= 0) {
@@ -135,9 +153,9 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
                     className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500 transition-colors">
                     Cuota exacta ${formatAmount(cuotaRapida)}
                   </button>
-                  <button type="button" onClick={() => setMonto(Number(assignment.saldoPendiente || 0).toFixed(2))}
+                  <button type="button" onClick={() => setMonto(Number(sugerido?.totalLiquidacion || assignment.saldoPendiente || 0).toFixed(2))}
                     className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500 transition-colors">
-                    Saldo completo ${formatAmount(assignment.saldoPendiente)}
+                    Saldo completo ${formatAmount(sugerido?.totalLiquidacion || assignment.saldoPendiente)}
                   </button>
                 </div>
               </div>
@@ -150,6 +168,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
                     {sugerido.morasPendientes > 0 && (
                       <p className="text-xs text-red-400">Mora: <span className="font-semibold text-red-500">+${formatAmount(sugerido.morasPendientes)}</span></p>
                     )}
+                    <p className="text-xs text-slate-400">Liquidación total: <span className="font-semibold text-navy-500">${formatAmount(sugerido.totalLiquidacion)}</span></p>
                   </>
                 )}
               </div>
@@ -163,6 +182,16 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
             </>
           ) : (
             <div className="flex flex-col items-center">
+              {receiptData && (
+                <div className="mb-4 w-full rounded-12 border border-success-200 bg-success-50 p-4 text-center">
+                  <div className="mb-2 flex items-center justify-center gap-2 text-success-700"><CheckCircle size={18} /> <span className="font-bold">Pago confirmado</span></div>
+                  <p className="text-xs text-success-700">El cliente confirmó el pago y el préstamo fue actualizado.</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => downloadPaymentReceipt({ ...receiptData, capital: receiptData.capitalAplicado, interes: receiptData.interesAplicado, mora: receiptData.moraAplicada, fechaPago: receiptData.fechaPago })} className="flex items-center justify-center gap-1 rounded-8 bg-success-600 px-2 py-2 text-[11px] font-bold text-white hover:bg-success-700"><Download size={13} /> PDF</button>
+                    <button type="button" onClick={() => printPaymentReceipt({ ...receiptData, capital: receiptData.capitalAplicado, interes: receiptData.interesAplicado, mora: receiptData.moraAplicada, fechaPago: receiptData.fechaPago })} className="flex items-center justify-center gap-1 rounded-8 border border-success-200 bg-white px-2 py-2 text-[11px] font-bold text-success-700 hover:bg-success-100"><Printer size={13} /> Imprimir</button>
+                  </div>
+                </div>
+              )}
               <div className={`relative p-4 bg-white rounded-12 border-2 ${countdown <= 30 ? 'border-red-300' : 'border-surface-border'} mb-4`}>
                 <QRCodeSVG value={qrUrl} size={200} level="H" includeMargin />
                 {countdown <= 30 && countdown > 0 && (

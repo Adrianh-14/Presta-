@@ -27,16 +27,25 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
             var unpaidLateFees = await _unitOfWork.LateFees.ListAsync(unpaidMoraSpec, cancellationToken);
             var installments = await _unitOfWork.Installments.ListAsync(
                 new InstallmentsByLoanIdSpec(request.LoanId), cancellationToken);
+            var loanApplication = await _unitOfWork.LoanApplications.GetByIdAsync(loan.LoanApplicationId);
 
             decimal totalPagado = payments.Sum(p => p.Monto);
             decimal totalCapital = payments.Sum(p => p.Capital);
             decimal totalIntereses = payments.Sum(p => p.Interes);
             decimal totalMora = payments.Sum(p => p.MoraPagada);
             decimal moraPendiente = unpaidLateFees.Sum(lf => lf.Monto);
-            var cuotasPendientes = installments
+            var pendingInstallments = installments
                 .Where(i => i.Estado != EstadoInstallment.Pagado)
-                .Sum(i => Math.Max(0, i.Capital - i.CapitalPagado) + Math.Max(0, i.Interes - i.InteresPagado));
-            var totalAPagar = totalPagado + cuotasPendientes + moraPendiente;
+                .ToList();
+            var capitalPendiente = pendingInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado));
+            var interesesPendientes = pendingInstallments.Sum(i => Math.Max(0, i.Interes - i.InteresPagado));
+            var cuotasPendientes = capitalPendiente + interesesPendientes;
+            // El gasto de cierre ya forma parte del principal financiado y, por
+            // tanto, del capital pendiente. No se vuelve a sumar para evitar
+            // cobrarlo dos veces.
+            var gastoCierre = Math.Max(0, loan.MontoOriginal - (loanApplication?.MontoSolicitado ?? loan.MontoOriginal));
+            var gastosLegales = 0m; // Aún no existe un cargo legal registrado en el modelo.
+            var totalLiquidacion = cuotasPendientes + moraPendiente + gastosLegales;
             int diasMora = unpaidLateFees.Count == 0 ? 0 : unpaidLateFees.Max(lf => lf.DiasAtraso);
 
             DateTime? proximoPago = null;
@@ -63,7 +72,12 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
                 CuotaConMora = loan.CuotaMensual + moraPendiente,
                 DiasMora = diasMora,
                 SaldoPendiente = loan.SaldoPendiente,
-                TotalAPagar = totalAPagar,
+                CapitalPendiente = capitalPendiente,
+                InteresesPendientes = interesesPendientes,
+                GastoCierre = gastoCierre,
+                GastosLegales = gastosLegales,
+                TotalLiquidacion = totalLiquidacion,
+                TotalAPagar = totalLiquidacion,
                 TotalPagos = payments.Count,
                 ProximoPago = proximoPago
             };

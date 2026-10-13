@@ -73,6 +73,19 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                 var installments = await _unitOfWork.Installments.ListAsync(cancellationToken);
                 var loanInstallments = installments.Where(i => i.LoanId == paymentQR.LoanId).ToList();
 
+                var unpaidInstallments = loanInstallments
+                    .Where(i => i.Estado != EstadoInstallment.Pagado)
+                    .ToList();
+                var unpaidLateFeesForValidation = (await _unitOfWork.LateFees.ListAsync(cancellationToken))
+                    .Where(lf => lf.LoanId == paymentQR.LoanId && !lf.Pagado && lf.Monto > 0)
+                    .ToList();
+                var outstanding = unpaidInstallments.Sum(i =>
+                        Math.Max(0, i.Capital - i.CapitalPagado) +
+                        Math.Max(0, i.Interes - i.InteresPagado)) +
+                    unpaidLateFeesForValidation.Sum(lf => lf.Monto);
+                if (paymentQR.Monto <= 0 || paymentQR.Monto > outstanding)
+                    return new PaymentQRProcessResult { Success = false, Message = "El monto del QR ya no coincide con el saldo pendiente. Solicita un nuevo QR." };
+
                 decimal remaining = paymentQR.Monto;
                 decimal totalCapital = 0;
                 decimal totalInteres = 0;
@@ -192,6 +205,9 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                     Message = "Pago procesado exitosamente.",
                     Monto = payment.Monto,
                     Moneda = payment.Moneda,
+                    Capital = payment.Capital,
+                    Interes = payment.Interes,
+                    Mora = payment.MoraPagada,
                     Fecha = payment.FechaPago,
                     ClienteNombre = client.Nombre,
                     SaldoRestante = nuevoSaldo

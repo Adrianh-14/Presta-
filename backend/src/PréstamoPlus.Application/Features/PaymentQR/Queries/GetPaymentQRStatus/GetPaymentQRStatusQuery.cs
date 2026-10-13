@@ -27,10 +27,14 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Queries.GetPaymentQRStatu
             var client = await _unitOfWork.Clients.GetByIdAsync(paymentQR.ClientId);
             var collector = await _unitOfWork.Collectors.GetByIdAsync(paymentQR.CollectorId);
             var collectorUser = collector is not null ? await _unitOfWork.Users.GetByIdAsync(collector.UserId) : null;
-
             var status = paymentQR.Status;
             if (status == PaymentQRStatus.Pending && paymentQR.ExpiresAt <= DateTime.UtcNow)
                 status = PaymentQRStatus.Expired;
+
+            var payment = status == PaymentQRStatus.Used
+                ? (await _unitOfWork.Payments.ListAsync(cancellationToken))
+                    .FirstOrDefault(item => item.IdempotencyKey == paymentQR.Token)
+                : null;
 
             var estadoMensaje = status switch
             {
@@ -48,12 +52,19 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Queries.GetPaymentQRStatu
                 ClienteCedula = MaskValue(client?.Cedula),
                 ClienteTelefono = MaskValue(client?.Telefono),
                 CollectorNombre = collectorUser?.Nombre ?? "",
+                PrestamoId = loan?.Id.ToString() ?? string.Empty,
                 Monto = paymentQR.Monto,
                 Moneda = paymentQR.Moneda,
                 SaldoPendiente = loan?.SaldoPendiente ?? 0,
                 ExpiresAt = paymentQR.ExpiresAt,
                 Status = status,
-                EstadoMensaje = estadoMensaje
+                EstadoMensaje = estadoMensaje,
+                PaymentId = payment?.Id,
+                CapitalAplicado = payment?.Capital ?? 0,
+                InteresAplicado = payment?.Interes ?? 0,
+                MoraAplicada = payment?.MoraPagada ?? 0,
+                SaldoRestante = payment?.SaldoRestante ?? loan?.SaldoPendiente ?? 0,
+                FechaPago = payment?.FechaPago
             };
         }
 

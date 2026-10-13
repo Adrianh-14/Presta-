@@ -36,6 +36,9 @@ namespace PréstamoPlus.Application.DTOs
         public string Message { get; init; } = string.Empty;
         public decimal Monto { get; init; }
         public string Moneda { get; init; } = "DOP";
+        public decimal Capital { get; init; }
+        public decimal Interes { get; init; }
+        public decimal Mora { get; init; }
         public DateTime Fecha { get; init; }
         public string ClienteNombre { get; init; } = string.Empty;
         public decimal SaldoRestante { get; init; }
@@ -55,6 +58,12 @@ namespace PréstamoPlus.Application.DTOs
         public DateTime ExpiresAt { get; init; }
         public PaymentQRStatus Status { get; init; }
         public string EstadoMensaje { get; init; } = string.Empty;
+        public Guid? PaymentId { get; init; }
+        public decimal CapitalAplicado { get; init; }
+        public decimal InteresAplicado { get; init; }
+        public decimal MoraAplicada { get; init; }
+        public decimal SaldoRestante { get; init; }
+        public DateTime? FechaPago { get; init; }
     }
 
     public record QRRequestOtpRequest

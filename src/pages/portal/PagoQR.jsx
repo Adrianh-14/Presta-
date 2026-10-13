@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, CheckCircle, Loader2, Shield, QrCode, Camera, LockKeyhole, TriangleAlert } from 'lucide-react';
+import { MapPin, CheckCircle, Loader2, Shield, QrCode, Camera, LockKeyhole, TriangleAlert, Printer, Download } from 'lucide-react';
 import { portalService } from '../../services/portalService';
+import { downloadPaymentReceipt, printPaymentReceipt } from '../../utils/paymentReceipt';
 import jsQR from 'jsqr';
 
 function QrCodeIcon({ large = false }) {
@@ -24,6 +25,7 @@ export default function PagoQR() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [verified, setVerified] = useState(false);
   const [qrInput, setQrInput] = useState('');
   const [scannerActive, setScannerActive] = useState(false);
@@ -255,7 +257,18 @@ export default function PagoQR() {
     try {
       const { latitud, longitud } = await getGPS();
       const payment = await portalService.processQRPayment(token, latitud, longitud);
-      setResult(payment);
+      setResult({
+        ...payment,
+        moneda: payment.moneda || info?.moneda || 'DOP',
+        clienteNombre: payment.clienteNombre || info?.clienteNombre,
+        capital: payment.capital || info?.capitalAplicado || 0,
+        interes: payment.interes || info?.interesAplicado || 0,
+        mora: payment.mora || info?.moraAplicada || 0,
+        fechaPago: payment.fecha || new Date().toISOString(),
+        prestamoId: info?.prestamoId,
+      });
+      setPrinting(true);
+      window.setTimeout(() => setPrinting(false), 1800);
     } catch (err) {
       setError(err.response?.data?.message || 'No pudimos aplicar el pago. Intenta nuevamente.');
     } finally {
@@ -299,11 +312,14 @@ export default function PagoQR() {
     return (
       <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
         <div className="bg-white rounded-16 shadow-2xl p-8 max-w-sm w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-green-500" />
+          <div className={`relative w-24 h-20 mx-auto mb-5 rounded-12 border-2 ${printing ? 'border-accent-300 bg-accent-50' : 'border-green-200 bg-green-50'} flex items-end justify-center overflow-hidden`}>
+            <div className="absolute top-2 h-3 w-14 rounded-full bg-navy-800" />
+            <Printer size={42} className={`${printing ? 'text-accent-600 animate-bounce' : 'text-green-600'} mb-2`} />
+            {printing && <span className="absolute bottom-0 h-8 w-12 rounded-t bg-white shadow-sm animate-[receipt-out_1.8s_ease-out]" />}
           </div>
-          <h2 className="text-lg font-bold text-navy-500 mb-1">Pago Procesado</h2>
-          <p className="text-slate-400 text-sm mb-4">{result.message}</p>
+          <div className="mb-3 flex items-center justify-center gap-2 text-green-600"><CheckCircle size={18} /> <span className="text-sm font-bold">Pago aplicado</span></div>
+          <h2 className="text-lg font-bold text-navy-500 mb-1">{printing ? 'Imprimiendo recibo...' : 'Recibo listo'}</h2>
+          <p className="text-slate-400 text-sm mb-4">{printing ? 'Tu comprobante está preparado para descargar o imprimir.' : result.message}</p>
           <div className="bg-surface-fill rounded-8 p-4 mb-4 text-left space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Cliente</span>
@@ -317,6 +333,10 @@ export default function PagoQR() {
               <span className="text-slate-400">Saldo restante</span>
               <span className="font-semibold text-navy-500">${(result.saldoRestante || 0).toLocaleString()}</span>
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button type="button" onClick={() => downloadPaymentReceipt(result)} className="flex items-center justify-center gap-1.5 rounded-8 bg-accent-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-accent-700"><Download size={14} /> Descargar PDF</button>
+            <button type="button" onClick={() => printPaymentReceipt(result)} className="flex items-center justify-center gap-1.5 rounded-8 border border-surface-border px-3 py-2.5 text-xs font-bold text-navy-700 hover:bg-surface-fill"><Printer size={14} /> Imprimir</button>
           </div>
           <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mb-2">
             <MapPin size={10} /> Ubicación GPS registrada
@@ -361,7 +381,7 @@ export default function PagoQR() {
           </div>
         )}
 
-        {info && info.status !== 'Pending' ? (
+        {info && String(info.status).toLowerCase() !== 'pending' ? (
           <p className="text-sm text-slate-400 text-center">{info.estadoMensaje}</p>
         ) : verified ? (
           <>

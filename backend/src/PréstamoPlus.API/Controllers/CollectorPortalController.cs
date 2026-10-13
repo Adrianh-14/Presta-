@@ -79,13 +79,22 @@ namespace PréstamoPlus.API.Controllers
             var moras = lateFees
                 .Where(lf => lf.LoanId == loan.Id && !lf.Pagado && lf.Monto > 0)
                 .Sum(lf => lf.Monto);
+            var pendingInstallments = installments
+                .Where(i => i.LoanId == loan.Id && i.Estado != Domain.Enums.EstadoInstallment.Pagado)
+                .ToList();
+            var capitalPendiente = pendingInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado));
+            var interesesPendientes = pendingInstallments.Sum(i => Math.Max(0, i.Interes - i.InteresPagado));
+            var totalLiquidacion = capitalPendiente + interesesPendientes + moras;
 
             return Ok(new
             {
                 cuotaMensual = loan.CuotaMensual,
                 morasPendientes = moras,
                 totalSugerido = loan.CuotaMensual + moras,
-                cuotasPendientes = installments.Count(i => i.LoanId == loan.Id && i.Estado != Domain.Enums.EstadoInstallment.Pagado)
+                cuotasPendientes = pendingInstallments.Count,
+                capitalPendiente,
+                interesesPendientes,
+                totalLiquidacion
             });
         }
     }
