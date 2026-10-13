@@ -26,6 +26,9 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
                 .HasMaxLength(20);
 
             builder.Property(a => a.IsQRAuthorized).HasDefaultValue(false);
+            // Sirve como control optimista para que dos solicitudes concurrentes no excedan el límite de intentos QR.
+            builder.Property(a => a.QRGenerationAttempts).IsConcurrencyToken();
+            builder.Property(a => a.AuthorizedQRInstallments).HasMaxLength(2000).IsRequired().HasDefaultValue("");
 
             builder.HasIndex(a => new { a.CollectorId, a.LoanId });
 

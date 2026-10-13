@@ -485,6 +485,13 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.Property<Guid>("AssignedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AuthorizedQRInstallments")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasDefaultValue("");
+
                     b.Property<Guid>("CollectorId")
                         .HasColumnType("uuid");
 
@@ -502,7 +509,8 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("QRGenerationAttempts")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .IsConcurrencyToken();
 
                     b.Property<bool>("QRPermissionRequested")
                         .HasColumnType("boolean");
@@ -1538,6 +1546,9 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("InstallmentNumber")
+                        .HasColumnType("integer");
+
                     b.Property<double?>("Latitud")
                         .HasColumnType("double precision");
 
@@ -1579,6 +1590,8 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
                     b.HasIndex("Token")
                         .IsUnique();
+
+                    b.HasIndex("AssignmentId", "InstallmentNumber", "Status");
 
                     b.ToTable("PaymentQRs", (string)null);
                 });

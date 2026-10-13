@@ -9,6 +9,7 @@ namespace PréstamoPlus.Application.DTOs
         public string ClienteNombre { get; init; } = string.Empty;
         public string ClienteCedula { get; init; } = string.Empty;
         public decimal Monto { get; init; }
+        public int NumeroCuota { get; init; }
         public string Moneda { get; init; } = "DOP";
         public DateTime ExpiresAt { get; init; }
         public PaymentQRStatus Status { get; init; }
@@ -18,6 +19,7 @@ namespace PréstamoPlus.Application.DTOs
     public record GeneratePaymentQRRequest
     {
         public Guid AssignmentId { get; init; }
+        public int InstallmentNumber { get; init; }
         public decimal Monto { get; init; }
         public string? Moneda { get; init; }
     }
@@ -55,6 +57,7 @@ namespace PréstamoPlus.Application.DTOs
         public string CollectorNombre { get; init; } = string.Empty;
         public string PrestamoId { get; init; } = string.Empty;
         public decimal Monto { get; init; }
+        public int NumeroCuota { get; init; }
         public string Moneda { get; init; } = "DOP";
         public decimal SaldoPendiente { get; init; }
         public DateTime ExpiresAt { get; init; }

@@ -62,5 +62,15 @@ namespace PréstamoPlus.Application.DTOs
         public decimal TotalAPagar { get; init; }
         public int TotalPagos { get; init; }
         public DateTime? ProximoPago { get; init; }
+        public List<PartialInstallmentSummaryDto> CuotasParciales { get; init; } = new();
+    }
+
+    public record PartialInstallmentSummaryDto
+    {
+        public int NumeroCuota { get; init; }
+        public DateTime FechaPago { get; init; }
+        public decimal MontoCuota { get; init; }
+        public decimal MontoPagado { get; init; }
+        public decimal MontoPendiente { get; init; }
     }
 }

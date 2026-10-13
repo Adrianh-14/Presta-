@@ -75,6 +75,21 @@ export default function PortalLoanDetail() {
         </div>
       </div>
 
+      {(summary?.cuotasParciales || []).length > 0 && (
+        <section className="mb-6 rounded-16 border border-warning-200 bg-warning-50 p-4 sm:p-5">
+          <h3 className="mb-3 text-sm font-bold text-warning-800">Cuotas con pago parcial</h3>
+          <div className="space-y-2">
+            {summary.cuotasParciales.map(item => (
+              <div key={item.numeroCuota} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-warning-200/70 pt-2 text-sm">
+                <span className="font-semibold text-navy-500">Cuota #{item.numeroCuota}</span>
+                <span className="text-slate-500">Abonado ${Number(item.montoPagado || 0).toLocaleString()}</span>
+                <span className="font-bold text-warning-800">Restan ${Number(item.montoPendiente || 0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {moraPendiente > 0 && (
         <div className="mb-8 border border-red-200 bg-danger-50 p-5">
           <div className="flex items-start gap-3">
@@ -125,6 +140,7 @@ export default function PortalLoanDetail() {
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                           isPaid ? 'bg-success-50 text-success-700' : isPartial ? 'bg-warning-50 text-warning-700' : isOverdue ? 'bg-danger-50 text-danger-700' : 'bg-surface-fill text-slate-400'
                         }`}>{isPaid ? 'Pagado' : isPartial ? 'Parcial' : isOverdue ? 'Vencido' : 'Pendiente'}</span>
+                        {isPartial && <span className="mt-1 block whitespace-nowrap text-[10px] leading-4 text-warning-700">Abonado ${Number(row.montoPagado || 0).toLocaleString()}<br /><strong>Restan ${Number(row.montoPendiente || 0).toLocaleString()}</strong></span>}
                       </td>
                     </tr>
                   );

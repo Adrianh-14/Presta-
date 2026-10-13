@@ -57,6 +57,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Queries.GetPaymentQRStatu
                 CollectorNombre = collectorUser?.Nombre ?? "",
                 PrestamoId = loan?.Id.ToString() ?? string.Empty,
                 Monto = paymentQR.Monto,
+                NumeroCuota = paymentQR.InstallmentNumber,
                 Moneda = paymentQR.Moneda,
                 SaldoPendiente = loan?.SaldoPendiente ?? 0,
                 ExpiresAt = paymentQR.ExpiresAt,

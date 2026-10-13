@@ -34,10 +34,19 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
             var allAddresses = await _unitOfWork.Addresses.ListAsync(cancellationToken);
             var allPaymentQRs = await _unitOfWork.PaymentQRs.ListAsync(cancellationToken);
             var allPayments = await _unitOfWork.Payments.ListAsync(cancellationToken);
+            var collectorQRs = allPaymentQRs
+                .Where(qr => qr.CollectorId == collector.Id)
+                .ToList();
+            var collectorQrTokens = collectorQRs.Select(qr => qr.Token).ToHashSet(StringComparer.Ordinal);
+            var qrPaymentsByToken = allPayments
+                .Where(payment => payment.IdempotencyKey is not null && collectorQrTokens.Contains(payment.IdempotencyKey))
+                .ToDictionary(payment => payment.IdempotencyKey!, StringComparer.Ordinal);
 
             var assignmentDtos = new List<CollectionAssignmentDto>();
             int exitosos = 0, parciales = 0, sinResultado = 0;
-            decimal montoCobrado = 0;
+            // El QR conserva al cobrador que lo generó, incluso si la asignación
+            // se mueve después a otra ruta o el cliente paga desde el enlace.
+            decimal montoCobrado = qrPaymentsByToken.Values.Sum(payment => payment.Monto);
 
             foreach (var assignment in assignments)
             {
@@ -52,14 +61,12 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     .Where(v => v.AssignmentId == assignment.Id && v.CollectorId == collector.Id)
                     .ToList();
                 var lastVisit = visits.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
-                var qrPayments = allPaymentQRs
-                    .Where(qr => qr.AssignmentId == assignment.Id &&
-                                 qr.CollectorId == collector.Id &&
-                                 qr.Status == PaymentQRStatus.Used)
+                var qrPayments = collectorQRs
+                    .Where(qr => qr.AssignmentId == assignment.Id && qrPaymentsByToken.ContainsKey(qr.Token))
                     .Select(qr => new
                     {
                         QR = qr,
-                        Payment = allPayments.FirstOrDefault(payment => payment.IdempotencyKey == qr.Token)
+                        Payment = qrPaymentsByToken[qr.Token]
                     })
                     .Where(item => item.Payment is not null)
                     .OrderBy(item => item.QR.UsedAt ?? item.QR.CreatedAt)
@@ -72,8 +79,6 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                 var qrIsLatestEvent = lastQrPayment is not null &&
                     (lastVisit is null || qrPaymentDate > lastVisit.CreatedAt);
 
-                montoCobrado += qrPayments.Sum(item => item.Payment!.Monto);
-
                 if (qrIsLatestEvent)
                 {
                     exitosos++;
@@ -83,7 +88,8 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     if (lastVisit.TipoVisita == TipoVisita.CobroExitoso) exitosos++;
                     else if (lastVisit.TipoVisita == TipoVisita.CobroParcial) parciales++;
                     else sinResultado++;
-                    montoCobrado += lastVisit.MontoRecibido;
+                    if (lastVisit.TipoVisita is TipoVisita.CobroExitoso or TipoVisita.CobroParcial)
+                        montoCobrado += lastVisit.MontoRecibido;
                 }
                 else if (qrPayments.Count == 0)
                 {
@@ -111,6 +117,10 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     IsQRAuthorized = assignment.IsQRAuthorized,
                     QRGenerationAttempts = assignment.QRGenerationAttempts,
                     QRPermissionRequested = assignment.QRPermissionRequested,
+                    CuotasQRAutorizadas = assignment.AuthorizedQRInstallments
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(value => int.TryParse(value, out var number) ? number : 0)
+                        .Where(number => number > 0).ToList(),
                     AssignedAt = assignment.AssignedAt,
                     UltimaVisita = qrIsLatestEvent ? qrPaymentDate : lastVisit?.CreatedAt,
                     UltimoResultado = qrIsLatestEvent ? TipoVisita.CobroExitoso : lastVisit?.TipoVisita

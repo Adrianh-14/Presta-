@@ -13,6 +13,8 @@ namespace PréstamoPlus.Domain.Entities
         public bool IsQRAuthorized { get; set; } = false;
         public int QRGenerationAttempts { get; set; } = 0;
         public bool QRPermissionRequested { get; set; } = false;
+        // Cuotas autorizadas explícitamente por administración (números separados por coma).
+        public string AuthorizedQRInstallments { get; set; } = string.Empty;
 
         public Collector Collector { get; set; } = null!;
         public Loan Loan { get; set; } = null!;

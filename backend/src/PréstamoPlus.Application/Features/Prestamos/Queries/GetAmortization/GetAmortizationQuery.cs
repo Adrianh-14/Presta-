@@ -56,6 +56,8 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
                     Cuota = inst.Cuota,
                     Capital = inst.Capital,
                     Interes = inst.Interes,
+                    MontoPagado = Math.Max(0, inst.CapitalPagado) + Math.Max(0, inst.InteresPagado),
+                    MontoPendiente = Math.Max(0, inst.Capital - inst.CapitalPagado) + Math.Max(0, inst.Interes - inst.InteresPagado),
                     SaldoInicial = Math.Round(saldoInicial, 2),
                     SaldoFinal = Math.Round(saldo, 2),
                     Estado = estado
@@ -105,6 +107,8 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
                     Cuota = Math.Round(cuota, 2),
                     Capital = capital,
                     Interes = interes,
+                    MontoPagado = 0,
+                    MontoPendiente = Math.Max(0, capital) + Math.Max(0, interes),
                     SaldoInicial = Math.Round(saldoInicial, 2),
                     SaldoFinal = Math.Max(0, Math.Round(saldo, 2)),
                     Estado = estado

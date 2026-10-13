@@ -79,7 +79,18 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
                 TotalLiquidacion = totalLiquidacion,
                 TotalAPagar = totalLiquidacion,
                 TotalPagos = payments.Count,
-                ProximoPago = proximoPago
+                ProximoPago = proximoPago,
+                CuotasParciales = installments
+                    .Where(item => item.Estado == EstadoInstallment.Parcial)
+                    .OrderBy(item => item.Numero)
+                    .Select(item => new PartialInstallmentSummaryDto
+                    {
+                        NumeroCuota = item.Numero,
+                        FechaPago = item.FechaPago,
+                        MontoCuota = item.Cuota,
+                        MontoPagado = Math.Max(0, item.CapitalPagado) + Math.Max(0, item.InteresPagado),
+                        MontoPendiente = Math.Max(0, item.Capital - item.CapitalPagado) + Math.Max(0, item.Interes - item.InteresPagado)
+                    }).ToList()
             };
         }
     }

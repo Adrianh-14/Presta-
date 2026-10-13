@@ -35,7 +35,7 @@ export function printAmortization({ client, loan, rows, title = 'Tabla de amorti
       <td class="number">${currency(row.interes)}</td>
       <td class="number strong">${currency(row.cuota)}</td>
       <td class="number">${currency(row.saldoFinal)}</td>
-      ${hasStatus ? `<td class="center">${escapeHtml(row.estado || 'Pendiente')}</td>` : ''}
+      ${hasStatus ? `<td class="center">${escapeHtml(row.estado || 'Pendiente')}${row.estado === 'Parcial' ? `<br><small>Abonado ${currency(row.montoPagado)} · Restan ${currency(row.montoPendiente)}</small>` : ''}</td>` : ''}
     </tr>
   `).join('');
 

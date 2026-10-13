@@ -47,13 +47,28 @@ export const collectorPortalService = {
     return data;
   },
 
-  generateQR: async (assignmentId, monto) => {
-    const { data } = await api.post('/api/collector/generate-qr', { assignmentId, monto });
+  generateQR: async (assignmentId, installmentNumber, monto) => {
+    const { data } = await api.post('/api/collector/generate-qr', { assignmentId, installmentNumber, monto });
     return data;
   },
 
   toggleQRAuthorization: async (assignmentId, isQRAuthorized) => {
     const { data } = await api.patch(`/api/cobradores/assignments/${assignmentId}/qr-authorization`, { isQRAuthorized });
+    return data;
+  },
+
+  getAdminQRInstallments: async (assignmentId) => {
+    const { data } = await api.get(`/api/cobradores/assignments/${assignmentId}/qr-installments`);
+    return data;
+  },
+
+  setQRInstallments: async (assignmentId, installmentNumbers) => {
+    const { data } = await api.put(`/api/cobradores/assignments/${assignmentId}/qr-installments`, { installmentNumbers });
+    return data;
+  },
+
+  getQRInstallments: async (assignmentId) => {
+    const { data } = await api.get(`/api/collector/assignments/${assignmentId}/qr-installments`);
     return data;
   },
 

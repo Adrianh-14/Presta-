@@ -60,6 +60,22 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
             if (loan.SaldoPendiente <= 0)
                 return new PaymentQRProcessResult { Success = false, Message = "Este préstamo ya está pagado." };
 
+            var assignment = await _unitOfWork.CollectionAssignments.GetByIdAsync(paymentQR.AssignmentId);
+            var authorizedInstallments = (assignment?.AuthorizedQRInstallments ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(value => int.TryParse(value, out var number) && number == paymentQR.InstallmentNumber);
+            if (assignment is null || !assignment.IsQRAuthorized || !authorizedInstallments)
+                return new PaymentQRProcessResult { Success = false, Message = "La autorización de esta cuota fue retirada. Solicita un QR nuevo al cobrador." };
+
+            var targetInstallment = (await _unitOfWork.Installments.ListAsync(cancellationToken))
+                .FirstOrDefault(item => item.LoanId == paymentQR.LoanId && item.Numero == paymentQR.InstallmentNumber);
+            if (targetInstallment is null || targetInstallment.Estado == EstadoInstallment.Pagado)
+                return new PaymentQRProcessResult { Success = false, Message = "La cuota de este QR ya no está pendiente." };
+            var targetOutstanding = Math.Max(0, targetInstallment.Capital - targetInstallment.CapitalPagado) +
+                Math.Max(0, targetInstallment.Interes - targetInstallment.InteresPagado);
+            if (paymentQR.Monto <= 0 || paymentQR.Monto > targetOutstanding)
+                return new PaymentQRProcessResult { Success = false, Message = "El monto del QR excede el saldo pendiente de la cuota asignada. Solicita un QR actualizado." };
+
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             try
@@ -73,88 +89,41 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                 var installments = await _unitOfWork.Installments.ListAsync(cancellationToken);
                 var loanInstallments = installments.Where(i => i.LoanId == paymentQR.LoanId).ToList();
 
-                var unpaidInstallments = loanInstallments
-                    .Where(i => i.Estado != EstadoInstallment.Pagado)
-                    .ToList();
                 var unpaidLateFeesForValidation = (await _unitOfWork.LateFees.ListAsync(cancellationToken))
                     .Where(lf => lf.LoanId == paymentQR.LoanId && !lf.Pagado && lf.Monto > 0)
                     .ToList();
-                var outstanding = unpaidInstallments.Sum(i =>
-                        Math.Max(0, i.Capital - i.CapitalPagado) +
-                        Math.Max(0, i.Interes - i.InteresPagado)) +
-                    unpaidLateFeesForValidation.Sum(lf => lf.Monto);
-                if (paymentQR.Monto <= 0 || paymentQR.Monto > outstanding)
-                    return new PaymentQRProcessResult { Success = false, Message = "El monto del QR ya no coincide con el saldo pendiente. Solicita un nuevo QR." };
-
                 decimal remaining = paymentQR.Monto;
                 decimal totalCapital = 0;
                 decimal totalInteres = 0;
                 var appliedInstallments = new List<int>();
+                var target = loanInstallments.First(item => item.Numero == paymentQR.InstallmentNumber);
+                var unpaidInteres = Math.Max(0, target.Interes - target.InteresPagado);
+                var unpaidCapital = Math.Max(0, target.Capital - target.CapitalPagado);
+                var interesAplicado = Math.Min(remaining, unpaidInteres);
+                target.InteresPagado += interesAplicado;
+                remaining -= interesAplicado;
+                totalInteres += interesAplicado;
+                var capitalAplicado = Math.Min(remaining, unpaidCapital);
+                target.CapitalPagado += capitalAplicado;
+                remaining -= capitalAplicado;
+                totalCapital += capitalAplicado;
+                if (interesAplicado > 0 || capitalAplicado > 0) appliedInstallments.Add(target.Numero);
+                if (target.CapitalPagado >= target.Capital && target.InteresPagado >= target.Interes)
+                    target.Estado = EstadoInstallment.Pagado;
+                else if (target.CapitalPagado > 0 || target.InteresPagado > 0)
+                    target.Estado = EstadoInstallment.Parcial;
+                await _unitOfWork.Installments.UpdateAsync(target, cancellationToken);
 
-                var unpaidLateFees = (await _unitOfWork.LateFees.ListAsync(cancellationToken))
-                    .Where(lf => lf.LoanId == paymentQR.LoanId && !lf.Pagado && lf.Monto > 0)
-                    .OrderBy(lf => lf.FechaCalculo)
-                    .ToList();
+                // No permitir que diferencias de redondeo o sobrepagos se derramen a cuotas siguientes.
+                if (remaining > 0)
+                    throw new InvalidOperationException("El pago excede el saldo de la cuota vinculada al QR.");
 
                 decimal totalMora = 0;
-                foreach (var lateFee in unpaidLateFees)
-                {
-                    if (remaining <= 0) break;
-                    var moraAplicada = Math.Min(remaining, lateFee.Monto);
-                    remaining -= moraAplicada;
-                    totalMora += moraAplicada;
-                    if (moraAplicada >= lateFee.Monto)
-                        lateFee.Pagado = true;
-                    else
-                        lateFee.Monto -= moraAplicada;
-                    await _unitOfWork.LateFees.UpdateAsync(lateFee, cancellationToken);
-                }
-
-                foreach (var inst in loanInstallments.OrderBy(item => item.Numero))
-                {
-                    if (remaining <= 0) break;
-                    if (inst.Estado == EstadoInstallment.Pagado) continue;
-
-                    decimal unpaidInteres = inst.Interes - inst.InteresPagado;
-                    decimal unpaidCapital = inst.Capital - inst.CapitalPagado;
-                    var appliedToInstallment = false;
-
-                    if (unpaidInteres <= 0 && unpaidCapital <= 0)
-                    {
-                        inst.Estado = EstadoInstallment.Pagado;
-                        continue;
-                    }
-
-                    decimal interesAplicado = Math.Min(remaining, unpaidInteres);
-                    inst.InteresPagado += interesAplicado;
-                    remaining -= interesAplicado;
-                    totalInteres += interesAplicado;
-                    appliedToInstallment |= interesAplicado > 0;
-
-                    if (remaining > 0 && unpaidCapital > 0)
-                    {
-                        decimal capitalAplicado = Math.Min(remaining, unpaidCapital);
-                        inst.CapitalPagado += capitalAplicado;
-                        remaining -= capitalAplicado;
-                        totalCapital += capitalAplicado;
-                        appliedToInstallment |= capitalAplicado > 0;
-                    }
-
-                    if (appliedToInstallment)
-                        appliedInstallments.Add(inst.Numero);
-
-                    if (inst.CapitalPagado >= inst.Capital && inst.InteresPagado >= inst.Interes)
-                        inst.Estado = EstadoInstallment.Pagado;
-                    else if (inst.CapitalPagado > 0 || inst.InteresPagado > 0)
-                        inst.Estado = EstadoInstallment.Parcial;
-
-                    await _unitOfWork.Installments.UpdateAsync(inst, cancellationToken);
-                }
 
                 decimal nuevoSaldo = loanInstallments.Sum(i => i.Capital - i.CapitalPagado);
                 loan.SaldoPendiente = nuevoSaldo;
 
-                var quedanMoras = unpaidLateFees.Any(lf => !lf.Pagado && lf.Monto > 0);
+                var quedanMoras = unpaidLateFeesForValidation.Any(lf => !lf.Pagado && lf.Monto > 0);
                 var quedanCuotasVencidas = loan.Modalidad != ModalidadPrestamo.InteresPeriodicoSobreSaldo && loanInstallments.Any(i =>
                     i.Estado != EstadoInstallment.Pagado && i.FechaPago.Date < BusinessClock.Today);
 

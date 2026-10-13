@@ -1,117 +1,93 @@
-import { useState, useEffect } from 'react';
-import { X, QrCode, Loader2, ShieldOff, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, QrCode, Loader2, Trash2, ShieldCheck } from 'lucide-react';
 import { cobradorService, collectorPortalService } from '../../services/cobradorService';
 
-const fmt = (n) => `$${(n || 0).toLocaleString()}`;
+const money = (value) => Number(value || 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const date = (value) => value ? new Date(value).toLocaleDateString('es-DO') : '—';
 
 export default function QRManagementModal({ collector, onClose }) {
   const [assignments, setAssignments] = useState([]);
+  const [optionsByAssignment, setOptionsByAssignment] = useState({});
+  const [selectedByAssignment, setSelectedByAssignment] = useState({});
   const [loading, setLoading] = useState(true);
-  const [toggling, setToggling] = useState(null);
+  const [saving, setSaving] = useState(null);
   const [removing, setRemoving] = useState(null);
 
   useEffect(() => {
-    const load = async () => {
+    let active = true;
+    (async () => {
       try {
         const data = await collectorPortalService.getAssignments(collector.id);
+        if (!active) return;
         setAssignments(data);
-      } catch (err) {
-        console.error('Error loading assignments:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+        const entries = await Promise.all(data.map(async assignment => [assignment.id, await collectorPortalService.getAdminQRInstallments(assignment.id)]));
+        if (!active) return;
+        const options = Object.fromEntries(entries);
+        setOptionsByAssignment(options);
+        setSelectedByAssignment(Object.fromEntries(data.map(a => [a.id, (options[a.id] || []).filter(i => i.isAuthorized && i.status !== 'Pagado').map(i => i.installmentNumber)])));
+      } catch (error) {
+        console.error('No se pudieron cargar las cuotas para autorización QR', error);
+      } finally { if (active) setLoading(false); }
+    })();
+    return () => { active = false; };
   }, [collector.id]);
 
-  const handleToggle = async (assignmentId, currentValue) => {
-    setToggling(assignmentId);
+  const toggleInstallment = (assignmentId, installmentNumber) => {
+    setSelectedByAssignment(prev => {
+      const selected = new Set(prev[assignmentId] || []);
+      selected.has(installmentNumber) ? selected.delete(installmentNumber) : selected.add(installmentNumber);
+      return { ...prev, [assignmentId]: [...selected].sort((a, b) => a - b) };
+    });
+  };
+
+  const handleSave = async (assignmentId) => {
+    setSaving(assignmentId);
     try {
-      await collectorPortalService.toggleQRAuthorization(assignmentId, !currentValue);
-      setAssignments(prev => prev.map(a =>
-        a.id === assignmentId ? { ...a, isQRAuthorized: !a.isQRAuthorized } : a
-      ));
-    } catch (err) {
-      alert(err.response?.data?.message || 'Error al actualizar');
-    } finally {
-      setToggling(null);
-    }
+      await cobradorService.setQRInstallments(assignmentId, selectedByAssignment[assignmentId] || []);
+      const refreshed = await collectorPortalService.getAdminQRInstallments(assignmentId);
+      setOptionsByAssignment(prev => ({ ...prev, [assignmentId]: refreshed }));
+      setAssignments(prev => prev.map(item => item.id === assignmentId ? { ...item, isQRAuthorized: (selectedByAssignment[assignmentId] || []).length > 0 } : item));
+    } catch (error) {
+      alert(error.response?.data?.message || 'No se pudieron guardar las cuotas autorizadas.');
+    } finally { setSaving(null); }
   };
 
   const handleRemove = async (assignment) => {
     if (!confirm(`¿Quitar el préstamo de ${assignment.clienteNombre} de este cobrador?`)) return;
     setRemoving(assignment.id);
-    try {
-      await cobradorService.removeAssignment(assignment.id);
-      setAssignments(prev => prev.filter(item => item.id !== assignment.id));
-    } catch (err) {
-      alert(err.userMessage || err.response?.data?.message || 'No se pudo quitar la asignación.');
-    } finally {
-      setRemoving(null);
-    }
+    try { await cobradorService.removeAssignment(assignment.id); setAssignments(prev => prev.filter(item => item.id !== assignment.id)); }
+    catch (error) { alert(error.userMessage || error.response?.data?.message || 'No se pudo quitar la asignación.'); }
+    finally { setRemoving(null); }
   };
 
   return (
     <div className="admin-modal fixed inset-0 z-50 flex items-center justify-center bg-navy-950/55 p-4" onClick={onClose}>
-      <div className="bg-white rounded-16 shadow-card-lg max-w-lg w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-16 shadow-card-lg max-w-2xl w-full max-h-[88vh] flex flex-col" onClick={event => event.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-surface-border">
-          <div>
-            <h2 className="text-lg font-bold text-navy-500">Autorizar Cobro QR</h2>
-            <p className="text-sm text-slate-400">{collector.nombre} — {collector.zona}</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-surface-hover rounded-8 transition-colors">
-            <X size={20} className="text-slate-400" />
-          </button>
+          <div><h2 className="text-lg font-bold text-navy-500">Cuotas autorizadas para QR</h2><p className="text-sm text-slate-400">{collector.nombre} — Asigna exactamente qué cuotas puede cobrar.</p></div>
+          <button onClick={onClose} className="p-2 hover:bg-surface-hover rounded-8"><X size={20} className="text-slate-400" /></button>
         </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 size={24} className="text-accent-500 animate-spin" />
-            </div>
-          ) : assignments.length === 0 ? (
-            <p className="text-slate-400 text-center py-8">No hay préstamos asignados</p>
-          ) : (
-            <div className="space-y-3">
-              {assignments.map(a => (
-                <div key={a.id} className="flex items-center justify-between p-4 rounded-12 border border-surface-border hover:bg-surface-hover transition-colors">
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-navy-500">{a.clienteNombre}</p>
-                    <p className="text-xs text-slate-400">{a.clienteCedula} — Saldo: {fmt(a.saldoPendiente)}</p>
-                    <p className={`text-[11px] mt-1 ${a.qrPermissionRequested ? 'text-danger-600 font-semibold' : 'text-slate-400'}`}>
-                      {a.qrPermissionRequested
-                        ? 'Solicita nueva autorización: alcanzó 3 generaciones'
-                        : `Generaciones utilizadas: ${a.qrGenerationAttempts || 0}/3`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 ml-3">
-                    <button
-                      onClick={() => handleToggle(a.id, a.isQRAuthorized)}
-                      disabled={toggling === a.id || removing === a.id}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-8 text-xs font-semibold transition-all ${
-                      a.isQRAuthorized
-                        ? 'bg-success-50 text-success-600 hover:bg-success-100'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                      }`}
-                    >
-                      {toggling === a.id ? <Loader2 size={12} className="animate-spin" /> : a.isQRAuthorized ? <QrCode size={12} /> : <ShieldOff size={12} />}
-                      {a.isQRAuthorized ? 'QR Activo' : 'Activar QR'}
-                    </button>
-                    <button onClick={() => handleRemove(a)} disabled={removing === a.id || toggling === a.id}
-                      title="Quitar préstamo asignado" className="p-1.5 rounded-6 text-danger-500 hover:bg-danger-50 disabled:opacity-50">
-                      {removing === a.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 border-t border-surface-border">
-          <p className="text-xs text-slate-400 text-center">
-            Activa QR para que el cobrador pueda generar códigos de pago para este préstamo
-          </p>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {loading ? <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-accent-500" /></div> : assignments.length === 0 ? <p className="py-8 text-center text-slate-400">No hay préstamos asignados.</p> : assignments.map(assignment => {
+            const options = optionsByAssignment[assignment.id] || [];
+            const selected = selectedByAssignment[assignment.id] || [];
+            return <section key={assignment.id} className="overflow-hidden rounded-12 border border-surface-border">
+              <div className="flex items-center justify-between gap-3 bg-surface-canvas px-4 py-3">
+                <div><p className="font-semibold text-navy-500">{assignment.clienteNombre}</p><p className="text-xs text-slate-400">{assignment.clienteCedula} · Saldo {money(assignment.saldoPendiente)}</p></div>
+                <button onClick={() => handleRemove(assignment)} disabled={removing === assignment.id || saving === assignment.id} title="Quitar préstamo" className="p-2 text-danger-500 hover:bg-danger-50 rounded-8 disabled:opacity-50">{removing === assignment.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button>
+              </div>
+              <div className="p-4">
+                {options.length === 0 ? <p className="text-sm text-slate-400">Este préstamo no tiene cuotas pendientes para autorizar.</p> : <div className="space-y-2">
+                  {options.map(option => <label key={option.installmentNumber} className={`flex cursor-pointer items-center gap-3 rounded-8 border p-3 ${selected.includes(option.installmentNumber) ? 'border-accent-300 bg-accent-50/50' : 'border-surface-border'} ${option.status === 'Pagado' ? 'opacity-50' : ''}`}>
+                    <input type="checkbox" checked={selected.includes(option.installmentNumber)} disabled={option.status === 'Pagado'} onChange={() => toggleInstallment(assignment.id, option.installmentNumber)} className="h-4 w-4 accent-orange-500" />
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-navy-500">Cuota #{option.installmentNumber} · {date(option.dueDate)}</span><span className="block text-xs text-slate-400">Pendiente RD${money(option.amountDue)} · {option.attemptsUsed}/3 intentos QR usados</span></span>
+                    {option.isAuthorized && <ShieldCheck size={17} className="text-success-600" />}
+                  </label>)}
+                </div>}
+                <div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-slate-500">Cada cuota autorizada permite hasta 3 QRs; vencidos también cuentan.</p><button onClick={() => handleSave(assignment.id)} disabled={saving === assignment.id} className="inline-flex shrink-0 items-center gap-2 rounded-8 bg-navy-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{saving === assignment.id ? <Loader2 size={14} className="animate-spin" /> : <QrCode size={14} />} Guardar cuotas</button></div>
+              </div>
+            </section>;
+          })}
         </div>
       </div>
     </div>

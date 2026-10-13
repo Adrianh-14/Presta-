@@ -203,6 +203,8 @@ namespace PréstamoPlus.Application.DTOs
         public decimal Cuota { get; init; }
         public decimal Capital { get; init; }
         public decimal Interes { get; init; }
+        public decimal MontoPagado { get; init; }
+        public decimal MontoPendiente { get; init; }
         public decimal SaldoInicial { get; init; }
         public decimal SaldoFinal { get; init; }
         public string Estado { get; init; } = string.Empty;

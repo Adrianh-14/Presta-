@@ -113,6 +113,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                 <DollarSign className="text-green-600" size={24} />
               </div>
+
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{loan.cliente}</h2>
                 <p className="flex items-center gap-2 text-sm text-gray-500"><CurrencyFlag currency={currency} /> {currency.name} ({currency.code}) · {tipoLabels[loan.tipo] || loan.tipo} — {freqLabel}</p>
@@ -178,6 +179,24 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                   </div>
                 </div>
               </div>
+
+              {(paymentSummary?.cuotasParciales || []).length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-amber-900">
+                    <AlertTriangle size={17} />
+                    <h3 className="text-sm font-bold">Cuotas con pago parcial</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {paymentSummary.cuotasParciales.map(item => (
+                      <div key={item.numeroCuota} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-amber-200/70 pt-2 text-sm">
+                        <span className="font-semibold text-amber-950">Cuota #{item.numeroCuota}</span>
+                        <span className="text-amber-800">Abonado {formatCurrency(item.montoPagado, currency.code)}</span>
+                        <span className="font-bold text-amber-950">Restan {formatCurrency(item.montoPendiente, currency.code)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {isInterestOnly && (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
@@ -393,6 +412,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                             }`}>
                               {isPaid ? 'Pagado' : isPartial ? 'Parcial' : isOverdue ? 'Vencido' : 'Pendiente'}
                             </span>
+                            {isPartial && <span className="mt-1 block whitespace-nowrap text-[11px] leading-4 text-amber-800">Abonado ${Number(row.montoPagado || 0).toLocaleString()}<br /><strong>Restan ${Number(row.montoPendiente || 0).toLocaleString()}</strong></span>}
                           </td>
                         </tr>
                       );

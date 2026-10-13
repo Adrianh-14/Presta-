@@ -10,6 +10,7 @@ namespace PréstamoPlus.Domain.Entities
         public Guid CollectorId { get; set; }
         public Guid LoanId { get; set; }
         public Guid ClientId { get; set; }
+        public int InstallmentNumber { get; set; }
         public decimal Monto { get; set; }
         public string Moneda { get; set; } = "DOP";
         public DateTime ExpiresAt { get; set; }

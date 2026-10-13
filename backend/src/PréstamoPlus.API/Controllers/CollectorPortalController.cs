@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PréstamoPlus.Application.DTOs;
@@ -58,8 +59,15 @@ namespace PréstamoPlus.API.Controllers
         [ProducesResponseType(typeof(PaymentQRDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GenerateQR([FromBody] GeneratePaymentQRRequest request)
         {
-            var result = await _mediator.Send(new GeneratePaymentQRCommand(request, GetCollectorId()));
-            return Ok(result);
+            try
+            {
+                var result = await _mediator.Send(new GeneratePaymentQRCommand(request, GetCollectorId()));
+                return Ok(result);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Conflict(new { message = "Se generó un QR al mismo tiempo. Actualiza la lista de intentos y vuelve a intentarlo." });
+            }
         }
 
         [HttpGet("assignments/{assignmentId:guid}/suggested-amount")]
@@ -96,6 +104,39 @@ namespace PréstamoPlus.API.Controllers
                 interesesPendientes,
                 totalLiquidacion
             });
+        }
+
+        [HttpGet("assignments/{assignmentId:guid}/qr-installments")]
+        public async Task<IActionResult> GetQrInstallments(Guid assignmentId)
+        {
+            var assignment = (await _unitOfWork.CollectionAssignments.ListAsync())
+                .FirstOrDefault(item => item.Id == assignmentId && item.CollectorId == GetCollectorId());
+            if (assignment is null || !assignment.IsQRAuthorized)
+                return NotFound(new { message = "No tienes cuotas autorizadas para cobrar por QR." });
+            var authorized = assignment.AuthorizedQRInstallments
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(value => int.TryParse(value, out var number) ? number : 0)
+                .Where(number => number > 0)
+                .ToHashSet();
+            var installments = (await _unitOfWork.Installments.ListAsync())
+                .Where(item => item.LoanId == assignment.LoanId && authorized.Contains(item.Numero))
+                .OrderBy(item => item.Numero)
+                .ToList();
+            var qrs = (await _unitOfWork.PaymentQRs.ListAsync()).Where(qr => qr.AssignmentId == assignmentId).ToList();
+            return Ok(installments.Select(item =>
+            {
+                var amountDue = Math.Max(0, item.Capital - item.CapitalPagado) + Math.Max(0, item.Interes - item.InteresPagado);
+                var attemptsUsed = qrs.Count(qr => qr.InstallmentNumber == item.Numero);
+                return new
+                {
+                    installmentNumber = item.Numero,
+                    dueDate = item.FechaPago,
+                    amountDue,
+                    attemptsUsed,
+                    attemptsRemaining = Math.Max(0, 3 - attemptsUsed),
+                    canGenerate = item.Estado != Domain.Enums.EstadoInstallment.Pagado && amountDue > 0 && attemptsUsed < 3
+                };
+            }));
         }
     }
 }

@@ -138,17 +138,100 @@ namespace PréstamoPlus.API.Controllers
             if (collector?.TenantId != GetTenantId() || loan?.TenantId != GetTenantId())
                 return NotFound(new { message = "Asignación no encontrada." });
 
-            assignment.IsQRAuthorized = request.IsQRAuthorized;
             if (request.IsQRAuthorized)
             {
-                assignment.QRGenerationAttempts = 0;
-                assignment.QRPermissionRequested = false;
+                return BadRequest(new { message = "Autoriza las cuotas específicas que podrá cobrar el cobrador." });
+            }
+            assignment.AuthorizedQRInstallments = string.Empty;
+            assignment.IsQRAuthorized = false;
+            var qrs = await _unitOfWork.PaymentQRs.ListAsync();
+            foreach (var qr in qrs.Where(q => q.AssignmentId == assignmentId && q.Status == PaymentQRStatus.Pending))
+            {
+                qr.Status = PaymentQRStatus.Cancelled;
+                await _unitOfWork.PaymentQRs.UpdateAsync(qr);
             }
             await _unitOfWork.CollectionAssignments.UpdateAsync(assignment);
             await _unitOfWork.SaveChangesAsync();
 
             return Ok(new { assignmentId, isQRAuthorized = assignment.IsQRAuthorized });
         }
+
+        [HttpGet("assignments/{assignmentId:guid}/qr-installments")]
+        [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
+        public async Task<IActionResult> GetQrInstallments(Guid assignmentId)
+        {
+            var assignment = (await _unitOfWork.CollectionAssignments.ListAsync()).FirstOrDefault(a => a.Id == assignmentId);
+            if (assignment is null) return NotFound();
+            var collector = await _unitOfWork.Collectors.GetByIdAsync(assignment.CollectorId);
+            var loan = await _unitOfWork.Loans.GetByIdAsync(assignment.LoanId);
+            if (collector?.TenantId != GetTenantId() || loan?.TenantId != GetTenantId()) return NotFound();
+            return Ok(await BuildQrInstallmentOptions(assignment));
+        }
+
+        [HttpPut("assignments/{assignmentId:guid}/qr-installments")]
+        [Authorize(Policy = AuthorizationPolicies.ManageCollectors)]
+        public async Task<IActionResult> SetQrInstallments(Guid assignmentId, [FromBody] SetQrInstallmentsRequest request)
+        {
+            var assignment = (await _unitOfWork.CollectionAssignments.ListAsync()).FirstOrDefault(a => a.Id == assignmentId);
+            if (assignment is null) return NotFound();
+            var collector = await _unitOfWork.Collectors.GetByIdAsync(assignment.CollectorId);
+            var loan = await _unitOfWork.Loans.GetByIdAsync(assignment.LoanId);
+            if (collector?.TenantId != GetTenantId() || loan?.TenantId != GetTenantId()) return NotFound();
+
+            var requested = (request.InstallmentNumbers ?? new()).Distinct().ToHashSet();
+            if (requested.Any(number => number <= 0)) return BadRequest(new { message = "El número de cuota no es válido." });
+            var installments = (await _unitOfWork.Installments.ListAsync())
+                .Where(i => i.LoanId == loan.Id && i.Estado != EstadoInstallment.Pagado)
+                .ToList();
+            if (requested.Except(installments.Select(i => i.Numero)).Any())
+                return BadRequest(new { message = "Solo se pueden autorizar cuotas pendientes de este préstamo." });
+
+            var prior = ParseInstallmentNumbers(assignment.AuthorizedQRInstallments);
+            assignment.AuthorizedQRInstallments = string.Join(',', requested.OrderBy(n => n));
+            assignment.IsQRAuthorized = requested.Count > 0;
+            assignment.QRPermissionRequested = false;
+            var qrs = await _unitOfWork.PaymentQRs.ListAsync();
+            foreach (var qr in qrs.Where(q => q.AssignmentId == assignmentId && q.Status == PaymentQRStatus.Pending && !requested.Contains(q.InstallmentNumber)))
+            {
+                qr.Status = PaymentQRStatus.Cancelled;
+                await _unitOfWork.PaymentQRs.UpdateAsync(qr);
+            }
+            await _unitOfWork.CollectionAssignments.UpdateAsync(assignment);
+            await _unitOfWork.SaveChangesAsync();
+            return Ok(new { assignmentId, installmentNumbers = requested.OrderBy(n => n), revoked = prior.Except(requested) });
+        }
+
+        private async Task<List<object>> BuildQrInstallmentOptions(PréstamoPlus.Domain.Entities.CollectionAssignment assignment)
+        {
+            var authorized = ParseInstallmentNumbers(assignment.AuthorizedQRInstallments);
+            var installments = (await _unitOfWork.Installments.ListAsync())
+                .Where(i => i.LoanId == assignment.LoanId)
+                .OrderBy(i => i.Numero)
+                .ToList();
+            var qrs = (await _unitOfWork.PaymentQRs.ListAsync()).Where(q => q.AssignmentId == assignment.Id).ToList();
+            return installments.Select(i =>
+            {
+                var attempts = qrs.Count(q => q.InstallmentNumber == i.Numero);
+                var outstanding = Math.Max(0, i.Capital - i.CapitalPagado) + Math.Max(0, i.Interes - i.InteresPagado);
+                return (object)new
+                {
+                    installmentNumber = i.Numero,
+                    dueDate = i.FechaPago,
+                    amountDue = outstanding,
+                    status = i.Estado.ToString(),
+                    isAuthorized = authorized.Contains(i.Numero),
+                    attemptsUsed = attempts,
+                    attemptsRemaining = Math.Max(0, 3 - attempts),
+                    canGenerate = authorized.Contains(i.Numero) && i.Estado != EstadoInstallment.Pagado && outstanding > 0 && attempts < 3
+                };
+            }).ToList();
+        }
+
+        private static HashSet<int> ParseInstallmentNumbers(string? value) =>
+            (value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(text => int.TryParse(text, out var number) ? number : 0)
+                .Where(number => number > 0)
+                .ToHashSet();
 
         [HttpGet("{id:guid}/assignments")]
         [ProducesResponseType(typeof(List<CollectionAssignmentDto>), StatusCodes.Status200OK)]
@@ -189,6 +272,7 @@ namespace PréstamoPlus.API.Controllers
                     IsQRAuthorized = a.IsQRAuthorized,
                     QRGenerationAttempts = a.QRGenerationAttempts,
                     QRPermissionRequested = a.QRPermissionRequested,
+                    CuotasQRAutorizadas = ParseInstallmentNumbers(a.AuthorizedQRInstallments).OrderBy(number => number).ToList(),
                     AssignedAt = a.AssignedAt
                 });
             }
@@ -221,5 +305,6 @@ namespace PréstamoPlus.API.Controllers
     }
 
     public record ToggleQRAuthorizationRequest(bool IsQRAuthorized);
+    public record SetQrInstallmentsRequest(List<int>? InstallmentNumbers);
     public record ToggleCollectorStatusRequest(bool IsActive);
 }

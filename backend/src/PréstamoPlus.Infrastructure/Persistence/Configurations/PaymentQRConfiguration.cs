@@ -17,6 +17,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
             builder.HasIndex(q => q.Token).IsUnique();
 
             builder.Property(q => q.Monto).HasColumnType("decimal(18,2)").IsRequired();
+            builder.Property(q => q.InstallmentNumber).IsRequired();
 
             builder.Property(q => q.ExpiresAt).IsRequired();
 
@@ -26,6 +27,7 @@ namespace PréstamoPlus.Infrastructure.Persistence.Configurations
                 .HasMaxLength(20);
 
             builder.HasIndex(q => q.AssignmentId);
+            builder.HasIndex(q => new { q.AssignmentId, q.InstallmentNumber, q.Status });
 
             builder.HasIndex(q => q.CollectorId);
 

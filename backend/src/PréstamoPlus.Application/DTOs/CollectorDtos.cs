@@ -59,6 +59,7 @@ namespace PréstamoPlus.Application.DTOs
         public bool IsQRAuthorized { get; init; }
         public int QRGenerationAttempts { get; init; }
         public bool QRPermissionRequested { get; init; }
+        public List<int> CuotasQRAutorizadas { get; init; } = new();
         public DateTime AssignedAt { get; init; }
         public DateTime? UltimaVisita { get; init; }
         public TipoVisita? UltimoResultado { get; init; }

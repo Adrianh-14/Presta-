@@ -17,8 +17,9 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [sugerido, setSugerido] = useState(null);
-  const [attempts, setAttempts] = useState(0);
+  const [installments, setInstallments] = useState([]);
+  const [installmentNumber, setInstallmentNumber] = useState('');
+  const [loadingInstallments, setLoadingInstallments] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
   const intervalRef = useRef(null);
 
@@ -29,8 +30,8 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
       setError('');
       setCountdown(0);
       setCopied(false);
-      setSugerido(null);
-      setAttempts(0);
+      setInstallments([]);
+      setInstallmentNumber('');
       setReceiptData(null);
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
@@ -38,19 +39,18 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
 
   useEffect(() => {
     if (isOpen && assignment?.id) {
-      setAttempts(Number(assignment.qrGenerationAttempts || 0));
-      collectorPortalService.getSuggestedAmount(assignment.id)
+      setLoadingInstallments(true);
+      collectorPortalService.getQRInstallments(assignment.id)
         .then(data => {
-          setSugerido(data);
-          // Some older API responses omit totalSugerido (or return zero when
-          // there is no generated schedule). Fall back to the installment
-          // already present on the collector assignment.
-          const suggestedAmount = Number(data.totalSugerido || data.cuotaMensual || assignment.cuotaMensual || 0);
-          setMonto(suggestedAmount > 0 ? suggestedAmount.toFixed(2) : '');
+          setInstallments(data);
+          const first = data.find(item => item.canGenerate);
+          setInstallmentNumber(first ? String(first.installmentNumber) : '');
+          setMonto(first ? Number(first.amountDue).toFixed(2) : '');
         })
-        .catch(() => {});
+        .catch(err => setError(err.response?.data?.message || 'No hay cuotas autorizadas para QR.'))
+        .finally(() => setLoadingInstallments(false));
     }
-  }, [isOpen, assignment?.id, assignment?.cuotaMensual, assignment?.qrGenerationAttempts]);
+  }, [isOpen, assignment?.id]);
 
   useEffect(() => {
     if (qrData) {
@@ -83,6 +83,8 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
     return () => { active = false; window.clearInterval(poll); };
   }, [qrData, receiptData]);
 
+  const selectedInstallment = installments.find(item => String(item.installmentNumber) === installmentNumber);
+
   const handleGenerate = async () => {
     if (!monto || parseFloat(monto) <= 0) {
       setError('Ingresa un monto válido');
@@ -90,10 +92,18 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
     }
     setLoading(true);
     setError('');
+    if (!selectedInstallment?.canGenerate) {
+      setError('Selecciona una cuota autorizada que todavía tenga intentos disponibles.');
+      return;
+    }
+    if (parseFloat(monto) > Number(selectedInstallment.amountDue)) {
+      setError('El monto no puede exceder el saldo de esta cuota.');
+      return;
+    }
     try {
-      const result = await collectorPortalService.generateQR(assignment.id, parseFloat(monto));
+      const result = await collectorPortalService.generateQR(assignment.id, selectedInstallment.installmentNumber, parseFloat(monto));
       setQrData(result);
-      setAttempts((value) => value + 1);
+      setInstallments(prev => prev.map(item => item.installmentNumber === selectedInstallment.installmentNumber ? { ...item, attemptsUsed: item.attemptsUsed + 1, attemptsRemaining: Math.max(0, item.attemptsRemaining - 1), canGenerate: item.attemptsRemaining > 1 } : item));
     } catch (err) {
       setError(err.userMessage || err.response?.data?.message || 'Error al generar QR');
     } finally {
@@ -115,7 +125,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const cuotaRapida = Number(sugerido?.totalSugerido || sugerido?.cuotaMensual || assignment?.cuotaMensual || 0);
+  const cuotaRapida = Number(selectedInstallment?.amountDue || 0);
 
   if (!isOpen) return null;
 
@@ -135,50 +145,35 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
         <div className="p-5">
           {!qrData ? (
             <>
-              {attempts >= 3 && (
-                <div className="rounded-8 border border-red-200 bg-red-50 p-3 mb-4 text-xs text-red-700">
-                  Alcanzaste el límite de 3 QR. Solicita al administrador una nueva autorización para este cliente.
-                </div>
-              )}
+              {loadingInstallments ? <div className="flex justify-center py-8"><Clock size={20} className="animate-pulse text-accent-500" /></div> : <>
+              <div className="mb-4">
+                <label className="mb-1.5 block text-sm font-medium text-navy-500">Cuota autorizada</label>
+                <select value={installmentNumber} onChange={event => { const number = event.target.value; setInstallmentNumber(number); const option = installments.find(item => String(item.installmentNumber) === number); setMonto(option ? Number(option.amountDue).toFixed(2) : ''); setError(''); }} className="w-full rounded-8 border border-surface-border bg-white px-3 py-2.5 text-sm text-navy-500">
+                  <option value="">Selecciona una cuota asignada</option>
+                  {installments.map(item => <option key={item.installmentNumber} value={item.installmentNumber} disabled={!item.canGenerate}>Cuota #{item.installmentNumber} · Pendiente ${formatAmount(item.amountDue)} · {item.attemptsRemaining} intento(s)</option>)}
+                </select>
+              </div>
+              {selectedInstallment && <p className="mb-4 rounded-8 bg-surface-fill p-3 text-xs text-slate-500">Cuota #{selectedInstallment.installmentNumber}: {selectedInstallment.attemptsUsed}/3 QRs generados. Se cobra únicamente esta cuota.</p>}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-navy-500 mb-1.5">Monto a cobrar</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                  <input type="number" value={monto} onChange={e => setMonto(e.target.value)} min="0" step="0.01"
+                  <input type="number" value={monto} onChange={e => setMonto(e.target.value)} min="0" max={selectedInstallment?.amountDue || 0} step="0.01"
                     placeholder="0.00"
                     className="w-full pl-8 pr-4 py-2.5 bg-surface-fill rounded-8 text-sm border border-surface-border focus:border-accent-500 outline-none" />
                 </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <button type="button" onClick={() => setMonto(cuotaRapida.toFixed(2))}
-                    className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500 transition-colors">
-                    Cuota exacta ${formatAmount(cuotaRapida)}
-                  </button>
-                  <button type="button" onClick={() => setMonto(Number(sugerido?.totalLiquidacion || assignment.saldoPendiente || 0).toFixed(2))}
-                    className="px-3 py-1 bg-surface-fill hover:bg-surface-hover rounded-8 text-xs text-navy-500 transition-colors">
-                    Saldo completo ${formatAmount(sugerido?.totalLiquidacion || assignment.saldoPendiente)}
-                  </button>
-                </div>
+                <button type="button" onClick={() => setMonto(cuotaRapida.toFixed(2))} disabled={!selectedInstallment} className="mt-2 rounded-8 bg-surface-fill px-3 py-1 text-xs text-navy-500 hover:bg-surface-hover disabled:opacity-50">Importe restante de la cuota (${formatAmount(cuotaRapida)})</button>
               </div>
 
-              <div className="bg-surface-fill rounded-8 p-3 mb-4 space-y-1">
-                <p className="text-xs text-slate-400">Saldo pendiente: <span className="font-semibold text-navy-500">${formatAmount(assignment.saldoPendiente)}</span></p>
-                {sugerido && (
-                  <>
-                    <p className="text-xs text-slate-400">Cuota: <span className="font-semibold text-navy-500">${formatAmount(cuotaRapida)}</span></p>
-                    {sugerido.morasPendientes > 0 && (
-                      <p className="text-xs text-red-400">Mora: <span className="font-semibold text-red-500">+${formatAmount(sugerido.morasPendientes)}</span></p>
-                    )}
-                    <p className="text-xs text-slate-400">Liquidación total: <span className="font-semibold text-navy-500">${formatAmount(sugerido.totalLiquidacion)}</span></p>
-                  </>
-                )}
-              </div>
+              <div className="mb-4 rounded-8 bg-surface-fill p-3"><p className="text-xs text-slate-500">Monto máximo permitido para esta cuota: <strong className="text-navy-500">${formatAmount(selectedInstallment?.amountDue)}</strong>. Este QR no liquida cuotas adicionales.</p></div>
 
               {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
 
-              <button onClick={handleGenerate} disabled={loading || !monto || attempts >= 3}
+              <button onClick={handleGenerate} disabled={loading || loadingInstallments || !monto || !selectedInstallment?.canGenerate}
                 className="w-full py-2.5 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-sm font-semibold rounded-8 shadow-btn hover:shadow-card-lg transition-all disabled:opacity-50">
                 {loading ? 'Generando...' : 'Generar QR'}
               </button>
+              </>}
             </>
           ) : (
             <div className="flex flex-col items-center">
@@ -209,6 +204,7 @@ export default function GenerateQRModal({ isOpen, onClose, assignment }) {
               </div>
 
               <p className="text-sm text-navy-500 font-semibold mb-1">{assignment.clienteNombre}</p>
+              <p className="mb-1 text-xs text-slate-400">Pago asignado a cuota #{qrData.numeroCuota}</p>
               <p className="text-2xl font-bold text-accent-500 mb-4">${parseFloat(qrData.monto).toLocaleString()}</p>
 
               <button onClick={handleCopyLink}
