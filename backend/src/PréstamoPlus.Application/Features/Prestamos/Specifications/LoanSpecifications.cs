@@ -43,4 +43,12 @@ namespace PréstamoPlus.Application.Features.Prestamos.Specifications
                 .AsNoTracking();
         }
     }
+
+    public class LoansByClientIdSpec : Specification<Loan>
+    {
+        public LoansByClientIdSpec(Guid clientId, Guid tenantId)
+        {
+            Query.Where(l => l.ClientId == clientId && l.TenantId == tenantId).AsNoTracking();
+        }
+    }
 }

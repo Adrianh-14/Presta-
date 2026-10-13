@@ -15,7 +15,7 @@ export default function CollectorLayout() {
           { to: '/cobrador', label: 'Hoy', icon: LayoutDashboard, end: true },
           { to: '/cobrador/cobros', label: 'Clientes', icon: Users },
           { to: '/cobrador/ruta', label: 'Mapa', icon: MapPinned },
-          { label: 'Perfil', icon: UserRound },
+          { to: '/cobrador/perfil', label: 'Perfil', icon: UserRound },
         ].map(({ to, label, icon: Icon, end }) => to ? (
           <NavLink key={label} to={to} end={end} className={({ isActive }) => `flex flex-col items-center gap-1 px-2 py-2 text-xs font-semibold transition-colors ${isActive ? 'text-navy-900' : 'text-slate-400'}`}>
             <Icon size={18} aria-hidden="true" />

@@ -213,7 +213,7 @@ export default function Solicitudes() {
           </section>
         )}
         {filtered.length === 0 ? <div className="rounded-16 border border-dashed border-surface-border bg-white px-5 py-12 text-center shadow-card"><p className="text-sm text-slate-500">No hay solicitudes para este filtro.</p></div> : (
-          <div className="space-y-3">{filtered.map((s) => <button key={s.id} type="button" onClick={() => setSelectedSolicitud(s)} className="w-full rounded-16 border border-surface-border bg-white p-4 text-left shadow-card"><div className="flex items-start justify-between gap-3"><span className="min-w-0"><span className="block truncate font-bold text-navy-800">{s.client?.nombre || 'Solicitud'}</span><span className="mt-1 block truncate text-xs text-slate-500">{s.client?.email || 'Sin correo'}</span></span><StatusBadge status={s.estado} /></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><span><span className="block text-slate-500">Monto solicitado</span><span className="mt-1 flex items-center gap-1 font-bold text-navy-800"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.montoSolicitado, String(s.moneda || 'DOP').toUpperCase())}</span></span><span><span className="block text-slate-500">Cuota estimada</span><span className="mt-1 flex items-center gap-1 font-bold text-navy-800"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.cuotaEstimada, String(s.moneda || 'DOP').toUpperCase())}</span></span></div></button>)}</div>
+          <div className="space-y-3">{filtered.map((s) => <button key={s.id} type="button" onClick={() => setSelectedSolicitud(s)} className="w-full rounded-16 border border-surface-border bg-white p-4 text-left shadow-card"><div className="flex items-start justify-between gap-3"><span className="min-w-0"><span className="block truncate font-bold text-navy-800">{s.client?.nombre || 'Solicitud'}</span><span className="mt-1 block truncate text-xs text-slate-500">{s.client?.email || 'Sin correo'}</span></span><StatusBadge status={s.estado} /></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><span><span className="block text-slate-500">Monto solicitado</span><span className="mt-1 flex items-center gap-1 font-bold text-navy-800"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.montoSolicitado, String(s.moneda || 'DOP').toUpperCase())}</span></span><span><span className="block text-slate-500">Cuota estimada</span><span className="mt-1 font-bold text-navy-800">{Number(s.plazo) > 0 ? <><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.cuotaEstimada, String(s.moneda || 'DOP').toUpperCase())}</> : 'Por definir'}</span></span></div></button>)}</div>
         )}
       </div>
       <div className="hidden md:block">
@@ -298,7 +298,7 @@ export default function Solicitudes() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Cuota estimada</p>
-                <p className="flex items-center gap-2 font-semibold text-gray-900"><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.cuotaEstimada, String(s.moneda || 'DOP').toUpperCase())}</p>
+                <p className="flex items-center gap-2 font-semibold text-gray-900">{Number(s.plazo) > 0 ? <><CurrencyFlag currency={getCurrency(s.moneda)} /> {formatMoney(s.cuotaEstimada, String(s.moneda || 'DOP').toUpperCase())}</> : 'Por definir al revisar la solicitud'}</p>
               </div>
             </div>
 

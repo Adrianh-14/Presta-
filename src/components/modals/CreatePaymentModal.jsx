@@ -35,6 +35,11 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
   const moraPendiente = Number(summary?.moraPendiente || 0);
   const cuota = Number(summary?.cuotaConMora ?? (cuotaBase + moraPendiente));
   const saldo = summary?.saldoPendiente || loan?.saldoPendiente || 0;
+  const capitalPendiente = Number(summary?.capitalPendiente ?? saldo);
+  const interesesPendientes = Number(summary?.interesesPendientes || 0);
+  const totalLiquidacion = Number(summary?.totalLiquidacion ?? (capitalPendiente + interesesPendientes + moraPendiente));
+  const montoActual = parseAmount(monto);
+  const esLiquidacion = Number.isFinite(montoActual) && Math.abs(montoActual - totalLiquidacion) < 0.005;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,6 +60,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
         metodoPago: metodo,
         referenciaExterna: referencia || null,
         notas: notas || null,
+        liquidarPrestamo: esLiquidacion,
       });
       setSuccess(true);
       setTimeout(() => {
@@ -83,7 +89,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
             <DollarSign className="text-success-700" size={32} />
           </div>
           <h3 className="mb-2 font-display text-xl font-extrabold text-navy-800">Pago registrado</h3>
-          <p className="text-sm text-slate-500">El pago se ha procesado exitosamente.</p>
+          <p className="text-sm text-slate-500">{esLiquidacion ? 'El préstamo quedó liquidado y totalmente pagado.' : 'El pago se ha procesado exitosamente.'}</p>
         </div>
       </div>
     );
@@ -123,6 +129,14 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
               <p className="text-xs text-slate-500">Saldo pendiente</p>
               <p className="font-semibold text-danger-600">${formatAmount(saldo)}</p>
             </div>
+            <div className="col-span-2 border-t border-surface-border pt-3">
+              <p className="text-xs font-semibold text-slate-600">Liquidación total del préstamo</p>
+              <p className="text-xl font-extrabold text-navy-800">${formatAmount(totalLiquidacion)}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Capital ${formatAmount(capitalPendiente)} + intereses ${formatAmount(interesesPendientes)} + mora ${formatAmount(moraPendiente)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Al registrar este total, se aplicará a todos los conceptos pendientes para cerrar el préstamo.</p>
+            </div>
           </div>
 
           {/* Monto */}
@@ -143,8 +157,8 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
               <button type="button" onClick={() => handleQuickPay(cuota)} className="rounded-8 bg-slate-100 px-3 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-200">
                 {moraPendiente > 0 ? 'Cuota + mora' : 'Cuota'} ${formatAmount(cuota)}
               </button>
-              <button type="button" onClick={() => handleQuickPay(Number(saldo) + moraPendiente)} className="rounded-8 bg-slate-100 px-3 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-200">
-                Saldo + mora ${formatAmount(Number(saldo) + moraPendiente)}
+              <button type="button" onClick={() => handleQuickPay(totalLiquidacion)} className="rounded-8 bg-warning-50 px-3 py-1 text-sm font-semibold text-warning-800 transition-colors hover:bg-warning-100">
+                Liquidación total ${formatAmount(totalLiquidacion)}
               </button>
             </div>
           </div>
@@ -205,7 +219,7 @@ export default function CreatePaymentModal({ loan, summary, onClose, onPaymentCr
             disabled={loading}
             className="w-full rounded-8 bg-warning-500 py-3 font-bold text-navy-900 transition-colors hover:bg-warning-400 disabled:opacity-50"
           >
-            {loading ? 'Procesando...' : 'Registrar Pago'}
+            {loading ? 'Procesando...' : esLiquidacion ? 'Liquidar préstamo' : 'Registrar Pago'}
           </button>
         </form>
       </div>

@@ -231,6 +231,46 @@ namespace PréstamoPlus.API.Controllers
             }
         }
 
+        [HttpPost("logout")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                return NoContent();
+
+            var refresh = await _db.RefreshTokens.SingleOrDefaultAsync(
+                item => item.Token == request.RefreshToken && item.RevokedAt == null,
+                cancellationToken);
+            if (refresh is not null)
+            {
+                refresh.RevokedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
+            return NoContent();
+        }
+
+        [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
+        [HttpPost("client-session/renew")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> RenewClientSession(CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(User.FindFirst("sessionId")?.Value, out var sessionId) ||
+                !Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId) ||
+                !Guid.TryParse(User.FindFirst("clientId")?.Value, out var clientId))
+                return Unauthorized();
+
+            var result = await _clientAuthentication.RenewSessionAsync(
+                sessionId,
+                tenantId,
+                clientId,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                cancellationToken);
+            return result is null ? Unauthorized(new { message = "La sesión expiró. Inicia sesión nuevamente." }) : Ok(result);
+        }
+
         [HttpPost("client-otp/request")]
         [AllowAnonymous]
         [EnableRateLimiting("client-otp-request")]
@@ -315,4 +355,5 @@ namespace PréstamoPlus.API.Controllers
         string Tenant,
         string Cedula,
         string Code);
+    public sealed record LogoutRequest(string RefreshToken);
 }

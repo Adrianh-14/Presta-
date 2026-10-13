@@ -33,6 +33,9 @@ namespace PréstamoPlus.Application.Features.Cobradores.Commands.RecordVisit
                 client is null || client.TenantId != collector.TenantId)
                 throw new InvalidOperationException("Asignación no encontrada.");
 
+            if (loan.Estado is EstadoPrestamo.Pagado or EstadoPrestamo.Cancelado || loan.SaldoPendiente <= 0)
+                throw new InvalidOperationException("Este préstamo ya fue liquidado o cancelado. No se pueden registrar más visitas de cobro.");
+
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             try

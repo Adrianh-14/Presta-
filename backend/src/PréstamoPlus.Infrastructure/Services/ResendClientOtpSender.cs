@@ -42,11 +42,14 @@ public sealed class ResendClientOtpSender : IClientOtpSender
 
         var safeName = WebUtility.HtmlEncode(delivery.ClientName);
         var safeCode = WebUtility.HtmlEncode(delivery.Code);
+        var isContactUpdate = delivery.Purpose == "profile-email";
+        var subject = isContactUpdate ? "Confirma tu nuevo correo de Bonexa" : "Tu código de acceso a Bonexa";
+        var intro = isContactUpdate ? "Usa este código para confirmar que tienes acceso a esta dirección de correo:" : "Usa este código una sola vez para entrar a tu portal:";
         var html = $$"""
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0b3558">
-              <h2>Código de acceso a Bonexa</h2>
+              <h2>{{subject}}</h2>
               <p>Hola {{safeName}},</p>
-              <p>Usa este código una sola vez para entrar a tu portal:</p>
+              <p>{{intro}}</p>
               <p style="font-size:32px;font-weight:700;letter-spacing:8px">{{safeCode}}</p>
               <p>El código vence en {{delivery.ExpiresInMinutes}} minutos.</p>
               <p>Si no solicitaste este acceso, ignora el mensaje y no compartas el código.</p>
@@ -59,7 +62,7 @@ public sealed class ResendClientOtpSender : IClientOtpSender
         {
             ["from"] = $"{_fromName} <{_fromEmail}>",
             ["to"] = new[] { delivery.Email },
-            ["subject"] = "Tu código de acceso a Bonexa",
+            ["subject"] = subject,
             ["html"] = html
         };
         if (!string.IsNullOrWhiteSpace(_replyToEmail))

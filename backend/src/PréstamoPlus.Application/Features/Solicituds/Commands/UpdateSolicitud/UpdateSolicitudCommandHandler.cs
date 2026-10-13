@@ -4,6 +4,7 @@ using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Domain.Entities;
 using PréstamoPlus.Domain.Enums;
 using PréstamoPlus.Application.Features.Solicituds.Specifications;
+using PréstamoPlus.Application.Features.Prestamos.Specifications;
 using PréstamoPlus.Domain.Interfaces;
 
 namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
@@ -50,7 +51,13 @@ namespace PréstamoPlus.Application.Features.Solicituds.Commands.UpdateSolicitud
                     $"No se puede cambiar una solicitud de {loanApp.Estado} a {request.Estado}.");
 
             if (request.Estado == EstadoSolicitud.Contraoferta && string.IsNullOrWhiteSpace(loanApp.VerificationMedia?.GarantiaPath))
-                throw new InvalidOperationException("No se puede procesar la solicitud hasta que el cliente suba la garantía.");
+            {
+                var hasSettledLoan = (await _unitOfWork.Loans.ListAsync(
+                        new LoansByClientIdSpec(loanApp.ClientId, loanApp.TenantId), cancellationToken))
+                    .Any(loan => loan.Estado == EstadoPrestamo.Pagado);
+                if (!hasSettledLoan)
+                    throw new InvalidOperationException("No se puede procesar la solicitud hasta que el cliente suba la garantía.");
+            }
 
             // Una contraoferta se guarda al pasar a procesamiento para que el cliente
             // reciba por correo exactamente las condiciones propuestas por la empresa.

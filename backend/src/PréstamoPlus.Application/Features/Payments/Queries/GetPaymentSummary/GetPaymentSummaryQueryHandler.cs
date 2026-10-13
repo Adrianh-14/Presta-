@@ -37,8 +37,12 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
             var pendingInstallments = installments
                 .Where(i => i.Estado != EstadoInstallment.Pagado)
                 .ToList();
-            var capitalPendiente = pendingInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado));
-            var interesesPendientes = pendingInstallments.Sum(i => Math.Max(0, i.Interes - i.InteresPagado));
+            var capitalPendiente = pendingInstallments.Count > 0
+                ? pendingInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado))
+                : Math.Max(0, loan.SaldoPendiente);
+            var interesesPendientes = pendingInstallments.Count > 0
+                ? pendingInstallments.Sum(i => Math.Max(0, i.Interes - i.InteresPagado))
+                : CalculateCurrentPeriodInterest(loan);
             var cuotasPendientes = capitalPendiente + interesesPendientes;
             // El gasto de cierre ya forma parte del principal financiado y, por
             // tanto, del capital pendiente. No se vuelve a sumar para evitar
@@ -92,6 +96,19 @@ namespace PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary
                         MontoPendiente = Math.Max(0, item.Capital - item.CapitalPagado) + Math.Max(0, item.Interes - item.InteresPagado)
                     }).ToList()
             };
+        }
+
+        private static decimal CalculateCurrentPeriodInterest(PréstamoPlus.Domain.Entities.Loan loan)
+        {
+            var periodsPerMonth = loan.FrecuenciaPago switch
+            {
+                FrecuenciaPago.Diaria => 30m,
+                FrecuenciaPago.Semanal => 4m,
+                FrecuenciaPago.Quincenal => 2m,
+                _ => 1m
+            };
+            var monthlyRate = loan.TasaInteresAnual / 100m / 12m;
+            return Math.Round(Math.Max(0, loan.SaldoPendiente) * monthlyRate / periodsPerMonth, 2);
         }
     }
 }

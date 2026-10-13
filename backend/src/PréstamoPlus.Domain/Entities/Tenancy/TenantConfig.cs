@@ -9,6 +9,7 @@ namespace PréstamoPlus.Domain.Entities.Tenancy
         public decimal CapitalInicialEur { get; set; }
         public decimal TasaMoraDiaria { get; set; } = 0.05m;
         public int DiasGracia { get; set; } = 3;
+        public int ClientProfileRefreshMonths { get; set; } = 6;
         public string? TelefonoWhatsApp { get; set; }
         public string? EmailFrom { get; set; }
 

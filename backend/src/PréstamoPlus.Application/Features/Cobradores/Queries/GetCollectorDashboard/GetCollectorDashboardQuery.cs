@@ -96,6 +96,11 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     sinResultado++;
                 }
 
+                // Las métricas conservan el historial de cobros, pero los
+                // préstamos liquidados/cancelados ya no son trabajo de ruta.
+                if (loan is null || loan.Estado is EstadoPrestamo.Pagado or EstadoPrestamo.Cancelado || loan.SaldoPendiente <= 0)
+                    continue;
+
                 assignmentDtos.Add(new CollectionAssignmentDto
                 {
                     Id = assignment.Id,

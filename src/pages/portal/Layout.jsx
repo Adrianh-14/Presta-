@@ -1,16 +1,20 @@
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, DollarSign, LogOut, User, QrCode, MapPin } from 'lucide-react';
+import { LayoutDashboard, DollarSign, LogOut, User, QrCode, MapPin, Archive, UserRound } from 'lucide-react';
 
 export default function PortalLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const name = localStorage.getItem('clientName') || 'Cliente';
 
   const navItems = [
-    { to: '/portal', icon: LayoutDashboard, label: 'Mis Préstamos', end: true },
-    { to: '/portal/pagos', icon: DollarSign, label: 'Historial', end: false },
+    { to: '/portal', icon: LayoutDashboard, label: 'Préstamos vigentes', end: true },
+    { to: '/portal/record', icon: Archive, label: 'Récord de préstamos', end: false },
+    { to: '/portal/pagos', icon: DollarSign, label: 'Historial de pagos', end: false },
     { to: '/portal/pago-qr', icon: QrCode, label: 'Pagar con QR', end: false },
     { to: '/portal/ubicacion', icon: MapPin, label: 'Ubicación para visita', end: false },
+    { to: '/portal/perfil', icon: UserRound, label: 'Mi perfil', end: false },
   ];
 
   const logout = async () => {
@@ -84,17 +88,21 @@ export default function PortalLayout() {
           </button>
         </div>
       </aside>
-      <header className="flex items-center justify-between border-b border-surface-border bg-white px-5 py-3 md:hidden">
+      <header className="relative flex items-center justify-between border-b border-surface-border bg-white px-5 py-3 md:hidden">
         <div className="flex items-center gap-2">
           <img src="/branding/icono-bonexa.svg" alt="Bonexa" className="h-8 w-8 rounded-8 bg-navy-900 p-1 object-contain" />
           <div><p className="text-sm font-bold leading-tight text-navy-500">Bonexa</p><p className="text-[11px] text-slate-400">Portal de cliente</p></div>
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-50 text-navy-500"><User size={17} /></div>
+        <button type="button" onClick={() => setAccountMenuOpen((open) => !open)} aria-label="Abrir menú de cuenta" aria-expanded={accountMenuOpen} className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-50 text-navy-500 focus:outline-none focus:ring-2 focus:ring-accent-400"><User size={17} /></button>
+        {accountMenuOpen && <div className="absolute right-4 top-[calc(100%+0.5rem)] z-50 w-56 rounded-12 border border-surface-border bg-white p-2 shadow-card">
+          <p className="truncate px-3 py-2 text-xs font-semibold text-slate-400">{name}</p>
+          <button type="button" onClick={logout} className="flex w-full items-center gap-2 rounded-8 px-3 py-2.5 text-left text-sm font-semibold text-danger-600 hover:bg-danger-50"><LogOut size={16} /> Cerrar sesión</button>
+        </div>}
       </header>
-      <nav aria-label="Navegación móvil del portal" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-surface-border bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(7,27,46,0.08)] backdrop-blur md:hidden">
+      <nav aria-label="Navegación móvil del portal" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-surface-border bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(7,27,46,0.08)] backdrop-blur md:hidden">
         {navItems.map((item) => {
           const active = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
-          return <button key={item.to} type="button" onClick={() => navigate(item.to)} aria-current={active ? 'page' : undefined} className={`flex min-w-0 flex-col items-center gap-1 rounded-8 px-1 py-1.5 text-[10px] font-semibold ${active ? 'text-accent-600' : 'text-slate-400'}`}><item.icon size={18} /><span className="truncate">{item.label === 'Pagar con QR' ? 'Pagar' : item.label === 'Ubicación para visita' ? 'Más' : item.label === 'Historial' ? 'Pagos' : 'Inicio'}</span></button>;
+          return <button key={item.to} type="button" onClick={() => navigate(item.to)} aria-current={active ? 'page' : undefined} className={`flex min-w-0 flex-col items-center gap-1 rounded-8 px-1 py-1.5 text-[10px] font-semibold ${active ? 'text-accent-600' : 'text-slate-400'}`}><item.icon size={18} /><span className="truncate">{item.label === 'Pagar con QR' ? 'Pagar' : item.label === 'Ubicación para visita' ? 'Más' : item.label === 'Historial de pagos' ? 'Pagos' : item.label === 'Récord de préstamos' ? 'Récord' : item.label === 'Mi perfil' ? 'Perfil' : 'Inicio'}</span></button>;
         })}
       </nav>
       <main className="min-w-0 w-full flex-1 overflow-auto p-4 pb-24 sm:p-6 md:p-8 md:pb-8">

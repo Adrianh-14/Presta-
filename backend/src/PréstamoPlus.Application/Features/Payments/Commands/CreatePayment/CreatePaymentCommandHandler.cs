@@ -40,16 +40,18 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
 
             var validationInstallments = (await _unitOfWork.Installments.ListAsync(
                     new InstallmentsByLoanIdSpec(req.LoanId), cancellationToken))
-                .Where(i => i.Estado != EstadoInstallment.Pagado);
+                .Where(i => i.Estado != EstadoInstallment.Pagado)
+                .ToList();
             var validationLateFees = await _unitOfWork.LateFees.ListAsync(
                 new UnpaidLateFeesByLoanIdSpec(req.LoanId), cancellationToken);
+            var payoffInterestWithoutSchedule = validationInstallments.Count == 0 ? CalculateCurrentPeriodInterest(loan) : 0m;
             var validationOutstanding = validationInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado) + Math.Max(0, i.Interes - i.InteresPagado))
-                + validationLateFees.Sum(i => Math.Max(0, i.Monto));
+                + validationLateFees.Sum(i => Math.Max(0, i.Monto)) + payoffInterestWithoutSchedule;
             if (req.Monto > validationOutstanding)
                 throw new InvalidOperationException("El monto excede el saldo pendiente.");
 
-            if (req.Monto <= 0 || req.Monto != decimal.Round(req.Monto, 2))
-                throw new InvalidOperationException("El monto del pago debe ser positivo y tener máximo dos decimales.");
+            if (req.LiquidarPrestamo && Math.Abs(req.Monto - validationOutstanding) > 0.01m)
+                throw new InvalidOperationException("El saldo de liquidación cambió. Actualiza el préstamo y registra el total vigente.");
 
             var pendingInstallments = (await _unitOfWork.Installments.ListAsync(
                     new InstallmentsByLoanIdSpec(req.LoanId), cancellationToken))
@@ -57,7 +59,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
             var pendingLateFees = await _unitOfWork.LateFees.ListAsync(
                 new UnpaidLateFeesByLoanIdSpec(req.LoanId), cancellationToken);
             var outstanding = pendingInstallments.Sum(i => Math.Max(0, i.Capital - i.CapitalPagado) + Math.Max(0, i.Interes - i.InteresPagado))
-                + pendingLateFees.Sum(i => Math.Max(0, i.Monto));
+                + pendingLateFees.Sum(i => Math.Max(0, i.Monto)) + payoffInterestWithoutSchedule;
             if (req.Monto > outstanding)
                 throw new InvalidOperationException("El monto excede el saldo pendiente.");
 
@@ -103,7 +105,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                     await _unitOfWork.LateFees.UpdateAsync(lateFee, cancellationToken);
                 }
 
-                if (loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo)
+                if (loan.Modalidad == ModalidadPrestamo.InteresPeriodicoSobreSaldo && !req.LiquidarPrestamo)
                 {
                     // En interés sobre saldo, el excedente de la cuota no
                     // prepaga intereses futuros: se aplica directamente al
@@ -160,7 +162,8 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                     if (remaining > 0)
                         throw new InvalidOperationException("El pago incluye un monto que no corresponde a intereses vencidos ni a capital pendiente.");
                 }
-                else foreach (var inst in installments.OrderBy(item => item.Numero))
+
+                foreach (var inst in installments.OrderBy(item => item.Numero))
                 {
                     if (remaining <= 0) break;
                     if (inst.Estado == EstadoInstallment.Pagado) continue;
@@ -194,6 +197,9 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
 
                     await _unitOfWork.Installments.UpdateAsync(inst, cancellationToken);
                 }
+
+                if (req.LiquidarPrestamo && remaining > 0)
+                    throw new InvalidOperationException("No se pudo aplicar el importe completo a la liquidación. No se registró el pago.");
 
                 decimal nuevoSaldo = installments.Sum(i => i.Capital - i.CapitalPagado);
                 loan.SaldoPendiente = nuevoSaldo;
@@ -307,31 +313,32 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
             if (loan.SaldoPendiente <= 0)
                 throw new InvalidOperationException("Este préstamo ya está pagado.");
 
-            decimal periodsPerMonth = loan.FrecuenciaPago switch
+            var lateFees = await _unitOfWork.LateFees.ListAsync(
+                new UnpaidLateFeesByLoanIdSpec(req.LoanId), cancellationToken);
+            var remaining = monto;
+            decimal totalMora = 0;
+            foreach (var lateFee in lateFees.OrderBy(item => item.FechaCalculo))
             {
-                Domain.Enums.FrecuenciaPago.Diaria => 30,
-                Domain.Enums.FrecuenciaPago.Semanal => 4,
-                Domain.Enums.FrecuenciaPago.Quincenal => 2,
-                _ => 1
-            };
-            decimal tasaMensual = loan.TasaInteresAnual / 100 / 12;
-            decimal tasaPeriodo = tasaMensual / periodsPerMonth;
-            decimal interesPeriodo = Math.Round(loan.SaldoPendiente * tasaPeriodo, 2);
+                if (remaining <= 0) break;
+                var applied = Math.Min(remaining, Math.Max(0, lateFee.Monto));
+                remaining -= applied;
+                totalMora += applied;
+                if (applied >= lateFee.Monto) lateFee.Pagado = true;
+                else lateFee.Monto -= applied;
+                await _unitOfWork.LateFees.UpdateAsync(lateFee, cancellationToken);
+            }
 
-            decimal maxPago = interesPeriodo + saldoRestante;
+            decimal interesPeriodo = CalculateCurrentPeriodInterest(loan);
+            decimal maxPago = totalMora + interesPeriodo + saldoRestante;
             if (monto > maxPago)
-                monto = maxPago;
+                throw new InvalidOperationException("El monto excede el importe de liquidación vigente.");
 
-            if (monto <= interesPeriodo)
-            {
-                interes = monto;
-                capital = 0;
-            }
-            else
-            {
-                interes = interesPeriodo;
-                capital = monto - interes;
-            }
+            interes = Math.Min(remaining, interesPeriodo);
+            remaining -= interes;
+            capital = Math.Min(remaining, saldoRestante);
+            remaining -= capital;
+            if (remaining > 0)
+                throw new InvalidOperationException("El pago supera el saldo de capital, interés y mora pendientes.");
 
             saldoRestante = loan.SaldoPendiente - capital;
 
@@ -346,11 +353,11 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
             {
                 Id = Guid.NewGuid(),
                 LoanId = req.LoanId,
-                Monto = monto,
+                Monto = req.Monto,
                 Moneda = loan.Moneda,
                 Capital = capital,
                 Interes = interes,
-                MoraPagada = 0,
+                MoraPagada = totalMora,
                 SaldoRestante = saldoRestante,
                 FechaPago = DateTime.UtcNow,
                 MetodoPago = metodo,
@@ -362,7 +369,8 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
             await _unitOfWork.Payments.AddAsync(payment);
 
             loan.SaldoPendiente = saldoRestante;
-            if (saldoRestante <= 0)
+            var lateFeesRemain = lateFees.Any(item => !item.Pagado && item.Monto > 0);
+            if (saldoRestante <= 0 && !lateFeesRemain)
                 loan.Estado = EstadoPrestamo.Pagado;
 
             await _unitOfWork.Loans.UpdateAsync(loan, cancellationToken);
@@ -411,6 +419,19 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
             if (payment.Interes > 0) lines.Add(new JournalLineInput("INTEREST_INCOME", 0, payment.Interes, "Aplicación a interés", payment.Moneda));
             if (payment.MoraPagada > 0) lines.Add(new JournalLineInput("LATE_FEE_INCOME", 0, payment.MoraPagada, "Aplicación a mora", payment.Moneda));
             return lines;
+        }
+
+        private static decimal CalculateCurrentPeriodInterest(Loan loan)
+        {
+            decimal periodsPerMonth = loan.FrecuenciaPago switch
+            {
+                FrecuenciaPago.Diaria => 30m,
+                FrecuenciaPago.Semanal => 4m,
+                FrecuenciaPago.Quincenal => 2m,
+                _ => 1m
+            };
+            var monthlyRate = loan.TasaInteresAnual / 100m / 12m;
+            return Math.Round(loan.SaldoPendiente * monthlyRate / periodsPerMonth, 2);
         }
     }
 }

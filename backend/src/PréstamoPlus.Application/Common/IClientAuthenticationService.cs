@@ -40,4 +40,11 @@ public interface IClientAuthenticationService
         Guid clientId,
         string? remoteAddress,
         CancellationToken cancellationToken = default);
+
+    Task<ClientAuthenticationResult?> RenewSessionAsync(
+        Guid sessionId,
+        Guid tenantId,
+        Guid clientId,
+        string? remoteAddress,
+        CancellationToken cancellationToken = default);
 }

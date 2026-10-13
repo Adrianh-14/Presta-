@@ -318,6 +318,9 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<DateTime?>("ProfileReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Telefono")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -385,6 +388,47 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.ToTable("ClientAuthenticationEvents", (string)null);
                 });
 
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientContactOtpChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ValueHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ClientContactOtpChallenges");
+                });
+
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientOtpChallenge", b =>
                 {
                     b.Property<Guid>("Id")
@@ -435,6 +479,43 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.HasIndex("TenantId", "ClientId", "CreatedAt");
 
                     b.ToTable("ClientOtpChallenges", (string)null);
+                });
+
+            modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientProfileUpdateRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReviewNote")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ClientProfileUpdateRequests");
                 });
 
             modelBuilder.Entity("PréstamoPlus.Domain.Entities.ClientSession", b =>
@@ -509,8 +590,8 @@ namespace PréstamoPlus.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("QRGenerationAttempts")
-                        .HasColumnType("integer")
-                        .IsConcurrencyToken();
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
 
                     b.Property<bool>("QRPermissionRequested")
                         .HasColumnType("boolean");
@@ -1926,6 +2007,9 @@ namespace PréstamoPlus.Infrastructure.Migrations
 
                     b.Property<decimal>("CapitalInicialUsd")
                         .HasColumnType("numeric");
+
+                    b.Property<int>("ClientProfileRefreshMonths")
+                        .HasColumnType("integer");
 
                     b.Property<int>("DiasGracia")
                         .ValueGeneratedOnAdd()

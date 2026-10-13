@@ -30,6 +30,8 @@ export const authService = {
   },
 
   logout: () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) api.post('/api/auth/logout', { refreshToken }).catch(() => console.warn('No se pudo revocar la sesión en el servidor.'));
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
@@ -49,6 +51,16 @@ export const authService = {
       authService.logout();
       return null;
     }
+  },
+
+  refreshSession: async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) throw new Error('No existe una sesión renovable.');
+    const { data } = await api.post('/api/auth/refresh', { refreshToken });
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    return data;
   },
 
   getCurrentUser: () => {

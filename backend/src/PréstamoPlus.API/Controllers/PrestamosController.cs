@@ -8,6 +8,7 @@ using PréstamoPlus.Application.Features.Prestamos.Commands.CreateDirectLoan;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetAllLoans;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetLoanById;
+using PréstamoPlus.Infrastructure.Persistence;
 
 namespace PréstamoPlus.API.Controllers
 {
@@ -16,10 +17,12 @@ namespace PréstamoPlus.API.Controllers
     public class PrestamosController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ApplicationDbContext _db;
 
-        public PrestamosController(IMediator mediator)
+        public PrestamosController(IMediator mediator, ApplicationDbContext db)
         {
             _mediator = mediator;
+            _db = db;
         }
 
         [HttpGet]
@@ -42,6 +45,8 @@ namespace PréstamoPlus.API.Controllers
             if (result is null) return NotFound();
             if (!Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId) || result.TenantId != tenantId) return NotFound();
             if (!CanReadLoan(result.ClientId)) return NotFound();
+            if (User.IsInRole(SystemRoles.Cliente) && !await Security.ClientProfileAccess.IsCurrentAsync(_db, Guid.Parse(User.FindFirst("clientId")!.Value), tenantId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = "PROFILE_UPDATE_REQUIRED", message = "Actualiza tu perfil antes de consultar la información del préstamo." });
             return Ok(result);
         }
 
@@ -53,6 +58,8 @@ namespace PréstamoPlus.API.Controllers
         {
             var loan = await _mediator.Send(new GetLoanByIdQuery(id));
             if (loan is null || !Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId) || loan.TenantId != tenantId || !CanReadLoan(loan.ClientId)) return NotFound();
+            if (User.IsInRole(SystemRoles.Cliente) && !await Security.ClientProfileAccess.IsCurrentAsync(_db, Guid.Parse(User.FindFirst("clientId")!.Value), tenantId))
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = "PROFILE_UPDATE_REQUIRED", message = "Actualiza tu perfil antes de consultar la tabla de amortización." });
 
             var result = await _mediator.Send(new GetAmortizationQuery(id));
             if (result is null) return NotFound();

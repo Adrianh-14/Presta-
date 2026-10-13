@@ -29,6 +29,7 @@ namespace PréstamoPlus.Application.DTOs
         public string? ReferenciaExterna { get; init; }
         public string? Notas { get; init; }
         public string? IdempotencyKey { get; init; }
+        public bool LiquidarPrestamo { get; init; }
     }
 
     public record CreateMoraPaymentRequest

@@ -420,6 +420,48 @@ public sealed class ClientAuthenticationService : IClientAuthenticationService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<ClientAuthenticationResult?> RenewSessionAsync(
+        Guid sessionId,
+        Guid tenantId,
+        Guid clientId,
+        string? remoteAddress,
+        CancellationToken cancellationToken = default)
+    {
+        var now = UtcNow();
+        var session = await _context.ClientSessions.SingleOrDefaultAsync(
+            item => item.Id == sessionId && item.TenantId == tenantId && item.ClientId == clientId,
+            cancellationToken);
+        if (session is null || session.RevokedAt.HasValue || session.ExpiresAt <= now)
+            return null;
+
+        var client = await _context.Clients.SingleOrDefaultAsync(
+            item => item.Id == clientId && item.TenantId == tenantId && item.Estado == EstadoCliente.Activo,
+            cancellationToken);
+        if (client is null)
+            return null;
+
+        var expiresAt = now.AddMinutes(Math.Clamp(_options.SessionLifetimeMinutes, 5, 1440));
+        session.ExpiresAt = expiresAt;
+        await RecordEventAsync(
+            tenantId,
+            clientId,
+            null,
+            sessionId,
+            "SessionRenewed",
+            "Succeeded",
+            Hash($"client:{tenantId:N}:{clientId:N}"),
+            HashOptional(remoteAddress, "address"),
+            now,
+            cancellationToken);
+
+        return new ClientAuthenticationResult(
+            _jwtService.GenerateClientAccessToken(client, sessionId, expiresAt),
+            client.Nombre,
+            client.Email,
+            client.Id,
+            expiresAt);
+    }
+
     private async Task<Client?> FindClientAsync(
         Guid tenantId,
         string rawIdentifier,

@@ -318,36 +318,36 @@ export default function NuevoPrestamo() {
       {step === 'loan' && (
         <div>
           {/* Client info bar */}
-          <div className="bg-white rounded-12 border border-surface-border shadow-card p-4 mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-navy-50 rounded-full flex items-center justify-center">
+          <div className="mb-6 flex min-w-0 flex-col gap-3 rounded-12 border border-surface-border bg-white p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy-50">
                 <User className="text-navy-500" size={20} />
               </div>
-              <div>
-                <p className="text-sm font-bold text-navy-500">{client?.nombre}</p>
-                <div className="flex items-center gap-3 text-xs text-slate-400">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-bold text-navy-500">{client?.nombre}</p>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                   <span className="font-mono">{client?.cedula}</span>
                   {client?.telefono && <span>{client?.telefono}</span>}
-                  {client?.email && <span>{client?.email}</span>}
+                  {client?.email && <span className="break-all">{client?.email}</span>}
                 </div>
               </div>
             </div>
-            <button onClick={() => { setClient(null); setStep('select'); }} className="text-xs text-slate-400 hover:text-accent-500 transition-colors flex items-center gap-1">
+            <button onClick={() => { setClient(null); setStep('select'); }} className="flex shrink-0 items-center gap-1 self-end text-xs text-slate-400 transition-colors hover:text-accent-500 sm:self-auto">
               <RefreshCw size={12} /> Cambiar
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white rounded-16 border border-surface-border shadow-card p-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-6">
+            <div className="min-w-0 rounded-16 border border-surface-border bg-white p-4 shadow-card sm:p-6">
               <h2 className="text-base font-bold text-navy-500 mb-4 flex items-center gap-2">
                 <Calculator size={18} /> Calculadora
               </h2>
               <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between"><label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Monto</label><select aria-label="Moneda del préstamo" value={moneda} onChange={e => setMoneda(e.target.value)} className="max-w-[13rem] rounded-4 border border-surface-border bg-white px-2 py-1 text-xs font-semibold shadow-sm">{CURRENCY_CATALOG.filter(({ code }) => enabledCurrencies.includes(code)).map(({ code, flag, name }) => <option key={code} value={code}>{flag} {name} ({code})</option>)}</select></div>
-                  <input value={monto} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setMonto(v ? formatNumber(parseInt(v)) : '0'); }} className="w-full mt-1 px-3 py-2.5 border border-surface-border rounded-4 text-lg font-bold focus:ring-2 focus:ring-accent-500 outline-none" />
+                <div className="min-w-0">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Monto</label><select aria-label="Moneda del préstamo" value={moneda} onChange={e => setMoneda(e.target.value)} className="mt-0 w-full min-w-0 rounded-4 border border-surface-border bg-white px-2 py-2 text-xs font-semibold shadow-sm sm:w-auto sm:max-w-[13rem]">{CURRENCY_CATALOG.filter(({ code }) => enabledCurrencies.includes(code)).map(({ code, flag, name }) => <option key={code} value={code}>{flag} {name} ({code})</option>)}</select></div>
+                  <input value={monto} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setMonto(v ? formatNumber(parseInt(v)) : '0'); }} className="mt-1 w-full min-w-0 rounded-4 border border-surface-border px-3 py-2.5 text-lg font-bold outline-none focus:ring-2 focus:ring-accent-500" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
                   <div>
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tasa (%)</label>
                     <input type="number" step="0.1" value={tasa} onChange={e => setTasa(e.target.value)} className="w-full mt-1 px-3 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none" />
@@ -359,34 +359,34 @@ export default function NuevoPrestamo() {
                     </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Frecuencia</label>
-                    <select value={frecuencia} onChange={e => setFrecuencia(e.target.value)} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none bg-white">
+                    <select value={frecuencia} onChange={e => setFrecuencia(e.target.value)} className="mt-1 w-full min-w-0 rounded-4 border border-surface-border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent-500">
                       {Object.entries(freqNames).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Frecuencia de la tasa</label>
-                    <select value={frecuenciaInteres} onChange={e => setFrecuenciaInteres(e.target.value)} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none bg-white">
+                    <select value={frecuenciaInteres} onChange={e => setFrecuenciaInteres(e.target.value)} className="mt-1 w-full min-w-0 rounded-4 border border-surface-border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent-500">
                       {Object.entries(freqNames).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
-                    <button type="button" onClick={() => setFrecuenciaInteres(frecuencia)} className="mt-1 text-[11px] text-accent-600 hover:underline">Igualar a frecuencia de pago</button>
+                    <button type="button" onClick={() => setFrecuenciaInteres(frecuencia)} className="mt-1 text-left text-[11px] text-accent-600 hover:underline">Igualar a frecuencia de pago</button>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cierre (%)</label>
-                    <input type="number" step="0.5" value={cierre} onChange={e => setCierre(e.target.value)} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none" />
+                    <input type="number" step="0.5" value={cierre} onChange={e => setCierre(e.target.value)} className="mt-1 w-full min-w-0 rounded-4 border border-surface-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent-500" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tipo</label>
-                    <select value={tipoPrestamo} onChange={e => setTipoPrestamo(parseInt(e.target.value))} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none bg-white">
+                    <select value={tipoPrestamo} onChange={e => setTipoPrestamo(parseInt(e.target.value))} className="mt-1 w-full min-w-0 rounded-4 border border-surface-border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent-500">
                       <option value={0}>Personal</option>
                       <option value={1}>Garantía</option>
                     </select>
                   </div>
-                  <div className="col-span-2 sm:col-span-1">
+                  <div className="min-w-0 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Modalidad de pago</label>
-                    <select value={modalidad} onChange={e => setModalidad(parseInt(e.target.value))} className="w-full mt-1 px-2 py-2.5 border border-surface-border rounded-4 text-sm focus:ring-2 focus:ring-accent-500 outline-none bg-white">
+                    <select value={modalidad} onChange={e => setModalidad(parseInt(e.target.value))} className="mt-1 w-full min-w-0 rounded-4 border border-surface-border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent-500">
                       <option value={0}>Amortización francesa</option>
                       <option value={1}>Interés sobre saldo</option>
                     </select>
@@ -397,35 +397,35 @@ export default function NuevoPrestamo() {
               </div>
             </div>
 
-            <div className="bg-white rounded-16 border border-surface-border shadow-card p-6 flex flex-col items-center justify-center text-center">
+            <div className="flex min-w-0 flex-col items-center justify-center rounded-16 border border-surface-border bg-white p-5 text-center shadow-card sm:p-6">
               <div className="w-12 h-12 bg-success-50 rounded-full flex items-center justify-center mb-3">
                 <Check className="text-success-500" size={24} />
               </div>
               <p className="text-navy-500 font-bold text-sm mb-1">Cliente verificado</p>
-              <p className="text-slate-400 text-xs">{client?.nombre} está listo. Configura el préstamo y crea.</p>
+              <p className="break-words text-xs text-slate-400">{client?.nombre} está listo. Configura el préstamo y crea.</p>
             </div>
           </div>
 
           {results && (
             <div className="mt-8">
-              <div className="gradient-hero rounded-16 p-8 text-white">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="gradient-hero rounded-16 p-4 text-white sm:p-6 xl:p-8">
+                <div className="grid min-w-0 grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-4 xl:gap-6">
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Cuota {freqNames[frecuencia]}</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.cuota, moneda)}</p>
+                    <p className="break-words text-2xl font-bold sm:text-3xl">{formatCurrency(results.cuota, moneda)}</p>
                     <p className="text-navy-300 text-xs mt-1">{(results.periods || 0)} pagos</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Total a pagar</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.totalPaid, moneda)}</p>
+                    <p className="break-words text-2xl font-bold sm:text-3xl">{formatCurrency(results.totalPaid, moneda)}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Total intereses</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.totalInterest, moneda)}</p>
+                    <p className="break-words text-2xl font-bold sm:text-3xl">{formatCurrency(results.totalInterest, moneda)}</p>
                   </div>
                   <div>
                     <p className="text-navy-200 text-xs font-medium uppercase tracking-wider mb-1">Principal</p>
-                    <p className="text-3xl font-bold">{formatCurrency(results.principal, moneda)}</p>
+                    <p className="break-words text-2xl font-bold sm:text-3xl">{formatCurrency(results.principal, moneda)}</p>
                     <p className="text-navy-300 text-xs mt-1">Incluye {cierre}% cierre</p>
                   </div>
                 </div>
@@ -439,7 +439,7 @@ export default function NuevoPrestamo() {
                   {results.totalInterest / results.totalPaid > 0.2 ? 'Intereses' : ''}
                 </div>
               </div>
-              <div className="flex gap-6 mt-2 text-xs text-slate-400">
+              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-400">
                 <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-accent-500" /> Capital {(results.principal / results.totalPaid * 100).toFixed(1)}%</span>
                 <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-warning-500" /> Intereses {(results.totalInterest / results.totalPaid * 100).toFixed(1)}%</span>
               </div>

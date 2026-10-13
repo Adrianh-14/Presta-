@@ -270,6 +270,39 @@ public sealed class ClientAuthenticationServiceTests : IAsyncLifetime
             eventType => eventType == "SessionRevoked");
     }
 
+    [Fact]
+    public async Task ActiveClientSessionCanBeRenewedButExpiredSessionCannot()
+    {
+        var request = await _service.RequestOtpAsync(_tenantA.Slug, _clientA.Cedula, "192.0.2.41");
+        var authenticated = await _service.VerifyOtpAsync(
+            request.ChallengeId,
+            _tenantA.Slug,
+            _clientA.Cedula,
+            Assert.Single(_queue.Deliveries).Code,
+            "192.0.2.41");
+        var session = await _context.ClientSessions.SingleAsync();
+
+        _time.Advance(TimeSpan.FromMinutes(5));
+        var renewed = await _service.RenewSessionAsync(
+            session.Id,
+            session.TenantId,
+            session.ClientId,
+            "192.0.2.41");
+
+        Assert.NotNull(authenticated);
+        Assert.NotNull(renewed);
+        Assert.Equal("client-token-" + session.Id.ToString("N"), renewed.Token);
+        Assert.Equal(_time.GetUtcNow().UtcDateTime.AddMinutes(_options.SessionLifetimeMinutes), renewed.ExpiresAt);
+
+        _time.Advance(TimeSpan.FromMinutes(_options.SessionLifetimeMinutes));
+        var expired = await _service.RenewSessionAsync(
+            session.Id,
+            session.TenantId,
+            session.ClientId,
+            "192.0.2.41");
+        Assert.Null(expired);
+    }
+
     private void RecreateService()
     {
         _service = new ClientAuthenticationService(

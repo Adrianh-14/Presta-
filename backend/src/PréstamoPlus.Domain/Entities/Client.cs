@@ -17,6 +17,7 @@ namespace PréstamoPlus.Domain.Entities
         public DateTime? DataConsentAt { get; set; }
         public DateTime? CreditEvaluationConsentAt { get; set; }
         public DateTime? CommunicationsConsentAt { get; set; }
+        public DateTime? ProfileReviewedAt { get; set; }
 
         public WorkInformation? WorkInformation { get; set; }
         public Address? Address { get; set; }

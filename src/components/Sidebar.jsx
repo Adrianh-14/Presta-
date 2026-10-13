@@ -12,6 +12,7 @@ const navItems = [
   { to: '/admin/solicitudes', icon: FileText, label: 'Solicitudes' },
   { to: '/admin/mora', icon: AlertTriangle, label: 'Mora y cobranza' },
   { to: '/admin/configuracion', icon: Settings, label: 'Configuración' },
+  { to: '/admin/actualizaciones-perfil', icon: ShieldCheck, label: 'Actualizaciones de perfil' },
   { to: '/admin/cobradores', icon: UsersRound, label: 'Cobradores' },
   { to: '/admin/cobradores/rutas', icon: MapPinned, label: 'Mapa de rutas' },
   { to: '/admin/gastos', icon: Receipt, label: 'Gastos' },

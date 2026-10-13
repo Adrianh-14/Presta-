@@ -43,6 +43,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
   const isPending = solicitud.estado === 0 || estadoRaw === 'pendiente';
   const isProcessing = solicitud.estado === 1 || solicitud.estado === 5 || solicitud.estado === 6 || estadoRaw === 'procesando' || estadoRaw === 'contraoferta' || estadoRaw === 'clienteaprobada' || estadoRaw === 'cliente aprobó' || estadoRaw === 'enrevision' || estadoRaw === 'en_revision';
   const isClientApproved = solicitud.estado === 6 || estadoRaw === 'clienteaprobada' || estadoRaw === 'cliente aprobó';
+  const termsPending = Number(solicitud.plazo || 0) <= 0;
   const hasCounterOffer = solicitud.hasClientDecision === true || solicitud.hasClientDecision === 'true';
   const montoNumero = Number(montoAprobado) || 0;
   const moneda = String(solicitud.moneda || 'DOP').toUpperCase();
@@ -102,7 +103,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
             <p className="text-yellow-100 text-sm mb-1">Monto Solicitado</p>
             <p className="text-3xl font-bold mb-1">{money(solicitud.montoSolicitado, moneda)}</p>
             <p className="flex items-center justify-center gap-2 text-yellow-100 text-xs"><CurrencyFlag currency={currency} /> {currency.name} ({moneda})</p>
-            <p className="text-yellow-200 text-sm">{tipoLabels[solicitud.tipoPrestamo] || solicitud.tipoPrestamo} — {solicitud.plazo} meses</p>
+            <p className="text-yellow-200 text-sm">{tipoLabels[solicitud.tipoPrestamo] || solicitud.tipoPrestamo} — {termsPending ? 'términos por definir' : `${solicitud.plazo} ${solicitud.unidadPlazo === 1 ? 'años' : 'meses'}`}</p>
           </div>
 
           {/* Datos del Solicitante */}
@@ -275,31 +276,31 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
             <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
               <div>
                 <p className="text-xs text-gray-500">Tasa Mensual</p>
-                <p className="font-medium text-gray-900">{solicitud.tasaInteresMensual}%</p>
+                <p className="font-medium text-gray-900">{termsPending ? 'A definir por la financiera' : `${solicitud.tasaInteresMensual}%`}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Gasto de Cierre</p>
-                <p className="font-medium text-gray-900">{solicitud.gastoCierrePorcentaje}%</p>
+                <p className="font-medium text-gray-900">{termsPending ? 'A definir por la financiera' : `${solicitud.gastoCierrePorcentaje}%`}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Cuota Estimada</p>
-                <p className="font-medium text-green-600">{money(solicitud.cuotaEstimada, moneda)}</p>
+                <p className="font-medium text-green-600">{termsPending ? 'Pendiente de propuesta' : money(solicitud.cuotaEstimada, moneda)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Total a Pagar</p>
-                <p className="font-medium text-gray-900">{money(solicitud.totalPagar, moneda)}</p>
+                <p className="font-medium text-gray-900">{termsPending ? 'Pendiente de propuesta' : money(solicitud.totalPagar, moneda)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Total Intereses</p>
-                <p className="font-medium text-gray-900">{money(solicitud.totalIntereses, moneda)}</p>
+                <p className="font-medium text-gray-900">{termsPending ? 'Pendiente de propuesta' : money(solicitud.totalIntereses, moneda)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Frecuencia de Pago</p>
-                <p className="font-medium text-gray-900">{frecuenciaLabels[solicitud.frecuenciaPago] || solicitud.frecuenciaPago}</p>
+                <p className="font-medium text-gray-900">{termsPending ? 'A definir por la financiera' : (frecuenciaLabels[solicitud.frecuenciaPago] || solicitud.frecuenciaPago)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Unidad de Plazo</p>
-                <p className="font-medium text-gray-900">{solicitud.unidadPlazo === 1 ? 'Años' : 'Meses'}</p>
+                <p className="font-medium text-gray-900">{termsPending ? 'A definir por la financiera' : (solicitud.unidadPlazo === 1 ? 'Años' : 'Meses')}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Fecha Solicitud</p>

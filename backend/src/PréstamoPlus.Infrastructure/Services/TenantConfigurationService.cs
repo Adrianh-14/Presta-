@@ -17,7 +17,14 @@ public sealed class TenantConfigurationService : ITenantConfigurationService
     {
         var tenant = await _context.Tenants.SingleOrDefaultAsync(x=>x.Id==tenantId, cancellationToken); if (tenant is null) return null;
         if (string.IsNullOrWhiteSpace(request.Nombre) || request.Nombre.Length > 160) throw new ArgumentException("Nombre de institución inválido.");
+        if (request.ClientProfileRefreshMonths is < 1 or > 24) throw new ArgumentException("El período de actualización del perfil debe estar entre 1 y 24 meses.");
         tenant.Nombre=request.Nombre.Trim(); tenant.LogoUrl=string.IsNullOrWhiteSpace(request.LogoUrl)?null:request.LogoUrl.Trim(); tenant.Email=request.Email?.Trim(); tenant.Telefono=request.Telefono?.Trim(); tenant.UpdatedAt=DateTime.UtcNow;
+        if (request.ClientProfileRefreshMonths is int refreshMonths)
+        {
+            var config = await _context.TenantConfigs.SingleOrDefaultAsync(x => x.TenantId == tenantId, cancellationToken);
+            if (config is null) _context.TenantConfigs.Add(new Domain.Entities.Tenancy.TenantConfig { Id = Guid.NewGuid(), TenantId = tenantId, ClientProfileRefreshMonths = refreshMonths });
+            else config.ClientProfileRefreshMonths = refreshMonths;
+        }
         if (request.MonedasHabilitadas is not null)
         {
             var currencies = request.MonedasHabilitadas.Where(CurrencyCatalog.IsSupported).Select(CurrencyCatalog.Normalize).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -39,5 +46,5 @@ public sealed class TenantConfigurationService : ITenantConfigurationService
         if (!string.IsNullOrWhiteSpace(tenant.Nombre) && await _context.Users.AnyAsync(x=>x.TenantId==tenantId, cancellationToken) && await _context.Clients.AnyAsync(x=>x.TenantId==tenantId, cancellationToken)) tenant.OnboardingCompletedAt ??= DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken); return await BuildAsync(tenant, cancellationToken);
     }
-    private async Task<TenantBrandingDto> BuildAsync(Domain.Entities.Tenancy.Tenant tenant, CancellationToken cancellationToken) => new(tenant.Id, tenant.Nombre, tenant.Slug, tenant.LogoUrl, tenant.Email, tenant.Telefono, tenant.OnboardingCompletedAt.HasValue, await _context.Users.CountAsync(x=>x.TenantId==tenant.Id,cancellationToken), await _context.Clients.CountAsync(x=>x.TenantId==tenant.Id,cancellationToken), await _context.Loans.CountAsync(x=>x.TenantId==tenant.Id,cancellationToken), tenant.MonedasHabilitadas.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), JsonSerializer.Deserialize<Dictionary<string, decimal>>(tenant.CapitalInicialPorMonedaJson) ?? new());
+    private async Task<TenantBrandingDto> BuildAsync(Domain.Entities.Tenancy.Tenant tenant, CancellationToken cancellationToken) => new(tenant.Id, tenant.Nombre, tenant.Slug, tenant.LogoUrl, tenant.Email, tenant.Telefono, tenant.OnboardingCompletedAt.HasValue, await _context.Users.CountAsync(x=>x.TenantId==tenant.Id,cancellationToken), await _context.Clients.CountAsync(x=>x.TenantId==tenant.Id,cancellationToken), await _context.Loans.CountAsync(x=>x.TenantId==tenant.Id,cancellationToken), tenant.MonedasHabilitadas.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), JsonSerializer.Deserialize<Dictionary<string, decimal>>(tenant.CapitalInicialPorMonedaJson) ?? new(), (await _context.TenantConfigs.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenant.Id, cancellationToken))?.ClientProfileRefreshMonths ?? 6);
 }

@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import EntryChoice from './pages/EntryChoice';
@@ -33,13 +34,19 @@ import CollectorDashboard from './pages/cobrador/Dashboard';
 import CollectorCollections from './pages/cobrador/Collections';
 import CollectorRouteMap from './pages/cobrador/RouteMap';
 import VisitForm from './pages/cobrador/VisitForm';
+import CollectorProfile from './pages/cobrador/Profile';
 import PagoQR from './pages/portal/PagoQR';
 import PortalPayments from './pages/portal/Payments';
+import PortalLoanRecord from './pages/portal/LoanRecord';
 import Mora from './pages/admin/Mora';
 import Configuracion from './pages/admin/Configuracion';
 import LocationConsent from './pages/portal/LocationConsent';
 import CollectorRoutes from './pages/admin/CollectorRoutes';
 import Landing from './pages/Landing';
+import ClientProfile from './pages/portal/Profile';
+import ProfileReviews from './pages/admin/ProfileReviews';
+import { portalService } from './services/portalService';
+import SessionExpiryGuard from './components/SessionExpiryGuard';
 
 const MOBILE_PORTAL_KEY = 'bonexa.mobilePortal';
 const isNativeApp = () => Capacitor.isNativePlatform();
@@ -72,8 +79,27 @@ function ClientRoute({ children }) {
   return children;
 }
 
+function ClientProfileGate({ children }) {
+  const location = useLocation();
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState('loading');
+  useEffect(() => {
+    let active = true;
+    portalService.getProfileStatus().then((status) => {
+      if (active) setState(status.required ? 'required' : 'current');
+    }).catch(() => { if (active) setState('error'); });
+    return () => { active = false; };
+  }, [location.pathname, attempt]);
+  if (location.pathname === '/portal/perfil') return children;
+  if (state === 'loading') return <div className="flex min-h-[60vh] items-center justify-center text-slate-500" role="status">Verificando actualización de datos…</div>;
+  if (state === 'error') return <div className="m-auto max-w-lg rounded-12 border border-red-200 bg-white p-6 text-center"><p className="font-semibold text-navy-800">No pudimos verificar tu perfil</p><p className="mt-2 text-sm text-slate-500">Comprueba tu conexión e intenta de nuevo.</p><button type="button" onClick={() => { setState('loading'); setAttempt((value) => value + 1); }} className="mt-4 rounded-8 bg-accent-500 px-4 py-2 font-semibold text-navy-900">Reintentar</button></div>;
+  if (state === 'required') return <Navigate to="/portal/perfil" replace state={{ from: location.pathname }} />;
+  return children;
+}
+
 function CollectorRoute({ children }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
+  if (loading) return <div className="flex h-screen items-center justify-center text-slate-500" role="status" aria-live="polite">Restaurando sesión…</div>;
   if (isNativeApp() && localStorage.getItem(MOBILE_PORTAL_KEY) === 'client') return <Navigate to="/portal/login" replace />;
   if (!isAuthenticated) return <Navigate to="/cobrador/login" replace />;
   if (user?.role !== 'Cobrador') return <Navigate to="/login" replace />;
@@ -135,20 +161,24 @@ function AppRoutes() {
         <Route path="gastos" element={<Gastos />} />
         <Route path="garantias" element={<Garantias />} />
         <Route path="inversiones" element={<Inversiones />} />
+        <Route path="actualizaciones-perfil" element={<ProfileReviews />} />
       </Route>
       <Route path="/cobrador/login" element={<WorkLoginRoute><CollectorLogin /></WorkLoginRoute>} />
       <Route path="/cobrador" element={<CollectorRoute><CollectorLayout /></CollectorRoute>}>
         <Route index element={<CollectorDashboard />} />
         <Route path="cobros" element={<CollectorCollections />} />
         <Route path="ruta" element={<CollectorRouteMap />} />
+        <Route path="perfil" element={<CollectorProfile />} />
         <Route path="cobros/:id" element={<VisitForm />} />
       </Route>
       <Route path="/portal/login" element={<ClientLoginRoute><PortalLogin /></ClientLoginRoute>} />
       <Route path="/portal/pago-qr" element={<ClientLoginRoute><PagoQR /></ClientLoginRoute>} />
       <Route path="/portal" element={<ClientRoute><PortalLayout /></ClientRoute>}>
-        <Route index element={<PortalDashboard />} />
-        <Route path="pagos" element={<PortalPayments />} />
-        <Route path="prestamo/:id" element={<PortalLoanDetail />} />
+        <Route index element={<ClientProfileGate><PortalDashboard /></ClientProfileGate>} />
+        <Route path="perfil" element={<ClientProfile />} />
+        <Route path="pagos" element={<ClientProfileGate><PortalPayments /></ClientProfileGate>} />
+        <Route path="record" element={<ClientProfileGate><PortalLoanRecord /></ClientProfileGate>} />
+        <Route path="prestamo/:id" element={<ClientProfileGate><PortalLoanDetail /></ClientProfileGate>} />
         <Route path="ubicacion" element={<LocationConsent />} />
       </Route>
       <Route path="/" element={<EntryGate />} />
@@ -161,6 +191,7 @@ function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
+        <SessionExpiryGuard />
         <AppRoutes />
       </AuthProvider>
     </Router>

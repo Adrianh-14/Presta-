@@ -8,6 +8,7 @@ using PréstamoPlus.Application.Features.Payments.Commands.CreatePayment;
 using PréstamoPlus.Application.Features.Payments.Queries.GetPaymentSummary;
 using PréstamoPlus.Application.Features.Payments.Queries.GetPaymentsByLoanId;
 using PréstamoPlus.Application.Features.Prestamos.Queries.GetLoanById;
+using PréstamoPlus.Infrastructure.Persistence;
 
 namespace PréstamoPlus.API.Controllers
 {
@@ -16,10 +17,12 @@ namespace PréstamoPlus.API.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ApplicationDbContext _db;
 
-        public PaymentsController(IMediator mediator)
+        public PaymentsController(IMediator mediator, ApplicationDbContext db)
         {
             _mediator = mediator;
+            _db = db;
         }
 
         [HttpPost]
@@ -39,6 +42,7 @@ namespace PréstamoPlus.API.Controllers
         public async Task<IActionResult> GetByLoanId(Guid loanId)
         {
             if (!await CanReadLoanAsync(loanId)) return NotFound();
+            if (!await IsProfileCurrentForClientAsync()) return StatusCode(StatusCodes.Status403Forbidden, new { code = "PROFILE_UPDATE_REQUIRED", message = "Actualiza tu perfil antes de consultar el historial de pagos." });
             var result = await _mediator.Send(new GetPaymentsByLoanIdQuery(loanId));
             return Ok(result);
         }
@@ -50,6 +54,7 @@ namespace PréstamoPlus.API.Controllers
         public async Task<IActionResult> GetSummary(Guid loanId)
         {
             if (!await CanReadLoanAsync(loanId)) return NotFound();
+            if (!await IsProfileCurrentForClientAsync()) return StatusCode(StatusCodes.Status403Forbidden, new { code = "PROFILE_UPDATE_REQUIRED", message = "Actualiza tu perfil antes de consultar el resumen de pagos." });
             var result = await _mediator.Send(new GetPaymentSummaryQuery(loanId));
             if (result is null) return NotFound();
             return Ok(result);
@@ -75,6 +80,14 @@ namespace PréstamoPlus.API.Controllers
             if (!User.IsInRole(SystemRoles.Cliente)) return true;
             return Guid.TryParse(User.FindFirst("clientId")?.Value, out var authenticatedClientId) &&
                    authenticatedClientId == loan.ClientId;
+        }
+
+        private async Task<bool> IsProfileCurrentForClientAsync()
+        {
+            if (!User.IsInRole(SystemRoles.Cliente)) return true;
+            return Guid.TryParse(User.FindFirst("clientId")?.Value, out var clientId) &&
+                   Guid.TryParse(User.FindFirst("tenantId")?.Value, out var tenantId) &&
+                   await Security.ClientProfileAccess.IsCurrentAsync(_db, clientId, tenantId);
         }
     }
 }

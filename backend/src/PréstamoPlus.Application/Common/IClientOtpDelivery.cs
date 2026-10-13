@@ -4,7 +4,8 @@ public sealed record ClientOtpDelivery(
     string Email,
     string ClientName,
     string Code,
-    int ExpiresInMinutes);
+    int ExpiresInMinutes,
+    string Purpose = "login");
 
 public interface IClientOtpDeliveryQueue
 {

@@ -22,8 +22,28 @@ export const portalService = {
     '/api/auth/client-session/revoke',
     undefined,
     { useClientToken: true }),
+  renewSession: async () => {
+    const { data } = await api.post('/api/auth/client-session/renew', undefined, { useClientToken: true });
+    return data;
+  },
   getMe: async () => {
     const { data } = await api.get('/api/clients/me', { useClientToken: true });
+    return data;
+  },
+  getProfileStatus: async () => {
+    const { data } = await api.get('/api/clients/me/profile-status', { useClientToken: true });
+    return data;
+  },
+  submitProfileUpdate: async (request) => {
+    const { data } = await api.post('/api/clients/me/profile-updates', request, { useClientToken: true, timeout: 120000 });
+    return data;
+  },
+  requestProfileEmailOtp: async (email) => {
+    const { data } = await api.post('/api/clients/me/contact/email/request-otp', { email }, { useClientToken: true });
+    return data;
+  },
+  confirmProfileEmail: async (challengeId, email, code) => {
+    const { data } = await api.post('/api/clients/me/contact/email/confirm', { challengeId, email, code }, { useClientToken: true });
     return data;
   },
   getMyLoans: async () => {
@@ -32,6 +52,10 @@ export const portalService = {
   },
   getMyApplications: async () => {
     const { data } = await api.get('/api/clients/me/solicitudes', { useClientToken: true });
+    return data;
+  },
+  requestAnotherLoan: async (request) => {
+    const { data } = await api.post('/api/clients/me/solicitudes', request, { useClientToken: true });
     return data;
   },
   uploadGuarantee: async (id, image) => {

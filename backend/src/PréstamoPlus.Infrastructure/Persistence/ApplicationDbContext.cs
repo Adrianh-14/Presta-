@@ -32,6 +32,8 @@ namespace PréstamoPlus.Infrastructure.Persistence
         public DbSet<ClientOtpChallenge> ClientOtpChallenges => Set<ClientOtpChallenge>();
         public DbSet<ClientSession> ClientSessions => Set<ClientSession>();
         public DbSet<ClientAuthenticationEvent> ClientAuthenticationEvents => Set<ClientAuthenticationEvent>();
+        public DbSet<ClientProfileUpdateRequest> ClientProfileUpdateRequests => Set<ClientProfileUpdateRequest>();
+        public DbSet<ClientContactOtpChallenge> ClientContactOtpChallenges => Set<ClientContactOtpChallenge>();
         public DbSet<Loan> Loans => Set<Loan>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<LateFee> LateFees => Set<LateFee>();
