@@ -14,7 +14,7 @@ namespace PréstamoPlus.Infrastructure.Tests;
 public sealed class TenantRegistrationServiceTests
 {
     [Fact]
-    public async Task RegistrationCreatesIsolatedTrialAndAdministratorAtomically()
+    public async Task RegistrationCreatesIsolatedComplimentaryAccountAndAdministratorAtomically()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -24,26 +24,52 @@ public sealed class TenantRegistrationServiceTests
         await using var db = new ApplicationDbContext(options);
         await db.Database.EnsureCreatedAsync();
         var service = CreateService(db);
+        var previousUploadsPath = Environment.GetEnvironmentVariable("UPLOADS_PATH");
+        var uploadsPath = Path.Combine(Path.GetTempPath(), $"bonexa-registration-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(uploadsPath);
+        Environment.SetEnvironmentVariable("UPLOADS_PATH", uploadsPath);
 
-        var result = await service.RegisterAsync(new TenantRegistrationRequest
+        try
         {
-            BusinessName = "Financiera Horizonte",
-            OwnerName = "Ana Mejía",
-            Email = "ANA@HORIZONTE.DO",
-            Password = "Clave-Segura-2026!",
-            Rnc = "101010101",
-            Phone = "809-555-0101",
-            AcceptTerms = true
-        });
+            var result = await service.RegisterAsync(new TenantRegistrationRequest
+            {
+                BusinessName = "Financiera Horizonte",
+                OwnerName = "Ana Mejía",
+                Email = "ANA@HORIZONTE.DO",
+                Password = "Clave-Segura-2026!",
+                Rnc = "101010101",
+                Phone = "809-555-0101",
+                CompanyType = "Financiera",
+                EconomicActivity = "Préstamos personales",
+                Address = "Av. Independencia 101",
+                City = "Santo Domingo",
+                Province = "Distrito Nacional",
+                Country = "DO",
+                EmployeeCount = 1,
+                RepresentativeIdType = "Cédula",
+                RepresentativeIdNumber = "001-1234567-8",
+                RepresentativeIdPhoto = "data:image/png;base64,AA==",
+                RepresentativePhoto = "data:image/png;base64,AA==",
+                AcceptTerms = true
+            });
 
-        var tenant = await db.Tenants.Include(item => item.Subscription).SingleAsync();
-        Assert.Equal("financiera-horizonte", tenant.Slug);
-        Assert.Equal(SubscriptionStatus.Trialing, tenant.Subscription!.Status);
-        Assert.True(tenant.Subscription.TrialEndsAt > DateTime.UtcNow.AddDays(13));
-        Assert.Equal(SystemRoles.Admin, (await db.Users.SingleAsync()).Role);
-        Assert.Equal(tenant.Id, result.User.TenantId);
-        Assert.Equal(1, await db.TenantConfigs.CountAsync());
-        Assert.Equal(1, await db.RefreshTokens.CountAsync());
+            var tenant = await db.Tenants.Include(item => item.Subscription).SingleAsync();
+            Assert.Equal("financiera-horizonte", tenant.Slug);
+            Assert.Equal(SubscriptionStatus.Active, tenant.Subscription!.Status);
+            Assert.True(tenant.Subscription.IsComplimentary);
+            Assert.Null(tenant.Subscription.TrialEndsAt);
+            Assert.Equal(SystemRoles.Admin, (await db.Users.SingleAsync()).Role);
+            Assert.Equal(tenant.Id, result.User.TenantId);
+            Assert.Equal(1, await db.TenantConfigs.CountAsync());
+            Assert.Equal(1, await db.RefreshTokens.CountAsync());
+            Assert.True(File.Exists(Path.Combine(uploadsPath, tenant.RepresentanteFotoIdentificacionPath!)));
+            Assert.True(File.Exists(Path.Combine(uploadsPath, tenant.RepresentanteFotoPath!)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("UPLOADS_PATH", previousUploadsPath);
+            if (Directory.Exists(uploadsPath)) Directory.Delete(uploadsPath, recursive: true);
+        }
     }
 
     [Fact]
