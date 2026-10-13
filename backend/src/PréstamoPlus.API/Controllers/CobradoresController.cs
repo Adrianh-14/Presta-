@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PréstamoPlus.Application.DTOs;
@@ -54,8 +55,20 @@ namespace PréstamoPlus.API.Controllers
         [ProducesResponseType(typeof(CollectorDto), StatusCodes.Status201Created)]
         public async Task<IActionResult> Create([FromBody] CreateCollectorRequest request)
         {
-            var result = await _mediator.Send(new CreateCollectorCommand(request, GetTenantId()));
-            return CreatedAtAction(nameof(GetAll), result);
+            try
+            {
+                var result = await _mediator.Send(new CreateCollectorCommand(request, GetTenantId()));
+                return CreatedAtAction(nameof(GetAll), result);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Conflict(new { message = exception.Message });
+            }
+            catch (DbUpdateException)
+            {
+                // Covers a concurrent duplicate email/cédula without exposing SQL details.
+                return Conflict(new { message = "El correo o la cédula ya están registrados para otro cobrador." });
+            }
         }
 
         [HttpPost("{id:guid}/assign")]

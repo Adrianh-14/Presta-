@@ -20,10 +20,27 @@ namespace PréstamoPlus.Application.Features.Cobradores.Commands.CreateCollector
         public async Task<CollectorDto> Handle(CreateCollectorCommand request, CancellationToken cancellationToken)
         {
             var req = request.Request;
+            var email = req.Email.Trim().ToLowerInvariant();
+            var nombre = req.Nombre.Trim();
+            var cedula = req.Cedula.Trim();
+            var telefono = req.Telefono.Trim();
+            var zona = req.Zona.Trim();
 
-            var existing = await _unitOfWork.Users.GetByEmailAsync(req.Email);
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+                throw new InvalidOperationException("Indica un correo válido.");
+            if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
+                throw new InvalidOperationException("La contraseña debe tener al menos 6 caracteres.");
+            if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(cedula) || string.IsNullOrWhiteSpace(telefono) || string.IsNullOrWhiteSpace(zona))
+                throw new InvalidOperationException("Completa todos los datos del cobrador.");
+
+            var existing = await _unitOfWork.Users.GetByEmailAsync(email);
             if (existing is not null)
                 throw new InvalidOperationException("El email ya está registrado.");
+
+            var sameCedula = (await _unitOfWork.Collectors.ListAsync(cancellationToken))
+                .Any(item => item.TenantId == request.TenantId && item.Cedula == cedula);
+            if (sameCedula)
+                throw new InvalidOperationException("Ya existe un cobrador con esa cédula en esta empresa.");
 
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
@@ -33,9 +50,9 @@ namespace PréstamoPlus.Application.Features.Cobradores.Commands.CreateCollector
                 {
                     Id = Guid.NewGuid(),
                     TenantId = request.TenantId,
-                    Email = req.Email,
+                    Email = email,
                     PasswordHash = HashPassword(req.Password),
-                    Nombre = req.Nombre,
+                    Nombre = nombre,
                     Role = "Cobrador",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -48,9 +65,9 @@ namespace PréstamoPlus.Application.Features.Cobradores.Commands.CreateCollector
                     Id = Guid.NewGuid(),
                     TenantId = request.TenantId,
                     UserId = user.Id,
-                    Cedula = req.Cedula,
-                    Telefono = req.Telefono,
-                    Zona = req.Zona,
+                    Cedula = cedula,
+                    Telefono = telefono,
+                    Zona = zona,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
