@@ -138,7 +138,7 @@ export default function Landing() {
               <span aria-hidden="true" className="absolute -right-[4px] top-28 h-16 w-[4px] rounded-r-full bg-slate-500" />
               <span aria-hidden="true" className="absolute -left-[4px] top-24 h-12 w-[4px] rounded-l-full bg-slate-500" />
               <div className="overflow-hidden rounded-[34px] bg-surface-canvas p-1">
-                <img key={selectedScreen.image} src={selectedScreen.image} alt={selectedScreen.alt} className="phone-showcase-shot block aspect-[.37] w-[min(72vw,286px)] rounded-[29px] object-contain sm:w-[300px]" />
+                <img key={selectedScreen.image} src={`${selectedScreen.image}?v=2`} alt={selectedScreen.alt} className="phone-showcase-shot block aspect-[.37] w-[min(72vw,286px)] rounded-[29px] object-contain sm:w-[300px]" />
               </div>
             </div>
             <div className="mt-6 flex w-full max-w-[430px] items-center justify-between gap-3">

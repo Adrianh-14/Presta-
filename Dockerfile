@@ -19,6 +19,7 @@ COPY docker/security-headers.conf /etc/nginx/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html/app
 COPY --from=build /app/dist/assets /usr/share/nginx/html/assets
 COPY --from=build /app/dist/branding /usr/share/nginx/html/branding
+COPY --from=build /app/dist/app-showcase /usr/share/nginx/html/app-showcase
 COPY --from=build /app/marketing/dist /usr/share/nginx/html
 
 EXPOSE 3005
