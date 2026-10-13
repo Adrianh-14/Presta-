@@ -204,7 +204,7 @@ namespace PréstamoPlus.Infrastructure.Services
                         : inst.Capital - inst.CapitalPagado;
                     if (saldoVencido <= 0) continue;
 
-                    var diasAtraso = (DateTime.UtcNow - inst.FechaPago.AddDays(diasGracia)).Days;
+                    var diasAtraso = (BusinessClock.Now - inst.FechaPago.AddDays(diasGracia)).Days;
                     if (diasAtraso <= 0) continue;
 
                     // Cada registro representa exclusivamente la mora generada ese dia.
@@ -219,14 +219,14 @@ namespace PréstamoPlus.Infrastructure.Services
                 {
                     var existeMoraHoy = await dbContext.LateFees
                         .AnyAsync(lf => lf.LoanId == loan.Id &&
-                                       lf.FechaCalculo.Date == DateTime.UtcNow.Date,
+                                       lf.FechaCalculo.Date == BusinessClock.Today,
                                   cancellationToken);
 
                     if (!existeMoraHoy)
                     {
                         var isEnteringMora = loan.Estado is EstadoPrestamo.Activo or EstadoPrestamo.Vencido;
                         var maxDiasAtraso = overdueInstallments
-                            .Select(i => (DateTime.UtcNow - i.FechaPago.AddDays(diasGracia)).Days)
+                            .Select(i => (BusinessClock.Now - i.FechaPago.AddDays(diasGracia)).Days)
                             .Max();
 
                         var lateFee = new LateFee

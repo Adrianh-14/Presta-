@@ -98,14 +98,12 @@ export default function Collections() {
 
               <div className="flex gap-2">
                 {locationSessions.some((session) => String(session.loanId) === String(c.loanId) && session.latitude != null && session.longitude != null) && <button onClick={() => { const session = locationSessions.find((item) => String(item.loanId) === String(c.loanId)); window.open(`https://www.google.com/maps/search/?api=1&query=${session.latitude},${session.longitude}`, '_blank', 'noopener,noreferrer'); }} className="flex items-center justify-center gap-1.5 rounded-8 border border-accent-200 px-3 py-2 text-sm font-semibold text-accent-700 hover:bg-accent-50"><MapPin size={14} /> Ubicación</button>}
-                {c.isQRAuthorized && (
-                  <button onClick={() => setQrModal({ open: true, assignment: c })}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-navy-500 text-white text-sm font-semibold rounded-8 hover:bg-navy-600 transition-all">
-                    <QrCode size={14} /> QR
-                  </button>
-                )}
+                <button onClick={() => setQrModal({ open: true, assignment: c })}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-navy-500 text-white text-sm font-semibold rounded-8 hover:bg-navy-600 transition-all">
+                  <QrCode size={14} /> QR
+                </button>
                 <button onClick={() => navigate(`/cobrador/cobros/${c.id}`)}
-                  className={`${c.isQRAuthorized ? 'flex-1' : 'w-full'} py-2 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-sm font-semibold rounded-8 shadow-btn hover:shadow-card-lg transition-all`}>
+                  className="flex-1 py-2 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-sm font-semibold rounded-8 shadow-btn hover:shadow-card-lg transition-all">
                   Registrar Visita
                 </button>
               </div>

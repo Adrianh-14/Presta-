@@ -8,6 +8,7 @@ import { prestamoService } from '../../services/prestamoService';
 import { expenseService } from '../../services/expenseService';
 import { getCurrency } from '../../data/currencies';
 import CurrencyFlag from '../../components/CurrencyFlag';
+import { formatDateOnly } from '../../utils/dateOnly';
 
 const COLORS = ['#071B2E', '#FFB547', '#9AA9B8', '#D9F5E6'];
 
@@ -250,10 +251,10 @@ export default function Dashboard() {
 
                       <div className="flex items-center gap-4 text-xs text-slate-400 pt-3 border-t border-surface-border">
                         <span className="flex items-center gap-1">
-                          <Calendar size={12} /> Inicio: {loan.fechaInicio ? new Date(loan.fechaInicio).toLocaleDateString() : '-'}
+                          <Calendar size={12} /> Inicio: {loan.fechaInicio ? formatDateOnly(loan.fechaInicio) : '-'}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Calendar size={12} /> Vence: {loan.fechaVencimiento ? new Date(loan.fechaVencimiento).toLocaleDateString() : '-'}
+                          <Calendar size={12} /> Vence: {loan.fechaVencimiento ? formatDateOnly(loan.fechaVencimiento) : '-'}
                         </span>
                         <span>{loan.plazo} meses</span>
                       </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, CreditCard, ArrowRight } from 'lucide-react';
 import { portalService } from '../../services/portalService';
 import StatusBadge from '../../components/StatusBadge';
+import { formatDateOnly } from '../../utils/dateOnly';
 
 const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
 
@@ -56,13 +57,13 @@ export default function PortalDashboard() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 mb-1">Vencimiento</p>
-                  <p className="text-sm font-semibold text-navy-500">{loan.fechaVencimiento ? new Date(loan.fechaVencimiento).toLocaleDateString() : '-'}</p>
+                  <p className="text-sm font-semibold text-navy-500">{loan.fechaVencimiento ? formatDateOnly(loan.fechaVencimiento) : '-'}</p>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-surface-border flex justify-between items-center">
                 <div className="flex items-center gap-5 text-xs text-slate-400">
-                  <span className="flex items-center gap-1.5"><Calendar size={14} /> {loan.fechaInicio ? new Date(loan.fechaInicio).toLocaleDateString() : '-'}</span>
+                  <span className="flex items-center gap-1.5"><Calendar size={14} /> {loan.fechaInicio ? formatDateOnly(loan.fechaInicio) : '-'}</span>
                   <span>{loan.plazo} meses</span>
                 </div>
                 <span className="text-accent-500 text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">

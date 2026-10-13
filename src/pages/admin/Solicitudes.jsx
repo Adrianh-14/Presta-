@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import CurrencyFlag from '../../components/CurrencyFlag';
 import { getCurrency } from '../../data/currencies';
 import { modalidadLabel } from '../../utils/loanModalidad';
+import { formatDateOnly } from '../../utils/dateOnly';
 
 function getTenantIdFromToken() {
   try {
@@ -302,7 +303,7 @@ export default function Solicitudes() {
             </div>
 
             <div className="text-sm text-gray-500">
-              <p>Fecha: {s.fechaSolicitud ? new Date(s.fechaSolicitud).toLocaleDateString() : '-'}</p>
+              <p>Fecha: {s.fechaSolicitud ? formatDateOnly(s.fechaSolicitud) : '-'}</p>
             </div>
           </div>
         ))}

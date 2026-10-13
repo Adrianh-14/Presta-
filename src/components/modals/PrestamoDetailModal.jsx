@@ -264,7 +264,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                     {payments.length > 0 ? `$${Number(payments[0].monto).toLocaleString()}` : '-'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {payments.length > 0 ? new Date(payments[0].fechaPago).toLocaleDateString() : 'Sin pagos'}
+                    {payments.length > 0 ? formatDateOnly(payments[0].fechaPago) : 'Sin pagos'}
                   </p>
                 </div>
               </div>
@@ -289,8 +289,8 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                     <div className="flex justify-between"><span className="text-gray-600">Tasa Mensual</span><span className="font-medium">{(tasa / 12).toFixed(2)}%</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Plazo</span><span className="font-medium">{plazo} meses ({plazo * periodsPerMonth} pagos)</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Modalidad</span><span className="font-medium">{modalidadLabel(loan.modalidad)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Inicio</span><span className="font-medium">{loan.fechaInicio ? new Date(loan.fechaInicio).toLocaleDateString() : '-'}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Vencimiento</span><span className="font-medium">{loan.fechaVencimiento ? new Date(loan.fechaVencimiento).toLocaleDateString() : '-'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Inicio</span><span className="font-medium">{loan.fechaInicio ? formatDateOnly(loan.fechaInicio) : '-'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Vencimiento</span><span className="font-medium">{loan.fechaVencimiento ? formatDateOnly(loan.fechaVencimiento) : '-'}</span></div>
                   </div>
                 </div>
               </div>

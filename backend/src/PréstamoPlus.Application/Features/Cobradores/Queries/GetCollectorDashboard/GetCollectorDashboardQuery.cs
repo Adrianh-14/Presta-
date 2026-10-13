@@ -25,7 +25,10 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
             var user = await _unitOfWork.Users.GetByIdAsync(collector.UserId);
 
             var allAssignments = await _unitOfWork.CollectionAssignments.ListAsync(cancellationToken);
-            var assignments = allAssignments.Where(a => a.CollectorId == request.CollectorId).ToList();
+            // El dashboard se calcula exclusivamente con la identidad del cobrador autenticado.
+            var assignments = allAssignments
+                .Where(a => a.CollectorId == collector.Id)
+                .ToList();
 
             var allVisits = await _unitOfWork.CollectionVisits.ListAsync(cancellationToken);
             var allAddresses = await _unitOfWork.Addresses.ListAsync(cancellationToken);
@@ -45,10 +48,14 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                 {
                     continue;
                 }
-                var visits = allVisits.Where(v => v.AssignmentId == assignment.Id).ToList();
+                var visits = allVisits
+                    .Where(v => v.AssignmentId == assignment.Id && v.CollectorId == collector.Id)
+                    .ToList();
                 var lastVisit = visits.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
                 var qrPayments = allPaymentQRs
-                    .Where(qr => qr.AssignmentId == assignment.Id && qr.Status == PaymentQRStatus.Used)
+                    .Where(qr => qr.AssignmentId == assignment.Id &&
+                                 qr.CollectorId == collector.Id &&
+                                 qr.Status == PaymentQRStatus.Used)
                     .Select(qr => new
                     {
                         QR = qr,
@@ -114,7 +121,7 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
             {
                 CollectorNombre = user?.Nombre ?? "",
                 Zona = collector.Zona,
-                TotalAsignados = assignments.Count,
+                TotalAsignados = assignmentDtos.Count,
                 CobrosExitosos = exitosos,
                 CobrosParciales = parciales,
                 SinResultado = sinResultado,

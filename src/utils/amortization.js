@@ -1,13 +1,14 @@
+import { dateOnlyKey, todayDateOnly } from './dateOnly';
+
 function normalizeFrecuencia(frecuencia) {
   if (typeof frecuencia === 'number') return frecuencia;
   const normalized = (frecuencia || '').toLowerCase();
   const map = { diaria: 0, semanal: 1, quincenal: 2, mensual: 3 };
   return map[normalized] ?? 3;
 }
-
 function calculatePaymentDate(fechaInicio, paymentNumber, frecuencia) {
   const freq = normalizeFrecuencia(frecuencia);
-  const fecha = new Date(fechaInicio);
+  const fecha = new Date(`${dateOnlyKey(fechaInicio)}T00:00:00`);
   switch (freq) {
     case 0:
       fecha.setDate(fecha.getDate() + paymentNumber);
@@ -21,7 +22,7 @@ function calculatePaymentDate(fechaInicio, paymentNumber, frecuencia) {
     default:
       fecha.setMonth(fecha.getMonth() + paymentNumber);
   }
-  return fecha.toISOString().split('T')[0];
+  return dateOnlyKey(fecha);
 }
 
 function getPeriodsPerMonth(frecuencia) {
@@ -40,7 +41,7 @@ export function generateAmortizationTable(principal, annualRate, months, frecuen
   const monthlyRate = annualRate / 100 / 12;
   const ratePerPeriod = monthlyRate / periodsPerMonth;
   const table = [];
-  const startDate = fechaInicio || new Date().toISOString().split('T')[0];
+  const startDate = fechaInicio || todayDateOnly();
 
   const cuotaPorPeriodo = cuotaMensual || null;
 
@@ -89,7 +90,7 @@ export function generateInterestOnlyTable(principal, annualRate, months, frecuen
   const periodsPerMonth = getPeriodsPerMonth(frecuencia);
   const totalPeriods = months * periodsPerMonth;
   const ratePerPeriod = annualRate / 100 / 12 / periodsPerMonth;
-  const startDate = fechaInicio || new Date().toISOString().split('T')[0];
+  const startDate = fechaInicio || todayDateOnly();
   const table = [];
   let saldo = principal;
   for (let i = 1; i <= totalPeriods; i++) {

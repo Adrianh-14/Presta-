@@ -29,9 +29,6 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.GeneratePaymentQ
             if (assignment is null || assignment.CollectorId != request.CollectorId)
                 throw new InvalidOperationException("Asignación no encontrada.");
 
-            if (!assignment.IsQRAuthorized)
-                throw new InvalidOperationException("Este préstamo no está autorizado para cobro por QR.");
-
             if (assignment.QRGenerationAttempts >= 3)
             {
                 assignment.QRPermissionRequested = true;

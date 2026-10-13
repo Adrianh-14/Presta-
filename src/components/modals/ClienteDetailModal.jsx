@@ -1,5 +1,6 @@
 import { X, User, Briefcase, MapPin, CreditCard, Camera } from 'lucide-react';
 import MediaViewer from '../MediaViewer';
+import { formatDateOnly } from '../../utils/dateOnly';
 
 export default function ClienteDetailModal({ client, onClose }) {
   if (!client) return null;
@@ -43,7 +44,7 @@ export default function ClienteDetailModal({ client, onClose }) {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Fecha Nacimiento</p>
-                <p className="font-medium text-gray-900">{client.fechaNacimiento ? new Date(client.fechaNacimiento).toLocaleDateString() : '-'}</p>
+                <p className="font-medium text-gray-900">{client.fechaNacimiento ? formatDateOnly(client.fechaNacimiento) : '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Estado</p>
@@ -53,7 +54,7 @@ export default function ClienteDetailModal({ client, onClose }) {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Registro</p>
-                <p className="font-medium text-gray-900">{client.fechaRegistro ? new Date(client.fechaRegistro).toLocaleDateString() : '-'}</p>
+                <p className="font-medium text-gray-900">{client.fechaRegistro ? formatDateOnly(client.fechaRegistro) : '-'}</p>
               </div>
             </div>
           </div>

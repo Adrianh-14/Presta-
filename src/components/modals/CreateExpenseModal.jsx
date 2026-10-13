@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Receipt } from 'lucide-react';
 import { expenseService } from '../../services/expenseService';
+import { dateOnlyKey, todayDateOnly } from '../../utils/dateOnly';
 
 const categories = [
   { value: 'salarioCobrador', label: 'Salario/Comisión Cobrador' },
@@ -16,8 +17,8 @@ export default function CreateExpenseModal({ onClose, onCreated, expense = null 
     category: expense.category || '',
     description: expense.description || '',
     amount: expense.amount ?? '',
-    date: expense.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-  } : { category: '', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
+    date: expense.date ? dateOnlyKey(expense.date) : todayDateOnly(),
+  } : { category: '', description: '', amount: '', date: todayDateOnly() });
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {

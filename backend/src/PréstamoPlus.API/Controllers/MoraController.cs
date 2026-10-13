@@ -34,7 +34,7 @@ public sealed class MoraController : ControllerBase
             var loanInstallments = installments.Where(item => item.LoanId == loan.Id).ToList();
             var loanLateFees = lateFees.Where(item => item.LoanId == loan.Id && item.Monto > 0).ToList();
             var overdueInstallments = loanInstallments
-                .Where(item => item.Estado != EstadoInstallment.Pagado && item.FechaPago.Date < DateTime.UtcNow.Date)
+                .Where(item => item.Estado != EstadoInstallment.Pagado && item.FechaPago.Date < BusinessClock.Today)
                 .ToList();
             var client = clients.GetValueOrDefault(loan.ClientId);
             var moraEvents = loanLateFees

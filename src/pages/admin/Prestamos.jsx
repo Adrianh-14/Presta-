@@ -6,6 +6,7 @@ import PrestamoDetailModal from '../../components/modals/PrestamoDetailModal';
 import { prestamoService } from '../../services/prestamoService';
 import CurrencyFlag from '../../components/CurrencyFlag';
 import { getCurrency, formatCurrency } from '../../data/currencies';
+import { formatDateOnly } from '../../utils/dateOnly';
 
 const tipoLabels = { personal: 'Personal', garantia: 'Garantía', 0: 'Personal', 1: 'Garantía' };
 const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
@@ -22,7 +23,7 @@ const columns = [
   { key: 'frecuenciaPago', label: 'Frecuencia', render: (value) => freqLabels[value] || String(value || '-') },
   { key: 'cuotaMensual', label: 'Cuota', render: currencyCell },
   { key: 'saldoPendiente', label: 'Saldo', render: currencyCell },
-  { key: 'fechaVencimiento', label: 'Vencimiento', render: (value) => value ? new Date(value).toLocaleDateString() : '-' },
+  { key: 'fechaVencimiento', label: 'Vencimiento', render: (value) => value ? formatDateOnly(value) : '-' },
   { key: 'estado', label: 'Estado', render: (value) => <StatusBadge status={value} /> },
 ];
 

@@ -7,6 +7,7 @@ import StatusBadge from '../../components/StatusBadge';
 import ClienteDetailModal from '../../components/modals/ClienteDetailModal';
 import { clientService } from '../../services/clientService';
 import { useAuth } from '../../context/AuthContext';
+import { formatDateOnly } from '../../utils/dateOnly';
 
 const columns = [
   { key: 'nombre', label: 'Nombre' },
@@ -14,7 +15,7 @@ const columns = [
   { key: 'email', label: 'Email' },
   { key: 'telefono', label: 'Teléfono' },
   { key: 'estado', label: 'Estado', render: (value) => <StatusBadge status={value} /> },
-  { key: 'fechaRegistro', label: 'Registro', render: (value) => value ? new Date(value).toLocaleDateString() : '-' },
+  { key: 'fechaRegistro', label: 'Registro', render: (value) => value ? formatDateOnly(value) : '-' },
 ];
 
 export default function Clientes() {

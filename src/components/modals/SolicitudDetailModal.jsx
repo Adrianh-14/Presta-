@@ -5,6 +5,7 @@ import MediaViewer from '../MediaViewer';
 import CurrencyFlag from '../CurrencyFlag';
 import { getCurrency } from '../../data/currencies';
 import { isInterestPeriodic } from '../../utils/loanModalidad';
+import { dateOnlyKey, formatDateOnly, todayDateOnly } from '../../utils/dateOnly';
 
 const frecuenciaLabels = { 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual', diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual' };
 const tipoEmpleoLabels = { 0: 'Formal', 1: 'Informal', 2: 'Independiente', 3: 'Jubilado' };
@@ -14,14 +15,11 @@ const money = (value, currency = 'DOP') => new Intl.NumberFormat('es-DO', { styl
 
 export default function SolicitudDetailModal({ solicitud, onClose, onApprove, onReject, onProcess, onResendCounterOffer }) {
   const [instrucciones, setInstrucciones] = useState('');
-  const [fechaInicio, setFechaInicio] = useState(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
-  });
+  const [fechaInicio, setFechaInicio] = useState(() => todayDateOnly());
   const [fechaPrimerPago, setFechaPrimerPago] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    return dateOnlyKey(d);
   });
   const [montoAprobado, setMontoAprobado] = useState(() => String(solicitud?.montoSolicitado ?? ''));
   const [tasaAprobada, setTasaAprobada] = useState(() => String(solicitud?.tasaInteresMensual ?? ''));
@@ -123,7 +121,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               </div>
               <div>
                 <p className="text-xs text-gray-500">Fecha Nacimiento</p>
-                <p className="font-medium text-gray-900">{solicitud.client?.fechaNacimiento ? new Date(solicitud.client.fechaNacimiento).toLocaleDateString() : '-'}</p>
+                <p className="font-medium text-gray-900">{solicitud.client?.fechaNacimiento ? formatDateOnly(solicitud.client.fechaNacimiento) : '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Estado Civil</p>
@@ -305,7 +303,7 @@ export default function SolicitudDetailModal({ solicitud, onClose, onApprove, on
               </div>
               <div>
                 <p className="text-xs text-gray-500">Fecha Solicitud</p>
-                <p className="font-medium text-gray-900">{solicitud.fechaSolicitud ? new Date(solicitud.fechaSolicitud).toLocaleDateString() : '-'}</p>
+                <p className="font-medium text-gray-900">{solicitud.fechaSolicitud ? formatDateOnly(solicitud.fechaSolicitud) : '-'}</p>
               </div>
             </div>
           </div>

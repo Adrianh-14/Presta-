@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import KPICard from '../../components/KPICard';
 import { expenseService } from '../../services/expenseService';
 import CreateExpenseModal from '../../components/modals/CreateExpenseModal';
+import { formatDateOnly, dateOnlyKey } from '../../utils/dateOnly';
 
 const fmt = (n) => `$${(n || 0).toLocaleString()}`;
 const COLORS = ['#006bff', '#059669', '#d97706', '#dc2626', '#8b5cf6', '#06b6d4'];
@@ -50,8 +51,9 @@ export default function Gastos() {
 
   const filtered = expenses.filter(e => {
     if (filterCategory && e.category !== filterCategory) return false;
-    if (filterFrom && new Date(e.date) < new Date(filterFrom)) return false;
-    if (filterTo && new Date(e.date) > new Date(filterTo)) return false;
+    const expenseDate = dateOnlyKey(e.date);
+    if (filterFrom && expenseDate < filterFrom) return false;
+    if (filterTo && expenseDate > filterTo) return false;
     return true;
   });
 
@@ -150,7 +152,7 @@ export default function Gastos() {
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400">No hay gastos registrados</td></tr>
               ) : filtered.map((expense) => (
                 <tr key={expense.id} className="border-b border-surface-border hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 text-sm text-slate-500">{new Date(expense.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-500">{formatDateOnly(expense.date)}</td>
                   <td className="px-6 py-4">
                     <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-navy-50 text-navy-600">
                       {categoryLabels[expense.category] || expense.category}

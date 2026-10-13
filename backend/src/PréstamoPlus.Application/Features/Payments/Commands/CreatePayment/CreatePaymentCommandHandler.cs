@@ -108,7 +108,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                     // En interés sobre saldo, el excedente de la cuota no
                     // prepaga intereses futuros: se aplica directamente al
                     // capital pendiente (normalmente la última cuota).
-                    var today = DateTime.UtcNow.Date;
+                    var today = BusinessClock.Today;
                     var interestRows = installments
                         .Where(i => i.Estado != EstadoInstallment.Pagado &&
                                     i.Interes - i.InteresPagado > 0 &&
@@ -203,7 +203,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
 
                 var quedanMoras = unpaidLateFees.Any(lf => !lf.Pagado && lf.Monto > 0);
                 var quedanCuotasVencidas = loan.Modalidad != ModalidadPrestamo.InteresPeriodicoSobreSaldo && installments.Any(i =>
-                    i.Estado != EstadoInstallment.Pagado && i.FechaPago.Date < DateTime.UtcNow.Date);
+                    i.Estado != EstadoInstallment.Pagado && i.FechaPago.Date < BusinessClock.Today);
 
                 if (nuevoSaldo <= 0 && !quedanMoras)
                     loan.Estado = EstadoPrestamo.Pagado;

@@ -1,4 +1,5 @@
 using MediatR;
+using PréstamoPlus.Application.Common;
 using PréstamoPlus.Application.DTOs;
 using PréstamoPlus.Application.Features.Payments.Specifications;
 using PréstamoPlus.Application.Features.Prestamos.Specifications;
@@ -44,7 +45,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
                 {
                     Domain.Enums.EstadoInstallment.Pagado => "Pagado",
                     Domain.Enums.EstadoInstallment.Parcial => "Parcial",
-                    _ when inst.FechaPago.Date < DateTime.UtcNow.Date => "Vencido",
+                    _ when inst.FechaPago.Date < BusinessClock.Today => "Vencido",
                     _ => "Pendiente"
                 };
 
@@ -92,7 +93,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
                 string estado;
                 if (loan.Estado == Domain.Enums.EstadoPrestamo.Pagado)
                     estado = "Pagado";
-                else if (fechaPago.Date < DateTime.UtcNow.Date)
+                else if (fechaPago.Date < BusinessClock.Today)
                     estado = "Vencido";
                 else
                     estado = "Pendiente";

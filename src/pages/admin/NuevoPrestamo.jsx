@@ -3,6 +3,7 @@ import { QrCode, User, Calculator, DollarSign, ChevronDown, ChevronUp, Check, Al
 import { prestamoService } from '../../services/prestamoService';
 import { clientService } from '../../services/clientService';
 import { generateAmortizationTable, generateInterestOnlyTable } from '../../utils/amortization';
+import { todayDateOnly } from '../../utils/dateOnly';
 import { printAmortization } from '../../utils/printAmortization';
 import { useAuth } from '../../context/AuthContext';
 import { CURRENCY_CATALOG } from '../../data/currencies';
@@ -95,8 +96,8 @@ export default function NuevoPrestamo() {
   useEffect(() => { const t = setTimeout(doCalc, 300); return () => clearTimeout(t); }, [doCalc]);
 
   const amortTable = results ? (modalidad === 1
-    ? generateInterestOnlyTable(results.principal, (parseFloat(tasa) * (periodsPerFreq[frecuenciaInteres] || 1) * 12) || 30, parseInt(plazo) || 6, frecuencia, new Date().toISOString().split('T')[0])
-    : generateAmortizationTable(results.principal, (parseFloat(tasa) * (periodsPerFreq[frecuenciaInteres] || 1) * 12) || 30, parseInt(plazo) || 6, frecuencia, new Date().toISOString().split('T')[0], results.cuota)) : [];
+    ? generateInterestOnlyTable(results.principal, (parseFloat(tasa) * (periodsPerFreq[frecuenciaInteres] || 1) * 12) || 30, parseInt(plazo) || 6, frecuencia, todayDateOnly())
+    : generateAmortizationTable(results.principal, (parseFloat(tasa) * (periodsPerFreq[frecuenciaInteres] || 1) * 12) || 30, parseInt(plazo) || 6, frecuencia, todayDateOnly(), results.cuota)) : [];
 
   const searchClient = async () => {
     if (!searchCedula.trim()) return;
