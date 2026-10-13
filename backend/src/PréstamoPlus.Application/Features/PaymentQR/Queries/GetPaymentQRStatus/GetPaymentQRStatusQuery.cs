@@ -35,6 +35,9 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Queries.GetPaymentQRStatu
                 ? (await _unitOfWork.Payments.ListAsync(cancellationToken))
                     .FirstOrDefault(item => item.IdempotencyKey == paymentQR.Token)
                 : null;
+            var totalCuotas = loan is null
+                ? 0
+                : (await _unitOfWork.Installments.ListAsync(cancellationToken)).Count(item => item.LoanId == loan.Id);
 
             var estadoMensaje = status switch
             {
@@ -64,7 +67,9 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Queries.GetPaymentQRStatu
                 InteresAplicado = payment?.Interes ?? 0,
                 MoraAplicada = payment?.MoraPagada ?? 0,
                 SaldoRestante = payment?.SaldoRestante ?? loan?.SaldoPendiente ?? 0,
-                FechaPago = payment?.FechaPago
+                FechaPago = payment?.FechaPago,
+                CuotasAplicadas = payment?.CuotasAplicadas ?? string.Empty,
+                TotalCuotas = totalCuotas
             };
         }
 

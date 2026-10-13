@@ -264,6 +264,8 @@ export default function PagoQR() {
         capital: payment.capital || info?.capitalAplicado || 0,
         interes: payment.interes || info?.interesAplicado || 0,
         mora: payment.mora || info?.moraAplicada || 0,
+        cuotasAplicadas: payment.cuotasAplicadas || info?.cuotasAplicadas || '-',
+        totalCuotas: payment.totalCuotas || info?.totalCuotas || 0,
         fechaPago: payment.fecha || new Date().toISOString(),
         prestamoId: info?.prestamoId,
       });
@@ -314,8 +316,8 @@ export default function PagoQR() {
         <div className="bg-white rounded-16 shadow-2xl p-8 max-w-sm w-full text-center">
           <div className={`relative w-24 h-20 mx-auto mb-5 rounded-12 border-2 ${printing ? 'border-accent-300 bg-accent-50' : 'border-green-200 bg-green-50'} flex items-end justify-center overflow-hidden`}>
             <div className="absolute top-2 h-3 w-14 rounded-full bg-navy-800" />
-            <Printer size={42} className={`${printing ? 'text-accent-600 animate-bounce' : 'text-green-600'} mb-2`} />
-            {printing && <span className="absolute bottom-0 h-8 w-12 rounded-t bg-white shadow-sm animate-[receipt-out_1.8s_ease-out]" />}
+            {printing && <div className="absolute bottom-0 z-0 h-11 w-14 rounded-t bg-white px-1 pt-1 shadow-sm animate-[receipt-out_1.8s_ease-out]"><span className="block h-1 w-10 rounded bg-slate-200" /><span className="mt-1 block h-1 w-8 rounded bg-slate-200" /><span className="mt-1 block h-1 w-10 rounded bg-accent-200" /></div>}
+            <Printer size={42} className={`${printing ? 'relative z-10 text-accent-600 animate-bounce' : 'text-green-600'} mb-2`} />
           </div>
           <div className="mb-3 flex items-center justify-center gap-2 text-green-600"><CheckCircle size={18} /> <span className="text-sm font-bold">Pago aplicado</span></div>
           <h2 className="text-lg font-bold text-navy-500 mb-1">{printing ? 'Imprimiendo recibo...' : 'Recibo listo'}</h2>
@@ -326,6 +328,10 @@ export default function PagoQR() {
               <span className="font-semibold text-navy-500">{result.clienteNombre}</span>
             </div>
             <div className="flex justify-between text-sm">
+              <span className="text-slate-400">Cuota aplicada</span>
+              <span className="font-semibold text-navy-500">{result.cuotasAplicadas} de {result.totalCuotas}</span>
+            </div>
+            <div className="flex justify-between text-sm">
               <span className="text-slate-400">Monto pagado</span>
               <span className="font-bold text-accent-500">${(result.monto || 0).toLocaleString()}</span>
             </div>
@@ -334,10 +340,10 @@ export default function PagoQR() {
               <span className="font-semibold text-navy-500">${(result.saldoRestante || 0).toLocaleString()}</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          {!printing && <div className="grid grid-cols-2 gap-2 mb-3">
             <button type="button" onClick={() => downloadPaymentReceipt(result)} className="flex items-center justify-center gap-1.5 rounded-8 bg-accent-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-accent-700"><Download size={14} /> Descargar PDF</button>
             <button type="button" onClick={() => printPaymentReceipt(result)} className="flex items-center justify-center gap-1.5 rounded-8 border border-surface-border px-3 py-2.5 text-xs font-bold text-navy-700 hover:bg-surface-fill"><Printer size={14} /> Imprimir</button>
-          </div>
+          </div>}
           <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1 mb-2">
             <MapPin size={10} /> Ubicación GPS registrada
           </p>

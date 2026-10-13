@@ -35,7 +35,7 @@ namespace PréstamoPlus.Application.Features.Prestamos.Queries.GetAmortization
             var table = new List<AmortizationRowDto>();
             decimal saldo = loan.MontoOriginal;
 
-            foreach (var inst in installments)
+            foreach (var inst in installments.OrderBy(item => item.Numero))
             {
                 var saldoInicial = saldo;
                 saldo = Math.Max(0, saldo - inst.Capital);

@@ -89,6 +89,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                 decimal remaining = paymentQR.Monto;
                 decimal totalCapital = 0;
                 decimal totalInteres = 0;
+                var appliedInstallments = new List<int>();
 
                 var unpaidLateFees = (await _unitOfWork.LateFees.ListAsync(cancellationToken))
                     .Where(lf => lf.LoanId == paymentQR.LoanId && !lf.Pagado && lf.Monto > 0)
@@ -109,13 +110,14 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                     await _unitOfWork.LateFees.UpdateAsync(lateFee, cancellationToken);
                 }
 
-                foreach (var inst in loanInstallments)
+                foreach (var inst in loanInstallments.OrderBy(item => item.Numero))
                 {
                     if (remaining <= 0) break;
                     if (inst.Estado == EstadoInstallment.Pagado) continue;
 
                     decimal unpaidInteres = inst.Interes - inst.InteresPagado;
                     decimal unpaidCapital = inst.Capital - inst.CapitalPagado;
+                    var appliedToInstallment = false;
 
                     if (unpaidInteres <= 0 && unpaidCapital <= 0)
                     {
@@ -127,6 +129,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                     inst.InteresPagado += interesAplicado;
                     remaining -= interesAplicado;
                     totalInteres += interesAplicado;
+                    appliedToInstallment |= interesAplicado > 0;
 
                     if (remaining > 0 && unpaidCapital > 0)
                     {
@@ -134,7 +137,11 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                         inst.CapitalPagado += capitalAplicado;
                         remaining -= capitalAplicado;
                         totalCapital += capitalAplicado;
+                        appliedToInstallment |= capitalAplicado > 0;
                     }
+
+                    if (appliedToInstallment)
+                        appliedInstallments.Add(inst.Numero);
 
                     if (inst.CapitalPagado >= inst.Capital && inst.InteresPagado >= inst.Interes)
                         inst.Estado = EstadoInstallment.Pagado;
@@ -172,6 +179,7 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                     MetodoPago = MetodoPago.Efectivo,
                     ReferenciaExterna = $"QR-{paymentQR.Token[..8]}",
                     Notas = $"Pago vía QR por cobrador",
+                    CuotasAplicadas = string.Join(", ", appliedInstallments.Distinct()),
                     IdempotencyKey = paymentQR.Token
                 };
 
@@ -208,6 +216,8 @@ namespace PréstamoPlus.Application.Features.PaymentQR.Commands.ProcessPaymentQR
                     Capital = payment.Capital,
                     Interes = payment.Interes,
                     Mora = payment.MoraPagada,
+                    CuotasAplicadas = payment.CuotasAplicadas ?? string.Empty,
+                    TotalCuotas = loanInstallments.Count,
                     Fecha = payment.FechaPago,
                     ClienteNombre = client.Nombre,
                     SaldoRestante = nuevoSaldo

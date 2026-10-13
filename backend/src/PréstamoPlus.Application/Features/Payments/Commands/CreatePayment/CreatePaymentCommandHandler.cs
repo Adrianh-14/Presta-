@@ -160,7 +160,7 @@ namespace PréstamoPlus.Application.Features.Payments.Commands.CreatePayment
                     if (remaining > 0)
                         throw new InvalidOperationException("El pago incluye un monto que no corresponde a intereses vencidos ni a capital pendiente.");
                 }
-                else foreach (var inst in installments)
+                else foreach (var inst in installments.OrderBy(item => item.Numero))
                 {
                     if (remaining <= 0) break;
                     if (inst.Estado == EstadoInstallment.Pagado) continue;

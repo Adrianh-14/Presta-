@@ -234,7 +234,61 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE IF EXISTS ""Subscriptions""
             ADD COLUMN IF NOT EXISTS ""ComplimentaryUntil"" timestamp with time zone NULL;
         ALTER TABLE IF EXISTS ""Subscriptions""
-            ADD COLUMN IF NOT EXISTS ""ComplimentaryNote"" character varying(300) NULL;");
+            ADD COLUMN IF NOT EXISTS ""ComplimentaryNote"" character varying(300) NULL;
+        CREATE TABLE IF NOT EXISTS ""LocationConsentEvidence""
+        (
+            ""Id"" uuid NOT NULL,
+            ""TenantId"" uuid NOT NULL,
+            ""ClientId"" uuid NOT NULL,
+            ""LoanId"" uuid NULL,
+            ""Purpose"" character varying(300) NOT NULL,
+            ""Scope"" character varying(300) NOT NULL,
+            ""TermsVersion"" character varying(80) NOT NULL,
+            ""ConsentTextHash"" character varying(128) NOT NULL,
+            ""GrantedAt"" timestamp with time zone NOT NULL,
+            ""ExpiresAt"" timestamp with time zone NULL,
+            ""RevokedAt"" timestamp with time zone NULL,
+            ""IpAddress"" character varying(80) NULL,
+            ""UserAgent"" character varying(500) NULL,
+            ""DeviceId"" character varying(200) NULL,
+            CONSTRAINT ""PK_LocationConsentEvidence"" PRIMARY KEY (""Id"")
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_LocationConsentEvidence_TenantId_ClientId_GrantedAt""
+            ON ""LocationConsentEvidence"" (""TenantId"", ""ClientId"", ""GrantedAt"");
+        CREATE TABLE IF NOT EXISTS ""LocationShareSessions""
+        (
+            ""Id"" uuid NOT NULL,
+            ""TenantId"" uuid NOT NULL,
+            ""ClientId"" uuid NOT NULL,
+            ""LoanId"" uuid NOT NULL,
+            ""CollectorId"" uuid NOT NULL,
+            ""ConsentId"" uuid NOT NULL,
+            ""StartedAt"" timestamp with time zone NOT NULL,
+            ""ExpiresAt"" timestamp with time zone NOT NULL,
+            ""EndedAt"" timestamp with time zone NULL,
+            ""Status"" character varying(30) NOT NULL,
+            ""LastLatitude"" double precision NULL,
+            ""LastLongitude"" double precision NULL,
+            ""LastAccuracy"" double precision NULL,
+            ""LastUpdatedAt"" timestamp with time zone NULL,
+            CONSTRAINT ""PK_LocationShareSessions"" PRIMARY KEY (""Id"")
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_LocationShareSessions_TenantId_ClientId_Status""
+            ON ""LocationShareSessions"" (""TenantId"", ""ClientId"", ""Status"");
+        CREATE INDEX IF NOT EXISTS ""IX_LocationShareSessions_TenantId_CollectorId_ExpiresAt""
+            ON ""LocationShareSessions"" (""TenantId"", ""CollectorId"", ""ExpiresAt"");
+        CREATE TABLE IF NOT EXISTS ""LocationAccessAudits""
+        (
+            ""Id"" uuid NOT NULL,
+            ""TenantId"" uuid NOT NULL,
+            ""SessionId"" uuid NOT NULL,
+            ""ViewerUserId"" uuid NOT NULL,
+            ""Action"" character varying(80) NOT NULL,
+            ""CreatedAt"" timestamp with time zone NOT NULL,
+            CONSTRAINT ""PK_LocationAccessAudits"" PRIMARY KEY (""Id"")
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_LocationAccessAudits_TenantId_SessionId_CreatedAt""
+            ON ""LocationAccessAudits"" (""TenantId"", ""SessionId"", ""CreatedAt"");");
     logger.LogInformation("Reparación de tablas de plataforma completada.");
 
     if (builder.Configuration.GetValue<bool>("DemoData:Enabled"))

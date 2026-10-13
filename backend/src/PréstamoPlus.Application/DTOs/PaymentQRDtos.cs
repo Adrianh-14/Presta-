@@ -39,6 +39,8 @@ namespace PréstamoPlus.Application.DTOs
         public decimal Capital { get; init; }
         public decimal Interes { get; init; }
         public decimal Mora { get; init; }
+        public string CuotasAplicadas { get; init; } = string.Empty;
+        public int TotalCuotas { get; init; }
         public DateTime Fecha { get; init; }
         public string ClienteNombre { get; init; } = string.Empty;
         public decimal SaldoRestante { get; init; }
@@ -64,6 +66,8 @@ namespace PréstamoPlus.Application.DTOs
         public decimal MoraAplicada { get; init; }
         public decimal SaldoRestante { get; init; }
         public DateTime? FechaPago { get; init; }
+        public string CuotasAplicadas { get; init; } = string.Empty;
+        public int TotalCuotas { get; init; }
     }
 
     public record QRRequestOtpRequest

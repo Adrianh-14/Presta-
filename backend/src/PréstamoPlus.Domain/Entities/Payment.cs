@@ -14,6 +14,7 @@ namespace PréstamoPlus.Domain.Entities
         public Enums.MetodoPago MetodoPago { get; set; }
         public string? ReferenciaExterna { get; set; }
         public string? Notas { get; set; }
+        public string? CuotasAplicadas { get; set; }
         public string? IdempotencyKey { get; set; }
 
         public Loan Loan { get; set; } = null!;

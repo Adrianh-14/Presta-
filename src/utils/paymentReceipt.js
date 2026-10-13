@@ -39,6 +39,8 @@ export function downloadPaymentReceipt(receipt, { audience = 'Cliente' } = {}) {
   doc.text(`Fecha: ${dateLabel(receipt?.fechaPago)}`, 16, y);
   y += 6;
   doc.text(`Referencia: ${receipt?.paymentId || receipt?.referencia || '-'}`, 16, y);
+  y += 6;
+  doc.text(`Cuota aplicada: ${receipt?.cuotasAplicadas || '-'} de ${receipt?.totalCuotas || '-'}`, 16, y);
   y += 12;
 
   doc.setFillColor(245, 248, 251);
@@ -93,7 +95,7 @@ export function downloadPaymentReceipt(receipt, { audience = 'Cliente' } = {}) {
 
 export function printPaymentReceipt(receipt) {
   const currency = receipt?.moneda || 'DOP';
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Recibo Bonexa</title><style>body{font-family:Arial,sans-serif;color:#071b2e;padding:32px;max-width:560px;margin:auto}header{background:#071b2e;color:#fff;padding:18px;border-radius:12px}h1{font-size:22px;margin:0 0 6px}p{color:#4c5f75}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #dae2eb}.total{font-size:18px;font-weight:700;border-bottom:0}</style></head><body><header><h1>Bonexa</h1><div>RECIBO DE PAGO</div></header><h2>Pago confirmado</h2><p>Cliente: ${receipt?.clienteNombre || '-'}</p><p>Fecha: ${dateLabel(receipt?.fechaPago)}</p><div class="row"><span>Capital aplicado</span><b>${money(receipt?.capital, currency)}</b></div><div class="row"><span>Interés aplicado</span><b>${money(receipt?.interes, currency)}</b></div><div class="row"><span>Mora aplicada</span><b>${money(receipt?.mora, currency)}</b></div><div class="row total"><span>Total pagado</span><b>${money(receipt?.monto, currency)}</b></div><div class="row"><span>Saldo restante</span><b>${money(receipt?.saldoRestante, currency)}</b></div><script>window.onload=()=>window.print();</script></body></html>`;
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Recibo Bonexa</title><style>body{font-family:Arial,sans-serif;color:#071b2e;padding:32px;max-width:560px;margin:auto}header{background:#071b2e;color:#fff;padding:18px;border-radius:12px}h1{font-size:22px;margin:0 0 6px}p{color:#4c5f75}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #dae2eb}.total{font-size:18px;font-weight:700;border-bottom:0}</style></head><body><header><h1>Bonexa</h1><div>RECIBO DE PAGO</div></header><h2>Pago confirmado</h2><p>Cliente: ${receipt?.clienteNombre || '-'}</p><p>Fecha: ${dateLabel(receipt?.fechaPago)}</p><p><b>Cuota aplicada:</b> ${receipt?.cuotasAplicadas || '-'} de ${receipt?.totalCuotas || '-'}</p><div class="row"><span>Capital aplicado</span><b>${money(receipt?.capital, currency)}</b></div><div class="row"><span>Interés aplicado</span><b>${money(receipt?.interes, currency)}</b></div><div class="row"><span>Mora aplicada</span><b>${money(receipt?.mora, currency)}</b></div><div class="row total"><span>Total pagado</span><b>${money(receipt?.monto, currency)}</b></div><div class="row"><span>Saldo restante</span><b>${money(receipt?.saldoRestante, currency)}</b></div><script>window.onload=()=>window.print();</script></body></html>`;
   const popup = window.open('', '_blank', 'noopener,noreferrer,width=640,height=760');
   if (!popup) return;
   popup.document.write(html);

@@ -16,6 +16,7 @@ namespace PréstamoPlus.Application.DTOs
         public MetodoPago MetodoPago { get; init; }
         public string? ReferenciaExterna { get; init; }
         public string? Notas { get; init; }
+        public string? CuotasAplicadas { get; init; }
         public string? IdempotencyKey { get; init; }
     }
 

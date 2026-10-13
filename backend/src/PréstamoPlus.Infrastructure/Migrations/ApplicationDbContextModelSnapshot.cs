@@ -1465,6 +1465,10 @@ namespace PréstamoPlus.Infrastructure.Migrations
                     b.Property<decimal>("Capital")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("CuotasAplicadas")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<DateTime>("FechaPago")
                         .HasColumnType("timestamp with time zone");
 

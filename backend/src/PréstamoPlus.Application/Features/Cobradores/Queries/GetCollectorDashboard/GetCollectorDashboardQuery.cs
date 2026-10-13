@@ -28,6 +28,8 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
             var assignments = allAssignments.Where(a => a.CollectorId == request.CollectorId).ToList();
 
             var allVisits = await _unitOfWork.CollectionVisits.ListAsync(cancellationToken);
+            var allPaymentQRs = await _unitOfWork.PaymentQRs.ListAsync(cancellationToken);
+            var allPayments = await _unitOfWork.Payments.ListAsync(cancellationToken);
 
             var assignmentDtos = new List<CollectionAssignmentDto>();
             int exitosos = 0, parciales = 0, sinResultado = 0;
@@ -43,8 +45,29 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                 }
                 var visits = allVisits.Where(v => v.AssignmentId == assignment.Id).ToList();
                 var lastVisit = visits.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+                var lastQrPayment = allPaymentQRs
+                    .Where(qr => qr.AssignmentId == assignment.Id && qr.Status == PaymentQRStatus.Used)
+                    .Select(qr => new
+                    {
+                        QR = qr,
+                        Payment = allPayments.FirstOrDefault(payment => payment.IdempotencyKey == qr.Token)
+                    })
+                    .Where(item => item.Payment is not null)
+                    .OrderByDescending(item => item.QR.UsedAt ?? item.QR.CreatedAt)
+                    .FirstOrDefault();
 
-                if (lastVisit is not null)
+                var qrPaymentDate = lastQrPayment is null
+                    ? (DateTime?)null
+                    : lastQrPayment.QR.UsedAt ?? lastQrPayment.QR.CreatedAt;
+                var qrIsLatestEvent = lastQrPayment is not null &&
+                    (lastVisit is null || qrPaymentDate > lastVisit.CreatedAt);
+
+                if (qrIsLatestEvent)
+                {
+                    exitosos++;
+                    montoCobrado += lastQrPayment!.Payment!.Monto;
+                }
+                else if (lastVisit is not null)
                 {
                     if (lastVisit.TipoVisita == TipoVisita.CobroExitoso) exitosos++;
                     else if (lastVisit.TipoVisita == TipoVisita.CobroParcial) parciales++;
@@ -74,8 +97,8 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     QRGenerationAttempts = assignment.QRGenerationAttempts,
                     QRPermissionRequested = assignment.QRPermissionRequested,
                     AssignedAt = assignment.AssignedAt,
-                    UltimaVisita = lastVisit?.CreatedAt,
-                    UltimoResultado = lastVisit?.TipoVisita
+                    UltimaVisita = qrIsLatestEvent ? qrPaymentDate : lastVisit?.CreatedAt,
+                    UltimoResultado = qrIsLatestEvent ? TipoVisita.CobroExitoso : lastVisit?.TipoVisita
                 });
             }
 
