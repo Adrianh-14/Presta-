@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap, PiggyBank, AlertTriangle, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, FileText, LogOut, PlusSquare, UsersRound, Receipt, Menu, X, ShieldCheck, FolderLock, Crown, Building2, Zap, PiggyBank, AlertTriangle, Settings, MapPinned } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/admin/mora', icon: AlertTriangle, label: 'Mora y cobranza' },
   { to: '/admin/configuracion', icon: Settings, label: 'Configuración' },
   { to: '/admin/cobradores', icon: UsersRound, label: 'Cobradores' },
+  { to: '/admin/cobradores/rutas', icon: MapPinned, label: 'Mapa de rutas' },
   { to: '/admin/gastos', icon: Receipt, label: 'Gastos' },
   { to: '/admin/garantias', icon: FolderLock, label: 'Documentos y garantías' },
   { to: '/admin/inversiones', icon: PiggyBank, label: 'Inversiones' },

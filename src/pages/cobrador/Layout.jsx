@@ -1,10 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ListChecks, LogOut } from 'lucide-react';
+import { LayoutDashboard, ListChecks, LogOut, MapPinned } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
   { to: '/cobrador', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/cobrador/cobros', icon: ListChecks, label: 'Mis Cobros' },
+  { to: '/cobrador/ruta', icon: MapPinned, label: 'Mapa de ruta' },
 ];
 
 export default function CollectorSidebar() {

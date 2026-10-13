@@ -353,8 +353,8 @@ app.Use(async (context, next) =>
         context.Response.Headers["Content-Security-Policy"] =
             "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; " +
             "script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-            "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; " +
-            "media-src 'self' blob:; connect-src 'self'; form-action 'self'";
+            "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.tile.openstreetmap.org; " +
+            "media-src 'self' blob:; connect-src 'self' https://nominatim.openstreetmap.org; form-action 'self'";
         context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
     }
     using (logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId, ["Path"] = context.Request.Path.ToString() }))

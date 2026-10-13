@@ -31,12 +31,14 @@ import CollectorLogin from './pages/cobrador/Login';
 import CollectorLayout from './pages/cobrador/CollectorLayout';
 import CollectorDashboard from './pages/cobrador/Dashboard';
 import CollectorCollections from './pages/cobrador/Collections';
+import CollectorRouteMap from './pages/cobrador/RouteMap';
 import VisitForm from './pages/cobrador/VisitForm';
 import PagoQR from './pages/portal/PagoQR';
 import PortalPayments from './pages/portal/Payments';
 import Mora from './pages/admin/Mora';
 import Configuracion from './pages/admin/Configuracion';
 import LocationConsent from './pages/portal/LocationConsent';
+import CollectorRoutes from './pages/admin/CollectorRoutes';
 import Landing from './pages/Landing';
 
 const MOBILE_PORTAL_KEY = 'bonexa.mobilePortal';
@@ -129,6 +131,7 @@ function AppRoutes() {
         <Route path="mora" element={<Mora />} />
         <Route path="configuracion" element={<Configuracion />} />
         <Route path="cobradores" element={<Cobradores />} />
+        <Route path="cobradores/rutas" element={<CollectorRoutes />} />
         <Route path="gastos" element={<Gastos />} />
         <Route path="garantias" element={<Garantias />} />
         <Route path="inversiones" element={<Inversiones />} />
@@ -137,6 +140,7 @@ function AppRoutes() {
       <Route path="/cobrador" element={<CollectorRoute><CollectorLayout /></CollectorRoute>}>
         <Route index element={<CollectorDashboard />} />
         <Route path="cobros" element={<CollectorCollections />} />
+        <Route path="ruta" element={<CollectorRouteMap />} />
         <Route path="cobros/:id" element={<VisitForm />} />
       </Route>
       <Route path="/portal/login" element={<ClientLoginRoute><PortalLogin /></ClientLoginRoute>} />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Mail, MapPin, CheckCircle, XCircle, TrendingUp, QrCode, Power } from 'lucide-react';
+import { Users, Plus, Search, Phone, Mail, MapPin, CheckCircle, XCircle, TrendingUp, QrCode, Power, MapPinned } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import KPICard from '../../components/KPICard';
 import StatusBadge from '../../components/StatusBadge';
 import { cobradorService } from '../../services/cobradorService';
@@ -19,6 +20,7 @@ export default function Cobradores() {
   const [showQRManage, setShowQRManage] = useState(null);
   const [showLocation, setShowLocation] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => { loadCollectors(); }, []);
 
@@ -89,9 +91,7 @@ export default function Cobradores() {
           <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-navy-800">Cobradores</h1>
           <p className="mt-1 text-sm text-slate-500">Gestión de cobradores y asignaciones</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-accent-600 text-white rounded-8 text-sm font-semibold shadow-btn hover:shadow-card-lg transition-all">
-          <Plus size={16} /> Nuevo Cobrador
-        </button>
+        <div className="flex flex-wrap gap-2"><button onClick={() => navigate('/admin/cobradores/rutas')} className="flex items-center gap-2 rounded-8 border border-navy-200 bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 hover:bg-navy-50"><MapPinned size={16} /> Ver mapa</button><button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-accent-600 text-white rounded-8 text-sm font-semibold shadow-btn hover:shadow-card-lg transition-all"><Plus size={16} /> Nuevo Cobrador</button></div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { CreditCard, LayoutDashboard, UserRound, Users } from 'lucide-react';
+import { LayoutDashboard, MapPinned, UserRound, Users } from 'lucide-react';
 import CollectorSidebar from './Layout';
 
 export default function CollectorLayout() {
@@ -14,7 +14,7 @@ export default function CollectorLayout() {
         {[
           { to: '/cobrador', label: 'Hoy', icon: LayoutDashboard, end: true },
           { to: '/cobrador/cobros', label: 'Clientes', icon: Users },
-          { to: '/cobrador/cobros', label: 'Pagos', icon: CreditCard },
+          { to: '/cobrador/ruta', label: 'Mapa', icon: MapPinned },
           { label: 'Perfil', icon: UserRound },
         ].map(({ to, label, icon: Icon, end }) => to ? (
           <NavLink key={label} to={to} end={end} className={({ isActive }) => `flex flex-col items-center gap-1 px-2 py-2 text-xs font-semibold transition-colors ${isActive ? 'text-navy-900' : 'text-slate-400'}`}>

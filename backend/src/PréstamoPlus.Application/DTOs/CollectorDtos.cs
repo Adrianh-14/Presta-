@@ -46,6 +46,10 @@ namespace PréstamoPlus.Application.DTOs
         public string ClienteNombre { get; init; } = string.Empty;
         public string ClienteCedula { get; init; } = string.Empty;
         public string ClienteTelefono { get; init; } = string.Empty;
+        public string ClienteDireccion { get; init; } = string.Empty;
+        public string ClienteCiudad { get; init; } = string.Empty;
+        public string ClienteProvincia { get; init; } = string.Empty;
+        public string? ClienteSector { get; init; }
         public decimal MontoOriginal { get; init; }
         public decimal CuotaMensual { get; init; }
         public decimal SaldoPendiente { get; init; }

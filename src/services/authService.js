@@ -35,6 +35,22 @@ export const authService = {
     localStorage.removeItem('user');
   },
 
+  restoreSession: async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    const storedUser = authService.getCurrentUser();
+    if (!refreshToken) return storedUser && localStorage.getItem('accessToken') ? storedUser : null;
+    try {
+      const { data } = await api.post('/api/auth/refresh', { refreshToken });
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      return data.user;
+    } catch {
+      authService.logout();
+      return null;
+    }
+  },
+
   getCurrentUser: () => {
     try {
       const user = localStorage.getItem('user');

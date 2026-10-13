@@ -159,12 +159,14 @@ namespace PréstamoPlus.API.Controllers
 
             var assignments = await _unitOfWork.CollectionAssignments.ListAsync();
             var collectorAssignments = assignments.Where(a => a.CollectorId == id).ToList();
+            var addresses = await _unitOfWork.Addresses.ListAsync();
 
             var result = new List<CollectionAssignmentDto>();
             foreach (var a in collectorAssignments)
             {
                 var loan = await _unitOfWork.Loans.GetByIdAsync(a.LoanId);
                 var client = loan is not null ? await _unitOfWork.Clients.GetByIdAsync(loan.ClientId) : null;
+                var address = client is null ? null : addresses.FirstOrDefault(item => item.ClientId == client.Id);
                 if (loan?.TenantId != GetTenantId() || client?.TenantId != GetTenantId()) continue;
                 result.Add(new CollectionAssignmentDto
                 {
@@ -174,6 +176,10 @@ namespace PréstamoPlus.API.Controllers
                     ClienteNombre = client?.Nombre ?? "",
                     ClienteCedula = client?.Cedula ?? "",
                     ClienteTelefono = client?.Telefono ?? "",
+                    ClienteDireccion = address?.Direccion ?? "",
+                    ClienteCiudad = address?.Ciudad ?? "",
+                    ClienteProvincia = address?.Provincia ?? "",
+                    ClienteSector = address?.Sector,
                     MontoOriginal = loan?.MontoOriginal ?? 0,
                     CuotaMensual = loan?.CuotaMensual ?? 0,
                     SaldoPendiente = loan?.SaldoPendiente ?? 0,

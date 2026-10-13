@@ -28,6 +28,7 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
             var assignments = allAssignments.Where(a => a.CollectorId == request.CollectorId).ToList();
 
             var allVisits = await _unitOfWork.CollectionVisits.ListAsync(cancellationToken);
+            var allAddresses = await _unitOfWork.Addresses.ListAsync(cancellationToken);
             var allPaymentQRs = await _unitOfWork.PaymentQRs.ListAsync(cancellationToken);
             var allPayments = await _unitOfWork.Payments.ListAsync(cancellationToken);
 
@@ -39,13 +40,14 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
             {
                 var loan = await _unitOfWork.Loans.GetByIdAsync(assignment.LoanId);
                 var client = loan is not null ? await _unitOfWork.Clients.GetByIdAsync(loan.ClientId) : null;
+                var address = client is null ? null : allAddresses.FirstOrDefault(item => item.ClientId == client.Id);
                 if (loan?.TenantId != collector.TenantId || client?.TenantId != collector.TenantId)
                 {
                     continue;
                 }
                 var visits = allVisits.Where(v => v.AssignmentId == assignment.Id).ToList();
                 var lastVisit = visits.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
-                var lastQrPayment = allPaymentQRs
+                var qrPayments = allPaymentQRs
                     .Where(qr => qr.AssignmentId == assignment.Id && qr.Status == PaymentQRStatus.Used)
                     .Select(qr => new
                     {
@@ -53,8 +55,9 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                         Payment = allPayments.FirstOrDefault(payment => payment.IdempotencyKey == qr.Token)
                     })
                     .Where(item => item.Payment is not null)
-                    .OrderByDescending(item => item.QR.UsedAt ?? item.QR.CreatedAt)
-                    .FirstOrDefault();
+                    .OrderBy(item => item.QR.UsedAt ?? item.QR.CreatedAt)
+                    .ToList();
+                var lastQrPayment = qrPayments.LastOrDefault();
 
                 var qrPaymentDate = lastQrPayment is null
                     ? (DateTime?)null
@@ -62,10 +65,11 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                 var qrIsLatestEvent = lastQrPayment is not null &&
                     (lastVisit is null || qrPaymentDate > lastVisit.CreatedAt);
 
+                montoCobrado += qrPayments.Sum(item => item.Payment!.Monto);
+
                 if (qrIsLatestEvent)
                 {
                     exitosos++;
-                    montoCobrado += lastQrPayment!.Payment!.Monto;
                 }
                 else if (lastVisit is not null)
                 {
@@ -74,7 +78,7 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     else sinResultado++;
                     montoCobrado += lastVisit.MontoRecibido;
                 }
-                else
+                else if (qrPayments.Count == 0)
                 {
                     sinResultado++;
                 }
@@ -87,6 +91,10 @@ namespace PréstamoPlus.Application.Features.Cobradores.Queries.GetCollectorDash
                     ClienteNombre = client?.Nombre ?? "",
                     ClienteCedula = client?.Cedula ?? "",
                     ClienteTelefono = client?.Telefono ?? "",
+                    ClienteDireccion = address?.Direccion ?? "",
+                    ClienteCiudad = address?.Ciudad ?? "",
+                    ClienteProvincia = address?.Provincia ?? "",
+                    ClienteSector = address?.Sector,
                     MontoOriginal = loan?.MontoOriginal ?? 0,
                     CuotaMensual = loan?.CuotaMensual ?? 0,
                     SaldoPendiente = loan?.SaldoPendiente ?? 0,

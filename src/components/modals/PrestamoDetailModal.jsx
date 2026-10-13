@@ -9,6 +9,7 @@ import CurrencyFlag from '../CurrencyFlag';
 import { getCurrency, formatCurrency } from '../../data/currencies';
 import { useAuth } from '../../context/AuthContext';
 import { isInterestPeriodic, modalidadLabel } from '../../utils/loanModalidad';
+import { formatDateOnly, todayDateOnly } from '../../utils/dateOnly';
 
 export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLegal }) {
   const { user } = useAuth();
@@ -100,7 +101,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
     loadAmortization();
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayDateOnly();
 
   return (
     <div className="admin-modal fixed inset-0 z-50 flex items-center justify-center bg-navy-950/55 p-4" onClick={onClose}>
@@ -381,7 +382,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                       return (
                         <tr key={row.numero} className={`${isOverdue ? 'bg-red-50' : isPaid ? 'bg-green-50/50' : isPartial ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
                           <td className="px-3 py-3 font-medium text-gray-900">{row.numero}</td>
-                          <td className="px-3 py-3 text-gray-700">{row.fechaPago ? new Date(row.fechaPago).toLocaleDateString() : '-'}</td>
+                          <td className="px-3 py-3 text-gray-700">{formatDateOnly(row.fechaPago)}</td>
                           <td className="px-3 py-3 text-right font-medium text-gray-900">${Number(row.cuota || 0).toLocaleString()}</td>
                           <td className="px-3 py-3 text-right text-green-600">${Number(row.capital || 0).toLocaleString()}</td>
                           <td className="px-3 py-3 text-right text-amber-600">${Number(row.interes || 0).toLocaleString()}</td>
@@ -447,7 +448,7 @@ export default function PrestamoDetailModal({ loan, onClose, onCancel, onMarkLeg
                     <tbody className="divide-y divide-gray-100">
                       {payments.map((p) => (
                         <tr key={p.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-900">{p.fechaPago ? new Date(p.fechaPago).toLocaleDateString() : '-'}</td>
+                      <td className="px-4 py-3 text-gray-900">{formatDateOnly(p.fechaPago)}</td>
                           <td className="px-4 py-3 text-right font-semibold text-gray-900">${Number(p.monto || 0).toLocaleString()}</td>
                           <td className="px-4 py-3 text-right text-green-600">${Number(p.capital || 0).toLocaleString()}</td>
                           <td className="px-4 py-3 text-right text-amber-600">${Number(p.interes || 0).toLocaleString()}</td>

@@ -4,6 +4,7 @@ import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { portalService } from '../../services/portalService';
 import StatusBadge from '../../components/StatusBadge';
 import { isInterestPeriodic } from '../../utils/loanModalidad';
+import { formatDateOnly, todayDateOnly } from '../../utils/dateOnly';
 
 const freqLabels = { mensual: 'Mensual', quincenal: 'Quincenal', semanal: 'Semanal', diaria: 'Diaria', Mensual: 'Mensual', Quincenal: 'Quincenal', Semanal: 'Semanal', Diaria: 'Diaria', 0: 'Diaria', 1: 'Semanal', 2: 'Quincenal', 3: 'Mensual' };
 const freqPeriodsPerMonth = { mensual: 1, quincenal: 2, semanal: 4, diaria: 30, Mensual: 1, Quincenal: 2, Semanal: 4, Diaria: 30, 0: 30, 1: 4, 2: 2, 3: 1 };
@@ -50,7 +51,7 @@ export default function PortalLoanDetail() {
   const freqLabel = freqLabels[freq] || String(freq);
   const pp = freqPeriodsPerMonth[freq] || 1;
   const totalPagado = summary?.totalPagado ?? 0;
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayDateOnly();
 
   return (
     <div>
@@ -115,7 +116,7 @@ export default function PortalLoanDetail() {
                   return (
                     <tr key={row.numero} className={`${isOverdue ? 'bg-danger-50/50' : isPaid ? 'bg-success-50/30' : isPartial ? 'bg-warning-50/30' : ''}`}>
                       <td className="px-3 py-2.5 text-xs font-medium text-navy-500">{row.numero}</td>
-                      <td className="px-3 py-2.5 text-xs text-slate-500">{row.fechaPago ? new Date(row.fechaPago).toLocaleDateString() : '-'}</td>
+                      <td className="px-3 py-2.5 text-xs text-slate-500">{formatDateOnly(row.fechaPago)}</td>
                       <td className="px-3 py-2.5 text-right text-xs font-medium">${Number(row.cuota || 0).toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-right text-xs text-success-600">${Number(row.capital || 0).toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-right text-xs text-warning-600">${Number(row.interes || 0).toLocaleString()}</td>
@@ -152,7 +153,7 @@ export default function PortalLoanDetail() {
                 <tbody className="divide-y divide-surface-border">
                   {payments.map((p) => (
                     <tr key={p.id}>
-                      <td className="px-3 py-2.5 text-xs text-slate-500">{p.fechaPago ? new Date(p.fechaPago).toLocaleDateString() : '-'}</td>
+                      <td className="px-3 py-2.5 text-xs text-slate-500">{formatDateOnly(p.fechaPago)}</td>
                       <td className="px-3 py-2.5 text-right text-xs font-semibold text-navy-500">${Number(p.monto || 0).toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-right text-xs text-success-600">${Number(p.capital || 0).toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-right text-xs text-warning-600">${Number(p.interes || 0).toLocaleString()}</td>
