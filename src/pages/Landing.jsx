@@ -1,5 +1,7 @@
+import LoanCalculator from '../components/marketing/LoanCalculator';
+import SeoSections, { MarketingFooter } from '../components/marketing/SeoSections';
 import { ArrowRight, Check, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardCheck, CreditCard, Globe2, HandCoins, LayoutDashboard, MapPinned, Menu, QrCode, ShieldCheck, Smartphone, Users, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
 import { useState } from 'react';
 
 const solutions = [
@@ -23,14 +25,14 @@ const personas = [
 ];
 
 const appScreens = [
-  { label: 'Panel', caption: 'La cartera, clara desde el inicio.', image: '/app-showcase/admin-dashboard.jpg', alt: 'Panel móvil de administración de Bonexa con resumen de cartera y cobros', icon: LayoutDashboard },
-  { label: 'Más herramientas', caption: 'Toda la operación, a un toque.', image: '/app-showcase/admin-more.jpg', alt: 'Menú móvil Más herramientas de Bonexa, organizado por operaciones y equipo', icon: Smartphone },
-  { label: 'Préstamos', caption: 'Encuentra cada operación al instante.', image: '/app-showcase/loans-sanitized.jpg', alt: 'Pantalla móvil de préstamos de Bonexa con datos de clientes de demostración', icon: CreditCard },
-  { label: 'Nuevo préstamo', caption: 'Inicia una operación desde el móvil.', image: '/app-showcase/new-loan-sanitized.jpg', alt: 'Pantalla móvil de registro rápido de préstamo con código QR de demostración no funcional', icon: CircleDollarSign },
-  { label: 'Clientes', caption: 'Expedientes y registro en un solo lugar.', image: '/app-showcase/clients-sanitized.jpg', alt: 'Pantalla móvil de clientes de Bonexa con datos de demostración', icon: Users },
-  { label: 'Portal cliente', caption: 'Cada cliente consulta lo suyo.', image: '/app-showcase/client-loans.jpg', alt: 'Portal móvil del cliente con préstamos vigentes y acceso a solicitar otro préstamo', icon: Users },
-  { label: 'Récord', caption: 'Un historial que da tranquilidad.', image: '/app-showcase/loan-record.jpg', alt: 'Récord móvil de préstamos liquidados en el portal de cliente Bonexa', icon: CreditCard },
-  { label: 'Pago con QR', caption: 'Pagar en persona, sin complicaciones.', image: '/app-showcase/qr-payment.jpg', alt: 'Pantalla móvil para escanear el código QR de un cobrador', icon: QrCode },
+  { label: 'Panel', caption: 'La cartera, clara desde el inicio.', image: '/app-showcase/admin-dashboard.jpg', width: 861, height: 1827, alt: 'Panel móvil de administración de Bonexa con resumen de cartera y cobros', icon: LayoutDashboard },
+  { label: 'Más herramientas', caption: 'Toda la operación, a un toque.', image: '/app-showcase/admin-more.jpg', width: 859, height: 1831, alt: 'Menú móvil Más herramientas de Bonexa, organizado por operaciones y equipo', icon: Smartphone },
+  { label: 'Préstamos', caption: 'Encuentra cada operación al instante.', image: '/app-showcase/loans-sanitized.jpg', width: 864, height: 1821, alt: 'Pantalla móvil de préstamos de Bonexa con datos de clientes de demostración', icon: CreditCard },
+  { label: 'Nuevo préstamo', caption: 'Inicia una operación desde el móvil.', image: '/app-showcase/new-loan-sanitized.jpg', width: 864, height: 1821, alt: 'Pantalla móvil de registro rápido de préstamo con código QR de demostración no funcional', icon: CircleDollarSign },
+  { label: 'Clientes', caption: 'Expedientes y registro en un solo lugar.', image: '/app-showcase/clients-sanitized.jpg', width: 862, height: 1825, alt: 'Pantalla móvil de clientes de Bonexa con datos de demostración', icon: Users },
+  { label: 'Portal cliente', caption: 'Cada cliente consulta lo suyo.', image: '/app-showcase/client-loans.jpg', width: 890, height: 1768, alt: 'Portal móvil del cliente con préstamos vigentes y acceso a solicitar otro préstamo', icon: Users },
+  { label: 'Récord', caption: 'Un historial que da tranquilidad.', image: '/app-showcase/loan-record.jpg', width: 895, height: 1757, alt: 'Récord móvil de préstamos liquidados en el portal de cliente Bonexa', icon: CreditCard },
+  { label: 'Pago con QR', caption: 'Pagar en persona, sin complicaciones.', image: '/app-showcase/qr-payment.jpg', width: 651, height: 1280, alt: 'Pantalla móvil para escanear el código QR de un cobrador', icon: QrCode },
 ];
 
 const currencies = [
@@ -75,10 +77,10 @@ export default function Landing() {
     <main className="overflow-hidden bg-surface-canvas text-navy-900">
       <header className="sticky top-0 z-20 border-b border-navy-900/10 bg-surface-canvas/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 lg:px-8">
-          <Link to="/" className="flex items-center gap-3" aria-label="Bonexa, inicio">
+          <a href="/" className="flex items-center gap-3" aria-label="Bonexa, inicio">
             <img src="/branding/icono-bonexa.svg" alt="" className="h-9 w-9 rounded-8" />
             <span className="font-display text-xl font-extrabold tracking-tight">Bonexa</span>
-          </Link>
+          </a>
           <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-600 md:flex">
             <a href="#ciclo" className="transition hover:text-navy-900">Cómo funciona</a>
             <a href="#soluciones" className="transition hover:text-navy-900">Soluciones</a>
@@ -87,21 +89,21 @@ export default function Landing() {
             <a href="#monedas" className="transition hover:text-navy-900">Multimoneda</a>
           </nav>
           <div className="hidden items-center gap-3 md:flex">
-            <Link to="/login" className="px-3 py-2 text-sm font-bold text-navy-700">Iniciar sesión</Link>
-            <Link to="/registro" className="rounded-8 bg-navy-900 px-4 py-2.5 text-sm font-bold text-white shadow-btn transition hover:bg-navy-700">Comenzar gratis</Link>
+            <a href="/login" className="px-3 py-2 text-sm font-bold text-navy-700">Iniciar sesión</a>
+            <a href="/registro" className="rounded-8 bg-navy-900 px-4 py-2.5 text-sm font-bold text-white shadow-btn transition hover:bg-navy-700">Comenzar gratis</a>
           </div>
           <button type="button" className="rounded-8 p-2 md:hidden" onClick={() => setMenuOpen((value) => !value)} aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button>
         </div>
-        {menuOpen && <div className="border-t border-navy-900/10 px-5 py-4 md:hidden"><div className="flex flex-col gap-3 text-sm font-semibold"><a href="#ciclo" onClick={() => setMenuOpen(false)}>Cómo funciona</a><a href="#soluciones" onClick={() => setMenuOpen(false)}>Soluciones</a><a href="#app-movil" onClick={() => setMenuOpen(false)}>App móvil</a><a href="#simulador" onClick={() => setMenuOpen(false)}>Calculadora</a><a href="#monedas" onClick={() => setMenuOpen(false)}>Multimoneda</a><Link to="/login">Iniciar sesión</Link><Link to="/registro" className="rounded-8 bg-navy-900 px-4 py-3 text-center text-white">Comenzar gratis</Link></div></div>}
+        {menuOpen && <div className="border-t border-navy-900/10 px-5 py-4 md:hidden"><div className="flex flex-col gap-3 text-sm font-semibold"><a href="#ciclo" onClick={() => setMenuOpen(false)}>Cómo funciona</a><a href="#soluciones" onClick={() => setMenuOpen(false)}>Soluciones</a><a href="#app-movil" onClick={() => setMenuOpen(false)}>App móvil</a><a href="#simulador" onClick={() => setMenuOpen(false)}>Calculadora</a><a href="#monedas" onClick={() => setMenuOpen(false)}>Multimoneda</a><a href="/login">Iniciar sesión</a><a href="/registro" className="rounded-8 bg-navy-900 px-4 py-3 text-center text-white">Comenzar gratis</a></div></div>}
       </header>
 
       <section className="financial-grid relative">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-28">
           <div className="relative z-10">
             <p className="mb-5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-warning-500">Software para prestamistas en Rep. Dominicana</p>
-            <h1 className="max-w-2xl font-display text-5xl font-extrabold leading-[.98] tracking-[-.06em] text-white sm:text-6xl lg:text-7xl">Cada peso prestado.<br /><span className="text-warning-500">Cada cuota.</span><br />Bajo control.</h1>
-            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-200">Clientes, préstamos, cobros, mora y cobradores en un solo lugar. Gratis y desde tu celular.</p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row"><Link to="/registro" className="inline-flex items-center justify-center gap-2 rounded-8 bg-warning-500 px-5 py-3.5 text-sm font-extrabold text-navy-900 shadow-btn transition hover:bg-warning-400">Comenzar gratis <ArrowRight size={17} /></Link><a href="#simulador" className="inline-flex items-center justify-center gap-2 rounded-8 border border-white/20 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-white/10">Probar el simulador</a></div>
+            <h1 className="max-w-2xl font-display text-4xl font-extrabold leading-[1.05] tracking-[-.045em] text-white sm:text-5xl lg:text-6xl">Software de préstamos<br /><span className="text-warning-500">y cobranza</span><br />en República Dominicana.</h1>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-200">Cada peso prestado. Cada cuota. Bajo control. Organiza clientes, pagos, mora y cobradores desde tu celular con Bonexa.</p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row"><a href="/registro" className="inline-flex items-center justify-center gap-2 rounded-8 bg-warning-500 px-5 py-3.5 text-sm font-extrabold text-navy-900 shadow-btn transition hover:bg-warning-400">Comenzar gratis <ArrowRight size={17} /></a><a href="#simulador" className="inline-flex items-center justify-center gap-2 rounded-8 border border-white/20 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-white/10">Probar el simulador</a></div>
             <div className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-slate-300"><span className="flex items-center gap-2"><Check size={15} className="text-warning-500" />100% gratuito</span><span className="flex items-center gap-2"><Check size={15} className="text-warning-500" />Sin tarjeta</span><span className="flex items-center gap-2"><Check size={15} className="text-warning-500" />Acceso desde el celular</span></div>
             <p className="mt-5 text-xs text-slate-400">Bonexa es software. No otorgamos préstamos ni intermediamos dinero.</p>
           </div>
@@ -129,7 +131,7 @@ export default function Landing() {
               <span className="rounded-full border border-white/15 bg-white/[.06] px-3 py-2">Portal de cliente</span>
               <span className="rounded-full border border-white/15 bg-white/[.06] px-3 py-2">Cobros con QR</span>
             </div>
-            <Link to="/registro" className="mt-9 inline-flex items-center gap-2 rounded-8 bg-warning-500 px-5 py-3.5 text-sm font-extrabold text-navy-900 shadow-btn transition hover:-translate-y-0.5 hover:bg-warning-400">Quiero conocer Bonexa <ArrowRight size={17} /></Link>
+            <a href="/registro" className="mt-9 inline-flex items-center gap-2 rounded-8 bg-warning-500 px-5 py-3.5 text-sm font-extrabold text-navy-900 shadow-btn transition hover:-translate-y-0.5 hover:bg-warning-400">Quiero conocer Bonexa <ArrowRight size={17} /></a>
           </div>
 
           <div className="relative mx-auto flex w-full max-w-xl flex-col items-center">
@@ -138,7 +140,7 @@ export default function Landing() {
               <span aria-hidden="true" className="absolute -right-[4px] top-28 h-16 w-[4px] rounded-r-full bg-slate-500" />
               <span aria-hidden="true" className="absolute -left-[4px] top-24 h-12 w-[4px] rounded-l-full bg-slate-500" />
               <div className="overflow-hidden rounded-[23px] bg-surface-canvas">
-                <img key={selectedScreen.image} src={`${selectedScreen.image}?v=2`} alt={selectedScreen.alt} className="phone-showcase-shot" />
+                <img key={selectedScreen.image} src={`${selectedScreen.image}?v=2`} alt={selectedScreen.alt} width={selectedScreen.width} height={selectedScreen.height} loading="lazy" decoding="async" className="phone-showcase-shot" />
               </div>
             </div>
             <div className="mt-6 flex w-full max-w-[430px] items-center justify-between gap-3">
@@ -160,15 +162,16 @@ export default function Landing() {
 
       <section id="ciclo" className="border-y border-surface-border bg-white"><div className="mx-auto max-w-6xl px-5 py-20 lg:px-8 lg:py-28"><div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><div><p className="font-mono text-xs font-bold uppercase tracking-[.18em] text-warning-700">Una operación de principio a fin</p><h2 className="mt-3 font-display text-4xl font-extrabold text-navy-900 sm:text-5xl">Del primer dato al último pago.</h2></div><CircleDollarSign className="hidden text-warning-500 sm:block" size={48} strokeWidth={1.5} /></div><div className="mt-14 grid gap-8 border-t border-surface-border pt-8 md:grid-cols-4">{steps.map(([label, title, text]) => <div key={label}><p className="font-mono text-[10px] font-bold tracking-[.12em] text-warning-700">{label}</p><h3 className="mt-4 font-display text-xl font-extrabold text-navy-900">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{text}</p></div>)}</div></div></section>
 
-      <section id="simulador" className="mx-auto max-w-6xl px-5 py-20 lg:px-8 lg:py-28"><div className="grid gap-8 rounded-16 bg-navy-900 p-8 text-white sm:p-12 md:grid-cols-[1fr_.85fr] md:items-center"><div><h2 className="font-display text-3xl font-extrabold sm:text-4xl">Calcula una cuota en segundos</h2><p className="mt-3 max-w-lg text-slate-300">Ajusta un préstamo de ejemplo y mira cómo cambia el seguimiento.</p><div className="mt-7 space-y-2 text-sm"><div className="flex justify-between rounded-8 bg-navy-800 px-4 py-3"><span>Monto</span><strong>RD$80,000</strong></div><div className="flex justify-between rounded-8 bg-navy-800 px-4 py-3"><span>Interés anual</span><strong>18%</strong></div><div className="flex justify-between rounded-8 bg-navy-800 px-4 py-3"><span>Plazo</span><strong>12 meses</strong></div></div><div className="mt-3 flex gap-2 text-sm"><span className="rounded-8 bg-warning-500 px-3 py-2 font-bold text-navy-900">Mensual</span><span className="rounded-8 border border-white/20 px-3 py-2">Quincenal</span><span className="rounded-8 border border-white/20 px-3 py-2">Semanal</span></div></div><div className="rounded-12 bg-surface-canvas p-7 text-navy-900"><p className="text-sm text-slate-500">Cuota estimada</p><p className="font-display text-4xl font-extrabold">RD$7,335</p><p className="mt-1 text-sm text-slate-500">Primera cuota: en 30 días</p><div className="mt-5 space-y-2 border-t border-surface-border pt-3 text-sm"><div className="flex justify-between"><span>Total a cobrar</span><strong>RD$88,020</strong></div><div className="flex justify-between border-t border-surface-border pt-2"><span>Interés estimado</span><strong>RD$8,020</strong></div></div><Link to="/registro" className="mt-5 block rounded-8 bg-navy-900 px-4 py-3 text-center text-sm font-bold text-white">Crear mi primer préstamo</Link><p className="mt-3 text-[11px] leading-4 text-slate-500">Ejemplo educativo. Tasas y condiciones las define tu negocio y deben cumplir la normativa aplicable.</p></div></div></section>
+      <LoanCalculator />
 
       <section className="mx-auto max-w-6xl px-5 py-20 lg:px-8 lg:py-24"><h2 className="font-display text-4xl font-extrabold text-navy-900 sm:text-5xl">Para cada forma de prestar</h2><div className="mt-8 grid gap-4 md:grid-cols-3">{personas.map(([eyebrow, title, text, Icon]) => <article key={eyebrow} className="rounded-16 bg-white p-6 shadow-card transition hover:-translate-y-1 hover:shadow-card-lg"><Icon className="mb-8 text-warning-700" size={25} /><p className="font-mono text-xs font-bold tracking-[.16em] text-warning-700">{eyebrow}</p><h3 className="mt-2 font-display text-2xl font-extrabold text-navy-900">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{text}</p><span className="mt-5 inline-block text-sm font-bold text-navy-900">Ver solución →</span></article>)}</div></section>
 
       <section id="monedas" className="mx-auto max-w-6xl px-5 py-12 lg:px-8 lg:py-20"><div className="flex items-start justify-between gap-6"><div><h2 className="font-display text-3xl font-extrabold text-navy-900 sm:text-4xl">Multimoneda, sin mezclar saldos</h2><p className="mt-3 max-w-2xl text-slate-600">Cada operación en su moneda. Tu empresa activa las que necesita desde su configuración.</p></div><Globe2 className="hidden text-warning-500 sm:block" size={40} /></div><div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{currencies.map(([code, name, country]) => <div key={code} className="flex items-center gap-3 rounded-8 bg-white px-4 py-3 shadow-card"><Flag country={country} /><div><strong className="text-sm text-navy-900">{code}</strong><p className="text-xs text-slate-500">{name}</p></div></div>)}</div></section>
 
-      <section id="registro" className="mx-auto max-w-6xl px-5 py-20 lg:px-8 lg:py-24"><div className="flex flex-wrap items-center justify-between gap-6 rounded-16 bg-warning-500 px-8 py-10 text-navy-900 sm:px-12"><h2 className="max-w-2xl font-display text-4xl font-extrabold leading-tight sm:text-5xl">Pon tu cartera en orden. Empieza gratis.</h2><Link to="/registro" className="inline-flex items-center gap-2 rounded-8 bg-navy-900 px-6 py-4 text-sm font-bold text-white">Comenzar gratis <ArrowRight size={17} /></Link></div></section>
+      <section id="registro" className="mx-auto max-w-6xl px-5 py-20 lg:px-8 lg:py-24"><div className="flex flex-wrap items-center justify-between gap-6 rounded-16 bg-warning-500 px-8 py-10 text-navy-900 sm:px-12"><h2 className="max-w-2xl font-display text-4xl font-extrabold leading-tight sm:text-5xl">Pon tu cartera en orden. Empieza gratis.</h2><a href="/registro" className="inline-flex items-center gap-2 rounded-8 bg-navy-900 px-6 py-4 text-sm font-bold text-white">Comenzar gratis <ArrowRight size={17} /></a></div></section>
 
-      <footer className="bg-navy-900 text-white"><div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-sm opacity-80 sm:flex-row sm:items-center sm:justify-between lg:px-8"><span>© 2026 Bonexa · Software gratuito para negocios de crédito</span><span>República Dominicana y Latinoamérica</span></div></footer>
+      <SeoSections />
+      <MarketingFooter />
     </main>
   );
 }

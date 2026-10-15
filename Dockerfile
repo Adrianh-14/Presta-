@@ -7,11 +7,12 @@ RUN npm ci
 COPY index.html postcss.config.js tailwind.config.js vite.config.js ./
 COPY src ./src
 COPY public ./public
-RUN npm run build
 COPY marketing ./marketing
 ARG SITE_URL=https://prestamosplus.com
+ARG GOOGLE_SITE_VERIFICATION
 ENV SITE_URL=${SITE_URL}
-RUN node marketing/build.mjs
+ENV GOOGLE_SITE_VERIFICATION=${GOOGLE_SITE_VERIFICATION}
+RUN npm run build:all && npm run marketing:verify
 
 FROM nginx:1.27-alpine AS runtime
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf

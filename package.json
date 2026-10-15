@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "marketing:build": "node marketing/build.mjs",
+    "marketing:build": "node marketing/build.mjs && vite build --config marketing/vite.config.js && vite build --config marketing/vite.config.js --ssr marketing/render-landing.jsx --outDir .build/landing-ssr && node marketing/prerender.mjs",
     "build:all": "npm run build && npm run marketing:build",
     "mobile:sync": "vite build --mode mobile && cap sync",
     "mobile:android": "npm run mobile:sync && cap open android",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "marketing:verify": "node marketing/verify.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

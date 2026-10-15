@@ -74,6 +74,7 @@ services:
       dockerfile: Dockerfile
       args:
         SITE_URL: ${SITE_URL:-https://prestamosplus.com}
+        GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
     container_name: prestamoplus_web
     restart: unless-stopped
     ports:

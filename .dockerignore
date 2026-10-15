@@ -1,6 +1,9 @@
 .git
 .agents
 .codex
+.codex-remote-attachments
+.build
+marketing/dist
 .mimocode
 backend
 dist
